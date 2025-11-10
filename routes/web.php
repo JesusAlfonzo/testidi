@@ -13,6 +13,7 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\StockInController;
 use App\Http\Controllers\RequestController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\KitController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -37,6 +38,9 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
 
     // MÓDULO INVENTARIO
     Route::resource('products', ProductController::class);
+
+    // MÓDULO: KITS
+    Route::resource('kits', KitController::class);
 
     // MOVIMIENTOS - ENTRADAS DE STOCK
     Route::resource('stock-in', StockInController::class)->except(['edit', 'update']);

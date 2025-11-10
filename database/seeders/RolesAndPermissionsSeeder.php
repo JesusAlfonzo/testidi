@@ -21,75 +21,76 @@ class RolesAndPermissionsSeeder extends Seeder
 
         // 1. Crear Permisos para la Gestión de Usuarios
         $permissions = [
-            'dashboard_acceso',          // Permite acceder al dashboard general
+        'dashboard_acceso', // Permite acceder al dashboard general
 
-            // Permisos para el Módulo de Seguridad (Usuarios y Roles)
-            'usuarios_ver',
-            'usuarios_crear',
-            'usuarios_editar',
-            'usuarios_eliminar',
-            'roles_ver',
-            'roles_crear',
-            'roles_editar',
-            'roles_eliminar',
+        // Permisos para el Módulo de Seguridad (Usuarios y Roles)
+        'usuarios_ver',
+        'usuarios_crear',
+        'usuarios_editar',
+        'usuarios_eliminar',
+        'roles_ver',
+        'roles_crear',
+        'roles_editar',
+        'roles_eliminar',
 
-            //MÓDULOS MAESTROS - CATEGORÍAS
-            'categorias_ver',
-            'categorias_crear',
-            'categorias_editar',
-            'categorias_eliminar',
+        // MÓDULOS MAESTROS - CATEGORÍAS
+        'categorias_ver',
+        'categorias_crear',
+        'categorias_editar',
+        'categorias_eliminar',
 
-            // MÓDULOS MAESTROS - UNIDADES
-            'unidades_ver',
-            'unidades_crear',
-            'unidades_editar',
-            'unidades_eliminar',
+        // MÓDULOS MAESTROS - UNIDADES
+        'unidades_ver',
+        'unidades_crear',
+        'unidades_editar',
+        'unidades_eliminar',
 
-            // MÓDULOS MAESTROS - UBICACIONES
-            'ubicaciones_ver',
-            'ubicaciones_crear',
-            'ubicaciones_editar',
-            'ubicaciones_eliminar',
+        // MÓDULOS MAESTROS - UBICACIONES
+        'ubicaciones_ver',
+        'ubicaciones_crear',
+        'ubicaciones_editar',
+        'ubicaciones_eliminar',
 
-            // MÓDULOS MAESTROS - MARCAS
-            'marcas_ver',
-            'marcas_crear',
-            'marcas_editar',
-            'marcas_eliminar',
+        // MÓDULOS MAESTROS - MARCAS
+        'marcas_ver',
+        'marcas_crear',
+        'marcas_editar',
+        'marcas_eliminar',
 
-            //  MÓDULOS MAESTROS - PROVEEDORES
-            'proveedores_ver',
-            'proveedores_crear',
-            'proveedores_editar',
-            'proveedores_eliminar',
+        // MÓDULOS MAESTROS - PROVEEDORES
+        'proveedores_ver',
+        'proveedores_crear',
+        'proveedores_editar',
+        'proveedores_eliminar',
 
-            // MÓDULO INVENTARIO - PRODUCTOS
-            'productos_ver',
-            'productos_crear',
-            'productos_editar',
-            'productos_eliminar',
+        // MÓDULO INVENTARIO - PRODUCTOS
+        'productos_ver',
+        'productos_crear',
+        'productos_editar',
+        'productos_eliminar',
+        
+        // MÓDULO INVENTARIO - KITS (NUEVO)
+        'kits_ver',
+        'kits_crear',
+        'kits_editar',
+        'kits_eliminar',
 
-            // MÓDULO INVENTARIO - ENTRADAS
-            'entradas_ver',
-            'entradas_crear',
-            'entradas_eliminar', // No se recomienda editar un movimiento de stock, solo eliminar.
+        // MÓDULO INVENTARIO - ENTRADAS
+        'entradas_ver',
+        'entradas_crear',
+        'entradas_eliminar',
 
-            // NUEVOS PERMISOS: SOLICITUDES DE INVENTARIO
-            'solicitudes_ver',
-            'solicitudes_crear',
-            'solicitudes_aprobar',
+        // MÓDULO INVENTARIO - SOLICITUDES DE SALIDA
+        'solicitudes_ver', // Ver listado general (pendientes, aprobadas, rechazadas)
+        'solicitudes_crear', // Crear nuevas solicitudes (para el empleado)
+        'solicitudes_aprobar', // Aprobar o rechazar solicitudes (para el jefe/admin)
 
-            // MÓDULO INVENTARIO - SOLICITUDES DE SALIDA
-            'solicitudes_ver', // Ver listado general (pendientes, aprobadas, rechazadas)
-            'solicitudes_crear', // Crear nuevas solicitudes (para el empleado)
-            'solicitudes_aprobar', // Aprobar o rechazar solicitudes (para el jefe/admin)
-
-            'reportes_ver',
-            'reportes_stock',
-            'reportes_movimientos',
-
-            'kardex_ver'
-        ];
+        // MÓDULO REPORTES (Estructura consolidada)
+        'reportes_ver',
+        'reportes_stock',
+        'reportes_movimientos',
+        'reportes_kardex', // 🔑 NUEVO: Permiso específico para el Kardex
+    ];
 
         foreach ($permissions as $permission) {
             // Se usa firstOrCreate para evitar duplicados si se corre el seeder múltiples veces

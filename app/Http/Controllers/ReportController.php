@@ -11,6 +11,14 @@ use Illuminate\Support\Str; // 🔑 AGREGADO: Necesario para Str::limit en karde
 
 class ReportController extends Controller
 {
+
+    public function __construct()
+    {
+        // ... otros middlewares para reportes
+        $this->middleware('can:reportes_ver')->only(['stockReport', 'requestsReport']);
+        $this->middleware('can:reportes_kardex')->only('kardexReport'); // 🔑 Aplicado el nuevo permiso
+    }
+
     // Muestra el reporte de stock actual
     public function stockReport()
     {

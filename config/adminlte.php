@@ -303,7 +303,7 @@ return [
     // 🏠 DASHBOARD PRINCIPAL (NUEVO)
     [
         'text' => 'Dashboard',
-        'url'  => '/home', // O usa route('home') si lo prefieres y lo tienes definido
+        'url'  => '/home',
         'icon' => 'fas fa-fw fa-home',
     ],
 
@@ -380,6 +380,12 @@ return [
                 'can'  => 'productos_ver',
             ],
             [
+                'text' => 'Kits / Paquetes',
+                'url'  => 'admin/kits',
+                'icon' => 'fas fa-fw fa-cubes',
+                'can'  => 'kits_ver', // 🔑 Este debe estar asignado al usuario
+            ],
+            [
                 'text' => 'Entradas de Stock',
                 'url'  => 'admin/stock-in',
                 'icon' => 'fas fa-fw fa-arrow-alt-circle-up',
@@ -394,11 +400,11 @@ return [
         ],
     ],
 
-
+    // 📈 GRUPO: REPORTES
     [
         'text'    => 'Reportes',
         'icon'    => 'fas fa-fw fa-chart-bar',
-        'can'     => 'reportes_ver', // Permiso principal para ver la sección
+        'can'     => 'reportes_ver',
         'submenu' => [
             [
                 'text' => 'Stock Actual',
@@ -412,12 +418,11 @@ return [
                 'icon' => 'fas fa-history',
                 'can'  => 'reportes_movimientos',
             ],
-
             [
                 'text' => 'Buscar Kardex',
                 'url'  => '#',
                 'icon' => 'fas fa-search',
-                'can'  => 'kardex_ver',
+                'can'  => 'reportes_kardex', // 🔑 Corregido para usar el permiso reportes_kardex
             ],
 
         ],
