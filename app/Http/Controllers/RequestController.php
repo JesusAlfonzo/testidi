@@ -35,66 +35,74 @@ class RequestController extends Controller
         // Cargar productos y kits activos para el selector
         $products = Product::where('is_active', true)->orderBy('name')->get(['id', 'name', 'stock']);
         $kits = Kit::where('is_active', true)->orderBy('name')->get(['id', 'name']);
-        
+
         // Asume que tienes un modelo para Ubicaciones (Locations) si necesitas seleccionarlas
         // $locations = Location::all(); 
 
         return view('admin.requests.create', compact('products', 'kits')); // Pasa ambos a la vista
     }
 
-    // Lógica: Guardar la solicitud y sus items
-    // 🔑 CORREGIDO: Usar HttpRequest en lugar de Request
-    public function store(HttpRequest $request)
-    {
-        $request->validate([
-            'reference' => 'required|string|max:255',
-            'items' => 'required|array|min:1',
-            'items.*.item_type' => 'required|in:product,kit',
-            // En validación, el 'nullable' es crucial porque solo uno tendrá valor.
-            'justification' => 'required|string|max:500', // <-- AGREGAR VALIDACIÓN
-            'destination_area' => 'nullable|string|max:255', // <-- AGREGAR VALIDA
-            'items.*.product_id' => 'nullable|exists:products,id',
-            'items.*.kit_id' => 'nullable|exists:kits,id',
-            'items.*.quantity' => 'required|integer|min:1',
-        ]);
+   public function store(HttpRequest $request)
+{
+    $request->validate([
+        'reference' => 'required|string|max:255',
+        'items' => 'required|array|min:1',
+        'items.*.item_type' => 'required|in:product,kit',
+        'justification' => 'required|string|max:500', 
+        'destination_area' => 'nullable|string|max:255', 
+        'items.*.product_id' => 'nullable|exists:products,id',
+        'items.*.kit_id' => 'nullable|exists:kits,id',
+        'items.*.quantity' => 'required|integer|min:1',
+    ]);
 
-        // Asegurar que si el tipo es 'product', product_id exista, y viceversa.
-        foreach ($request->items as $item) {
-            if ($item['item_type'] == 'product' && empty($item['product_id'])) {
-                return back()->withInput()->withErrors(['items' => 'Debe seleccionar un producto para el tipo Producto.']);
-            }
-            if ($item['item_type'] == 'kit' && empty($item['kit_id'])) {
-                return back()->withInput()->withErrors(['items' => 'Debe seleccionar un kit para el tipo Kit.']);
-            }
+    // Asegurar que si el tipo es 'product', product_id exista, y viceversa.
+    foreach ($request->items as $item) {
+        if ($item['item_type'] == 'product' && empty($item['product_id'])) {
+            return back()->withInput()->withErrors(['items' => 'Debe seleccionar un producto para el tipo Producto.']);
         }
-
-        // 🔑 CORREGIDO: Usar RequestModel::create en lugar de InventoryRequest::create
-        $solicitud = RequestModel::create([
-            'requester_id' => auth()->id(),
-            'reference' => $request->reference,
-            'status' => 'Pending',
-            'justification' => $request->justification, // <-- AGREGADO
-            'destination_area' => $request->destination_area, // <-- AGREGADO
-            'requested_at' => now(),
-        ]);
-
-        $requestItems = [];
-        foreach ($request->items as $item) {
-            $requestItems[] = [
-                // Usa el ID correcto según el tipo
-                'product_id' => $item['item_type'] == 'product' ? $item['product_id'] : null, 
-                'kit_id' => $item['item_type'] == 'kit' ? $item['kit_id'] : null, 
-                'item_type' => $item['item_type'],
-                'quantity_requested' => $item['quantity'],
-                'created_at' => now(), 
-                'updated_at' => now(), 
-            ];
+        if ($item['item_type'] == 'kit' && empty($item['kit_id'])) {
+            return back()->withInput()->withErrors(['items' => 'Debe seleccionar un kit para el tipo Kit.']);
         }
-
-        $solicitud->items()->insert($requestItems);
-
-        return redirect()->route('admin.requests.index')->with('success', 'Solicitud enviada exitosamente.');
     }
+
+    // 🔑 CARGAR PRODUCTOS Y KITS PARA OBTENER PRECIOS
+    $allProducts = Product::all()->keyBy('id');
+    $allKits = Kit::all()->keyBy('id');
+    
+    $solicitud = RequestModel::create([
+        'requester_id' => auth()->id(),
+        'reference' => $request->reference,
+        'status' => 'Pending',
+        'justification' => $request->justification,
+        'destination_area' => $request->destination_area,
+        'requested_at' => now(),
+    ]);
+
+    $requestItems = [];
+    foreach ($request->items as $item) {
+        $price = 0;
+
+        if ($item['item_type'] == 'product') {
+            $product = $allProducts->get($item['product_id']);
+            $price = $product->unit_price ?? 0;
+        } elseif ($item['item_type'] == 'kit') {
+            $kit = $allKits->get($item['kit_id']);
+            $price = $kit->unit_price ?? 0;
+        }
+        
+        $requestItems[] = [
+            'product_id' => $item['item_type'] == 'product' ? $item['product_id'] : null, 
+            'kit_id' => $item['item_type'] == 'kit' ? $item['kit_id'] : null, 
+            'item_type' => $item['item_type'],
+            'quantity_requested' => $item['quantity'],
+            'unit_price_at_request' => $price, // 🔑 AÑADIDO EL PRECIO REQUERIDO
+        ];
+    }
+
+    $solicitud->items()->createMany($requestItems);
+
+    return redirect()->route('admin.requests.index')->with('success', 'Solicitud enviada exitosamente.');
+}
 
     // Muestra los detalles de la solicitud
     public function show(RequestModel $request)
@@ -104,7 +112,7 @@ class RequestController extends Controller
             'approver',
             'items.product.unit',
             // 🔑 NUEVO: Cargar los componentes del kit para la vista 'show'
-            'items.kit.components.unit', 
+            'items.kit.components.unit',
         ]);
 
         return view('admin.requests.show', compact('request'));
@@ -144,7 +152,6 @@ class RequestController extends Controller
                         }
                         $product->stock -= $item->quantity_requested;
                         $product->save();
-
                     } elseif ($item->item_type === 'kit') {
                         // 🔑 Lógica de Kit (NUEVO: Descuenta todos los componentes)
                         $kit = $item->kit; // Ya cargado con load('items.kit.components')
@@ -153,7 +160,7 @@ class RequestController extends Controller
                         if (!$kit) {
                             throw new \Exception("Error: Kit ID {$item->kit_id} no encontrado.");
                         }
-                        
+
                         // Iterar sobre CADA componente del Kit
                         foreach ($kit->components as $component) {
                             $requiredQuantity = $component->pivot->quantity_required;
@@ -166,7 +173,7 @@ class RequestController extends Controller
                                 $productName = $product->name ?? 'ID:' . $component->id;
                                 throw new \Exception("Stock insuficiente para el componente '{$productName}' del Kit '{$kit->name}'.");
                             }
-                            
+
                             $product->stock -= $totalConsumption;
                             $product->save();
                         }
@@ -176,7 +183,6 @@ class RequestController extends Controller
                 $request->save();
                 DB::commit();
                 return redirect()->route('admin.requests.index')->with('success', '✅ Solicitud APROBADA y stock actualizado correctamente.');
-
             } elseif ($action === 'reject') {
                 $request->status = 'Rejected';
                 $request->approver_id = auth()->id();
