@@ -14,12 +14,27 @@ use App\Http\Controllers\StockInController;
 use App\Http\Controllers\RequestController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\KitController;
+use App\Http\Controllers\Auth\RegisterController; // Importación mantenida, pero no usada en rutas
 
 Route::get('/', function () {
     return view('welcome');
 });
 
-Auth::routes();
+// =================================================================
+// RUTAS DE AUTENTICACIÓN (REGISTRO DESHABILITADO)
+// =================================================================
+
+// Rutas de Login y Logout
+Route::get('login', [App\Http\Controllers\Auth\LoginController::class, 'showLoginForm'])->name('login');
+Route::post('login', [App\Http\Controllers\Auth\LoginController::class, 'login']);
+Route::post('logout', [App\Http\Controllers\Auth\LoginController::class, 'logout'])->name('logout');
+
+// Rutas de Reseteo de Contraseña
+// Route::resetPasswordRoutes(); 
+
+// NOTA: Se ha omitido la definición de las rutas 'register' (GET y POST).
+
+// =================================================================
 
 Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
 
@@ -46,12 +61,9 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::resource('stock-in', StockInController::class)->except(['edit', 'update']);
 
     // 🔑 CLAVE: Ruta especializada para APROBACIÓN/RECHAZO
-    // Esta ruta personalizada debe ir ANTES del Route::resource
-    // Usamos el parámetro singular {request} para Route Model Binding
     Route::post('requests/{request}/process', [RequestController::class, 'process'])->name('requests.process');
 
     // MOVIMIENTOS - SOLICITUDES DE INVENTARIO (SALIDAS CON APROBACIÓN)
-    // Se define el parámetro singular 'request' para que coincida con la ruta process y el controlador
     Route::resource('requests', RequestController::class)
         ->except(['edit', 'update'])
         ->parameters([
@@ -75,6 +87,5 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
         Route::get('kardex/{product}', [ReportController::class, 'kardexReport'])
             ->name('kardex')
             ->middleware('can:kardex_ver');
-
     });
 });
