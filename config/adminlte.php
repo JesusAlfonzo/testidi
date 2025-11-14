@@ -14,7 +14,7 @@ return [
     |
     */
 
-    'title' => 'AdminLTE 3',
+    'title' => 'SGCI-IDI',
     'title_prefix' => '',
     'title_postfix' => '',
 
@@ -30,8 +30,8 @@ return [
     |
     */
 
-    'use_ico_only' => false,
-    'use_full_favicon' => false,
+    'use_ico_only' => true,
+    'use_full_favicon' => true,
 
     /*
     |--------------------------------------------------------------------------
@@ -63,7 +63,7 @@ return [
     |
     */
 
-    'logo' => '<b>Admin</b>LTE',
+    'logo' => '<b>SGCI</b> IDI',
     'logo_img' => 'vendor/adminlte/dist/img/AdminLTELogo.png',
     'logo_img_class' => 'brand-image img-circle elevation-3',
     'logo_img_xl' => null,
@@ -134,7 +134,7 @@ return [
     */
 
     'usermenu_enabled' => true,
-    'usermenu_header' => false,
+    'usermenu_header' => true,
     'usermenu_header_class' => 'bg-primary',
     'usermenu_image' => false,
     'usermenu_desc' => false,
@@ -300,35 +300,53 @@ return [
 
 'menu' => [
 
-    // 🏠 DASHBOARD PRINCIPAL (NUEVO)
+    // 🏠 NAVEGACIÓN
+    [
+        'header' => 'Navegación',
+    ],
     [
         'text' => 'Dashboard',
         'url'  => '/home',
         'icon' => 'fas fa-fw fa-home',
     ],
 
-    // 🛡️ GRUPO: SEGURIDAD
+    // 🏭 GESTIÓN DE INVENTARIO
     [
-        'text'    => 'Seguridad',
-        'icon'    => 'fas fa-fw fa-shield-alt',
-        'can'     => 'usuarios_ver',
+        'header' => 'Gestión de inventario',
+    ],
+    [
+        'text'    => 'Inventario',
+        'icon'    => 'fas fa-fw fa-cubes',
+        'can'     => 'productos_ver',
         'submenu' => [
             [
-                'text' => 'Usuarios',
-                'url'  => 'admin/users',
-                'icon' => 'fas fa-fw fa-users',
-                'can'  => 'usuarios_ver',
+                'text' => 'Listado de Productos',
+                'url'  => 'admin/products',
+                'icon' => 'fas fa-fw fa-cube',
+                'can'  => 'productos_ver',
             ],
             [
-                'text' => 'Roles y Permisos',
-                'url'  => '#',
-                'icon' => 'fas fa-fw fa-user-tag',
-                'can'  => 'roles_ver',
+                'text' => 'Kits / Paquetes',
+                'url'  => 'admin/kits',
+                'icon' => 'fas fa-fw fa-cubes',
+                'can'  => 'kits_ver',
+            ],
+            [
+                'text' => 'Entradas de Stock',
+                'url'  => 'admin/stock-in',
+                'icon' => 'fas fa-fw fa-arrow-alt-circle-up',
+                'can'  => 'entradas_ver',
+            ],
+            [
+                'text' => 'Solicitudes de Salida',
+                'url'  => 'admin/requests',
+                'icon' => 'fas fa-fw fa-arrow-alt-circle-down',
+                'can'  => 'solicitudes_ver',
+                // 'label' => 5, // <-- ¡Pronto veremos cómo hacer esto dinámico!
+                // 'label_color' => 'warning',
             ],
         ],
     ],
-
-    // 📦 GRUPO: MAESTROS
     [
         'text'    => 'Maestros',
         'icon'    => 'fas fa-fw fa-boxes',
@@ -366,41 +384,11 @@ return [
             ],
         ],
     ],
-
-    // 🏭 GRUPO PRINCIPAL: INVENTARIO Y MOVIMIENTOS
+    
+    // 📈 ANÁLISIS
     [
-        'text'    => 'Inventario',
-        'icon'    => 'fas fa-fw fa-cubes',
-        'can'     => 'productos_ver',
-        'submenu' => [
-            [
-                'text' => 'Listado de Productos',
-                'url'  => 'admin/products',
-                'icon' => 'fas fa-fw fa-cube',
-                'can'  => 'productos_ver',
-            ],
-            [
-                'text' => 'Kits / Paquetes',
-                'url'  => 'admin/kits',
-                'icon' => 'fas fa-fw fa-cubes',
-                'can'  => 'kits_ver', // 🔑 Este debe estar asignado al usuario
-            ],
-            [
-                'text' => 'Entradas de Stock',
-                'url'  => 'admin/stock-in',
-                'icon' => 'fas fa-fw fa-arrow-alt-circle-up',
-                'can'  => 'entradas_ver',
-            ],
-            [
-                'text' => 'Solicitudes de Salida',
-                'url'  => 'admin/requests',
-                'icon' => 'fas fa-fw fa-arrow-alt-circle-down',
-                'can'  => 'solicitudes_ver',
-            ],
-        ],
+        'header' => 'Análisis y Reportes',
     ],
-
-    // 📈 GRUPO: REPORTES
     [
         'text'    => 'Reportes',
         'icon'    => 'fas fa-fw fa-chart-bar',
@@ -422,13 +410,35 @@ return [
                 'text' => 'Buscar Kardex',
                 'url'  => '#',
                 'icon' => 'fas fa-search',
-                'can'  => 'reportes_kardex', // 🔑 Corregido para usar el permiso reportes_kardex
+                'can'  => 'reportes_kardex',
             ],
-
         ],
     ],
-], // Cierre del array 'menu'
 
+    // 🛡️ ADMINISTRACIÓN DEL SISTEMA
+    [
+        'header' => 'Administración del sistema',
+    ],
+    [
+        'text'    => 'Seguridad',
+        'icon'    => 'fas fa-fw fa-shield-alt',
+        'can'     => 'usuarios_ver',
+        'submenu' => [
+            [
+                'text' => 'Usuarios',
+                'url'  => 'admin/users',
+                'icon' => 'fas fa-fw fa-users',
+                'can'  => 'usuarios_ver',
+            ],
+            [
+                'text' => 'Roles y Permisos',
+                'url'  => '#',
+                'icon' => 'fas fa-fw fa-user-tag',
+                'can'  => 'roles_ver',
+            ],
+        ],
+    ],
+],
     /*
     |--------------------------------------------------------------------------
     | Menu Filters
