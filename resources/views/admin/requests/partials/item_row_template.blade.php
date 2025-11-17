@@ -5,18 +5,24 @@
         <div class="col-md-2">
             <div class="form-group">
                 <label>Tipo de Ítem</label>
-                <select name="items[__INDEX__][item_type]" id="type_select___INDEX__" data-index="__INDEX__" class="form-control" required>
-                    <option value="product">Producto</option>
+                <select name="items[__INDEX__][item_type]" 
+                        id="type_select___INDEX__" 
+                        data-index="__INDEX__" 
+                        class="form-control type-selector" 
+                        required>
+                    <option value="product" selected>Producto</option>
                     <option value="kit">Kit</option>
                 </select>
             </div>
         </div>
 
-        {{-- Selector de Producto --}}
-        <div class="col-md-6" id="product_selector___INDEX__">
+        {{-- Selector de Producto (Contenedor con ID único) --}}
+        <div class="col-md-6" id="container_product___INDEX__">
             <div class="form-group">
                 <label>Producto</label>
-                <select name="items[__INDEX__][product_id]" id="item_select___INDEX__" class="form-control select2">
+                <select name="items[__INDEX__][product_id]" 
+                        id="input_product___INDEX__" 
+                        class="form-control select2-product">
                     <option value="">Seleccione un producto...</option>
                     @foreach ($products as $product)
                         <option value="{{ $product->id }}">
@@ -27,32 +33,36 @@
             </div>
         </div>
         
-        {{-- Selector de Kit (Hidden by default) --}}
-        <div class="col-md-6" id="kit_selector___INDEX__" style="display:none;">
+        {{-- Selector de Kit (Contenedor con ID único - Oculto por defecto) --}}
+        <div class="col-md-6" id="container_kit___INDEX__" style="display:none;">
             <div class="form-group">
                 <label>Kit / Paquete</label>
-                {{-- Nota: El campo product_id debe ir NULL si seleccionamos un kit, 
-                   y el kit_id debe ir NULL si seleccionamos un producto. --}}
-                <select name="items[__INDEX__][kit_id]" class="form-control select2">
+                <select name="items[__INDEX__][kit_id]" 
+                        id="input_kit___INDEX__" 
+                        class="form-control select2-kit">
                     <option value="">Seleccione un kit...</option>
                     @foreach ($kits as $kit)
                         <option value="{{ $kit->id }}">{{ $kit->name }}</option>
                     @endforeach
                 </select>
-                <input type="hidden" name="items[__INDEX__][product_id]" value="">
             </div>
         </div>
 
         {{-- Cantidad Solicitada --}}
         <div class="col-md-3">
-            <x-adminlte-input name="items[__INDEX__][quantity]" type="number" label="Cantidad" value="1" min="1" required/>
+            <div class="form-group">
+                <label>Cantidad</label>
+                <input type="number" name="items[__INDEX__][quantity]" class="form-control" value="1" min="1" required>
+            </div>
         </div>
         
         {{-- Botón de Eliminar --}}
         <div class="col-md-1">
-            <button type="button" class="btn btn-danger btn-sm remove-item-btn" title="Eliminar ítem">
-                <i class="fas fa-times"></i>
-            </button>
+            <div class="form-group">
+                <button type="button" class="btn btn-danger btn-sm remove-item-btn" title="Eliminar ítem">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
         </div>
     </div>
 </script>

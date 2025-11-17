@@ -72,49 +72,63 @@
 
     // Función para añadir una nueva fila de ítem
     function addItemRow() {
-        // 1. Clonar el template
         const template = $('#item-row-template').html();
-        let newRow = template.replace(/__INDEX__/g, itemIndex);
+        let newRowHtml = template.replace(/__INDEX__/g, itemIndex);
         
-        // 2. Insertar la fila
-        $('#items-container').append(newRow);
+        // Insertar la fila en el contenedor
+        $('#items-container').append(newRowHtml);
 
-        // 3. Inicializar Select2 en los nuevos selectores si usas ese plugin (IMPORTANTE)
-        $('#item_select_' + itemIndex).select2();
-        $('#type_select_' + itemIndex).select2({ minimumResultsForSearch: Infinity }); // Oculta la búsqueda para Product/Kit
+        // 1. Inicializar Select2 para Productos y Kits en esta nueva fila
+        // Usamos los IDs específicos que definimos en el template
+        $('#input_product_' + itemIndex).select2({
+            placeholder: "Seleccione un producto",
+            allowClear: true,
+            width: '100%'
+        });
 
-        // 4. Configurar listener para el cambio de tipo (Producto/Kit)
+        $('#input_kit_' + itemIndex).select2({
+            placeholder: "Seleccione un kit",
+            allowClear: true,
+            width: '100%'
+        });
+
+        // 2. Configurar el evento de cambio de Tipo
         $('#type_select_' + itemIndex).on('change', function() {
-            const index = $(this).data('index');
-            const type = $(this).val();
+            let index = $(this).data('index');
+            let type = $(this).val();
             
-            // Ocultar/Mostrar los selectores
-            $('#product_selector_' + index).toggle(type === 'product');
-            $('#kit_selector_' + index).toggle(type === 'kit');
-
-            // Limpiar valores del selector oculto para evitar errores en el backend
-            // Solo limpiamos los selectores que contienen el ID real que Laravel valida (product_id o kit_id)
             if (type === 'product') {
-                $('#kit_id_' + index).val(''); // Limpia el input oculto o select del kit
+                // Mostrar Producto, Ocultar Kit
+                $('#container_product_' + index).show();
+                $('#container_kit_' + index).hide();
+                
+                // Limpiamos el valor del Kit para evitar enviar datos basura
+                $('#input_kit_' + index).val('').trigger('change');
             } else {
-                $('#product_id_' + index).val(''); // Limpia el input oculto o select del producto
+                // Mostrar Kit, Ocultar Producto
+                $('#container_kit_' + index).show();
+                $('#container_product_' + index).hide();
+                
+                // Limpiamos el valor del Producto
+                $('#input_product_' + index).val('').trigger('change');
             }
-        }).trigger('change'); // Ejecutar al inicio para establecer la visibilidad
+        });
 
         itemIndex++;
     }
 
-    // Listener para el botón de agregar
+    // Botón Agregar
     $('#add-item-btn').on('click', function() {
         addItemRow();
     });
 
-    // Listener para el botón de eliminar
+    // Botón Eliminar (Delegación de eventos)
     $('#items-container').on('click', '.remove-item-btn', function() {
-        $(this).closest('.item-row').remove();
+        $(this).closest('.row').remove();
     });
 
-    // Inicializar con al menos una fila
+    // Agregar la primera fila automáticamente al cargar
     addItemRow();
+
 </script>
 @endpush
