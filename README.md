@@ -1,59 +1,119 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Sistema de Gestión de Inventario
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Este es un sistema de gestión de inventario desarrollado con el framework Laravel. La aplicación permite administrar productos, inventario, proveedores, solicitudes y más, a través de una interfaz de administración robusta y segura.
 
-## About Laravel
+## ✨ Características Principales
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- **Gestión de Autenticación y Usuarios**: Sistema de inicio de sesión seguro. CRUD completo para usuarios.
+- **Roles y Permisos**: Control de acceso granular utilizando `spatie/laravel-permission` para definir qué acciones puede realizar cada usuario.
+- **Módulos Maestros**:
+    - CRUD para **Categorías**
+    - CRUD para **Marcas**
+    - CRUD para **Unidades de Medida**
+    - CRUD para **Ubicaciones** (almacenes, estanterías)
+    - CRUD para **Proveedores**
+- **Gestión de Inventario**:
+    - CRUD completo para **Productos**.
+    - Creación de **Kits de Productos**.
+- **Movimientos de Inventario**:
+    - **Entradas de Stock**: Registro de nuevos productos que ingresan al inventario.
+    - **Solicitudes de Inventario**: Flujo de aprobación para la salida de productos, donde un administrador debe aprobar o rechazar cada solicitud.
+- **Reportes**:
+    - **Stock Actual**: Visualización del inventario disponible.
+    - **Movimientos**: Historial de todas las solicitudes (aprobadas/rechazadas).
+    - **Kardex por Producto**: Seguimiento detallado de entradas y salidas para un producto específico.
+- **Interfaz de Administración**: Construida con el popular template [AdminLTE](https://adminlte.io/), ofreciendo una experiencia de usuario limpia y responsiva.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## 🛠️ Stack Tecnológico
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- **Backend**: PHP 8.2, Laravel 12
+- **Frontend**: Vite, JavaScript, Sass, Bootstrap 5
+- **UI Admin**: [JeroenNoten/Laravel-AdminLTE](https://github.com/JeroenNoten/Laravel-AdminLTE)
+- **Base de Datos**: Compatible con MySQL, PostgreSQL, SQLite (configurable en `.env`).
+- **Gestión de Dependencias**: Composer (PHP), pnpm (JavaScript).
 
-## Learning Laravel
+## 🚀 Instalación y Puesta en Marcha
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+Sigue estos pasos para configurar el entorno de desarrollo local.
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+### Prerrequisitos
 
-## Laravel Sponsors
+- PHP >= 8.2
+- Composer
+- Node.js y pnpm
+- Un servidor de base de datos (ej. MySQL, MariaDB).
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+### Pasos de Instalación
 
-### Premium Partners
+1.  **Clonar el repositorio**:
+    ```bash
+    git clone <URL_DEL_REPOSITORIO>
+    cd <NOMBRE_DEL_DIRECTORIO>
+    ```
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+2.  **Copiar el archivo de entorno**:
+    ```bash
+    cp .env.example .env
+    ```
 
-## Contributing
+3.  **Configurar el archivo `.env`**:
+    Abre el archivo `.env` y configura las credenciales de la base de datos (`DB_*`) y la URL de la aplicación (`APP_URL`).
+    ```ini
+    APP_NAME="Sistema de Inventario"
+    APP_URL=http://localhost:8000
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+    DB_CONNECTION=mysql
+    DB_HOST=127.0.0.1
+    DB_PORT=3306
+    DB_DATABASE=nombre_de_tu_bd
+    DB_USERNAME=tu_usuario_bd
+    DB_PASSWORD=tu_password_bd
+    ```
 
-## Code of Conduct
+4.  **Instalar dependencias de PHP**:
+    ```bash
+    composer install
+    ```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+5.  **Instalar dependencias de JavaScript**:
+    Dado que existe un `pnpm-lock.yaml`, se recomienda usar `pnpm`.
+    ```bash
+    pnpm install
+    ```
 
-## Security Vulnerabilities
+6.  **Generar la clave de la aplicación**:
+    ```bash
+    php artisan key:generate
+    ```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+7.  **Ejecutar las migraciones y los seeders**:
+    Esto creará la estructura de la base de datos y la llenará con datos iniciales (roles, permisos y un usuario de prueba).
+    ```bash
+    php artisan migrate --seed
+    ```
+    El usuario de prueba creado es:
+    - **Email**: `test@example.com`
+    - **Contraseña**: `password` (o la que se defina en el `UserFactory`)
 
-## License
+### Ejecutar la Aplicación
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+1.  **Iniciar el servidor de desarrollo de Laravel**:
+    ```bash
+    php artisan serve
+    ```
+
+2.  **Iniciar el servidor de desarrollo de Vite**:
+    En una terminal separada, ejecuta:
+    ```bash
+    pnpm run dev
+    ```
+
+3.  **Acceder a la aplicación**:
+    Abre tu navegador y visita [http://localhost:8000](http://localhost:8000).
+
+## ✅ Pruebas
+
+Para ejecutar el conjunto de pruebas de la aplicación, utiliza el siguiente comando:
+```bash
+php artisan test
+```
