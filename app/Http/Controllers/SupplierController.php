@@ -28,9 +28,8 @@ class SupplierController extends Controller
 
     public function store(StoreUpdateSupplierRequest $request)
     {
-        $validatedData = $request->validated();
-
-        Supplier::create($validatedData + ['user_id' => auth()->id()]);
+        // ESTANDARIZACIÓN: Creación directa
+        Supplier::create($request->validated() + ['user_id' => auth()->id()]);
 
         return redirect()->route('admin.suppliers.index')
                          ->with('success', '✅ Proveedor registrado con éxito.');
@@ -43,6 +42,7 @@ class SupplierController extends Controller
 
     public function update(StoreUpdateSupplierRequest $request, Supplier $supplier)
     {
+        // ESTANDARIZACIÓN: Actualización directa
         $supplier->update($request->validated());
 
         return redirect()->route('admin.suppliers.index')

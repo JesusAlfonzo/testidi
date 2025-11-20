@@ -29,9 +29,8 @@ class UnitController extends Controller
 
     public function store(StoreUpdateUnitRequest $request)
     {
-        $validatedData = $request->validated();
-
-        Unit::create($validatedData + ['user_id' => auth()->id()]);
+        // ESTANDARIZACIÓN: Creación directa sin variable intermedia
+        Unit::create($request->validated() + ['user_id' => auth()->id()]);
 
         return redirect()->route('admin.units.index')
                          ->with('success', '✅ Unidad de medida creada con éxito.');
@@ -44,6 +43,7 @@ class UnitController extends Controller
 
     public function update(StoreUpdateUnitRequest $request, Unit $unit)
     {
+        // ESTANDARIZACIÓN: Actualización directa
         $unit->update($request->validated());
 
         return redirect()->route('admin.units.index')
