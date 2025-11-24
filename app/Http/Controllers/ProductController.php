@@ -7,7 +7,7 @@ use App\Models\Category;
 use App\Models\Unit;
 use App\Models\Location;
 use App\Models\Brand;
-use App\Http\Requests\StoreUpdateProductRequest;
+use App\Http\Requests\StoreUpdateProductRequest; 
 use Illuminate\Http\Request;
 
 class ProductController extends Controller
@@ -20,69 +20,67 @@ class ProductController extends Controller
         $this->middleware('permission:productos_eliminar')->only('destroy');
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $products = Product::with(['category', 'unit', 'location', 'brand'])->paginate(15);
-        return view('admin.products.index', compact('products'));
-    }
-
-    public function create()
-    {
-        // Obtener datos para los SELECT
+        // Cargar listas para los filtros
         $categories = Category::pluck('name', 'id');
-        $units = Unit::pluck('name', 'id');
         $locations = Location::pluck('name', 'id');
-        $brands = Brand::pluck('name', 'id'); // Marcas es opcional, pero pasamos la lista
+        $brands = Brand::pluck('name', 'id');
 
-        return view('admin.products.create', compact('categories', 'units', 'locations', 'brands'));
-    }
+        // Consulta base
+        $query = Product::with(['category', 'unit', 'location', 'brand']);
 
-    public function store(StoreUpdateProductRequest $request)
-    {
-        $validatedData = $request->validated();
-
-        // Si brand_id es nulo, lo eliminamos para evitar errores de tipo si es cadena vacía
-        if (empty($validatedData['brand_id'])) {
-            unset($validatedData['brand_id']);
+        // --- APLICAR FILTROS ---
+        if ($request->filled('category_id')) $query->where('category_id', $request->category_id);
+        if ($request->filled('location_id')) $query->where('location_id', $request->location_id);
+        if ($request->filled('brand_id')) $query->where('brand_id', $request->brand_id);
+        if ($request->filled('status')) {
+            if ($request->status === 'active') $query->where('is_active', true);
+            elseif ($request->status === 'inactive') $query->where('is_active', false);
+        }
+        if ($request->filled('stock_status')) {
+            if ($request->stock_status === 'low') $query->whereColumn('stock', '<=', 'min_stock');
         }
 
-        Product::create($validatedData + ['user_id' => auth()->id()]);
+        // Usamos get() para que DataTables maneje la paginación en cliente
+        $products = $query->get();
 
-        return redirect()->route('admin.products.index')
-                         ->with('success', '✅ Producto registrado con éxito.');
+        return view('admin.products.index', compact('products', 'categories', 'locations', 'brands'));
     }
 
-    public function edit(Product $product)
-    {
-        // Obtener datos para los SELECT
+    // ... (resto de métodos create, store, edit, update, destroy se mantienen IGUAL) ...
+    public function create() { 
         $categories = Category::pluck('name', 'id');
         $units = Unit::pluck('name', 'id');
         $locations = Location::pluck('name', 'id');
         $brands = Brand::pluck('name', 'id');
+        return view('admin.products.create', compact('categories', 'units', 'locations', 'brands'));
+    }
 
+    public function store(StoreUpdateProductRequest $request) {
+        $validatedData = $request->validated();
+        if (empty($validatedData['brand_id'])) unset($validatedData['brand_id']);
+        Product::create($validatedData + ['user_id' => auth()->id()]);
+        return redirect()->route('admin.products.index')->with('success', '✅ Producto registrado con éxito.');
+    }
+
+    public function edit(Product $product) {
+        $categories = Category::pluck('name', 'id');
+        $units = Unit::pluck('name', 'id');
+        $locations = Location::pluck('name', 'id');
+        $brands = Brand::pluck('name', 'id');
         return view('admin.products.edit', compact('product', 'categories', 'units', 'locations', 'brands'));
     }
 
-    public function update(StoreUpdateProductRequest $request, Product $product)
-    {
+    public function update(StoreUpdateProductRequest $request, Product $product) {
         $validatedData = $request->validated();
-
-        if (empty($validatedData['brand_id'])) {
-            $validatedData['brand_id'] = null; // Asegurar que se guarde como NULL en BD si está vacío
-        }
-
+        if (empty($validatedData['brand_id'])) $validatedData['brand_id'] = null;
         $product->update($validatedData);
-
-        return redirect()->route('admin.products.index')
-                         ->with('success', '✅ Producto actualizado con éxito.');
+        return redirect()->route('admin.products.index')->with('success', '✅ Producto actualizado con éxito.');
     }
 
-    public function destroy(Product $product)
-    {
-        // En una aplicación real, se debería verificar si el producto tiene movimientos (entradas/salidas)
-        // antes de permitir su eliminación para mantener la integridad histórica.
+    public function destroy(Product $product) {
         $product->delete();
-        return redirect()->route('admin.products.index')
-                         ->with('success', '✅ Producto eliminado con éxito.');
+        return redirect()->route('admin.products.index')->with('success', '✅ Producto eliminado con éxito.');
     }
 }
