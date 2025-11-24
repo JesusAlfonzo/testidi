@@ -29,9 +29,8 @@ class LocationController extends Controller
 
     public function store(StoreUpdateLocationRequest $request)
     {
-        $validatedData = $request->validated();
-
-        Location::create($validatedData + ['user_id' => auth()->id()]);
+        // ESTANDARIZACIÓN: Creación directa
+        Location::create($request->validated() + ['user_id' => auth()->id()]);
 
         return redirect()->route('admin.locations.index')
                          ->with('success', '✅ Ubicación creada con éxito.');
@@ -44,6 +43,7 @@ class LocationController extends Controller
 
     public function update(StoreUpdateLocationRequest $request, Location $location)
     {
+        // ESTANDARIZACIÓN: Actualización directa
         $location->update($request->validated());
 
         return redirect()->route('admin.locations.index')

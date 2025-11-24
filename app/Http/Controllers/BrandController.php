@@ -29,9 +29,8 @@ class BrandController extends Controller
 
     public function store(StoreUpdateBrandRequest $request)
     {
-        $validatedData = $request->validated();
-
-        Brand::create($validatedData + ['user_id' => auth()->id()]);
+        // ESTANDARIZACIÓN: Creación directa
+        Brand::create($request->validated() + ['user_id' => auth()->id()]);
 
         return redirect()->route('admin.brands.index')
                          ->with('success', '✅ Marca registrada con éxito.');
@@ -44,6 +43,7 @@ class BrandController extends Controller
 
     public function update(StoreUpdateBrandRequest $request, Brand $brand)
     {
+        // ESTANDARIZACIÓN: Actualización directa
         $brand->update($request->validated());
 
         return redirect()->route('admin.brands.index')

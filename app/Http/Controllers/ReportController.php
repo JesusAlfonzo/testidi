@@ -8,7 +8,7 @@ use App\Models\StockIn;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Barryvdh\DomPDF\Facade\Pdf;
+use Barryvdh\DomPDF\Facade\Pdf; // Solo usamos PDF librería, Excel es nativo
 
 class ReportController extends Controller
 {
@@ -19,7 +19,7 @@ class ReportController extends Controller
     }
 
     // =========================================================================
-    // 1. REPORTE DE STOCK ACTUAL (Ya funcional)
+    // 1. REPORTE DE STOCK ACTUAL (Con Filtros)
     // =========================================================================
 
     public function stockReport(Request $request)
@@ -109,7 +109,7 @@ class ReportController extends Controller
     }
 
     // =========================================================================
-    // 2. REPORTE DE SOLICITUDES (MOVIMIENTOS) - ¡CORREGIDO CON FILTROS!
+    // 2. REPORTE DE SOLICITUDES (MOVIMIENTOS)
     // =========================================================================
 
     public function requestsReport(Request $request)
@@ -117,7 +117,6 @@ class ReportController extends Controller
         $query = SolicitudModel::with(['requester', 'approver'])
             ->orderBy('requested_at', 'desc');
 
-        // 🔑 APLICAR FILTROS
         if ($request->filled('date_from')) {
             $query->whereDate('requested_at', '>=', $request->date_from);
         }
@@ -140,7 +139,6 @@ class ReportController extends Controller
         $query = SolicitudModel::with(['requester', 'approver'])
             ->orderBy('requested_at', 'desc');
 
-        // 🔑 APLICAR FILTROS (Misma lógica)
         if ($request->filled('date_from')) $query->whereDate('requested_at', '>=', $request->date_from);
         if ($request->filled('date_to')) $query->whereDate('requested_at', '<=', $request->date_to);
         if ($request->filled('status')) $query->where('status', $request->status);
@@ -179,7 +177,6 @@ class ReportController extends Controller
         $query = SolicitudModel::with(['requester', 'approver'])
             ->orderBy('requested_at', 'desc');
 
-        // 🔑 APLICAR FILTROS (Misma lógica)
         if ($request->filled('date_from')) $query->whereDate('requested_at', '>=', $request->date_from);
         if ($request->filled('date_to')) $query->whereDate('requested_at', '<=', $request->date_to);
         if ($request->filled('status')) $query->where('status', $request->status);
@@ -196,6 +193,9 @@ class ReportController extends Controller
     // 3. KARDEX (HISTORIAL POR PRODUCTO)
     // =========================================================================
 
+    /**
+     * Lógica centralizada para calcular el Kardex.
+     */
     private function getKardexData(Product $product)
     {
         // A. Entradas
@@ -261,20 +261,17 @@ class ReportController extends Controller
         $kardex = [];
 
         if ($movimientos->isNotEmpty()) {
-            // Saldo inicial calculado (retroactivo desde el stock actual)
             $saldoAcumulado = $product->stock - $movimientos->sum('quantity');
-            
              $kardex[] = [
                  'date' => $movimientos->first()['date']->copy()->subSecond(),
                  'type' => 'INICIO',
                  'quantity' => 0,
                  'unit_price' => 0,
-                 'reference' => 'Saldo Inicial',
+                 'reference' => 'SALDO INICIAL',
                  'user' => 'Sistema',
-                 'notes' => 'Saldo antes de registros',
+                 'notes' => 'Saldo calculado antes de movimientos',
                  'balance' => $saldoAcumulado,
              ];
-
             foreach ($movimientos as $movimiento) {
                 $saldoAcumulado += $movimiento['quantity'];
                 $movimiento['balance'] = $saldoAcumulado;
@@ -293,7 +290,7 @@ class ReportController extends Controller
             ];
         }
         
-        return view('admin.reports.kardex', compact('product', 'kardex'));
+        return $kardex;
     }
 
     public function kardexReport(Product $product)

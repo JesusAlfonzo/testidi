@@ -29,13 +29,9 @@ class CategoryController extends Controller
 
     public function store(StoreUpdateCategoryRequest $request)
     {
-        $validatedData = $request->validated();
-
-        Category::create([
-            'name' => $validatedData['name'],
-            'description' => $validatedData['description'],
-            'user_id' => auth()->id(), // Asignar el usuario logueado como creador
-        ]);
+        // ESTANDARIZACIÓN: Usamos validated() + el ID de usuario en una sola línea
+        // Esto reemplaza la creación manual del array
+        Category::create($request->validated() + ['user_id' => auth()->id()]);
 
         return redirect()->route('admin.categories.index')
                          ->with('success', '✅ Categoría creada con éxito.');
@@ -48,10 +44,8 @@ class CategoryController extends Controller
 
     public function update(StoreUpdateCategoryRequest $request, Category $category)
     {
-        $validatedData = $request->validated();
-
-        // El 'user_id' no se actualiza, solo el nombre y la descripción
-        $category->update($validatedData);
+        // En update, simplemente pasamos lo validado directamente
+        $category->update($request->validated());
 
         return redirect()->route('admin.categories.index')
                          ->with('success', '✅ Categoría actualizada con éxito.');
