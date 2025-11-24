@@ -298,147 +298,139 @@ return [
     |
     */
 
-'menu' => [
+    'menu' => [
 
-    // 🏠 NAVEGACIÓN
-    [
-        'header' => 'Navegación',
-    ],
-    [
-        'text' => 'Dashboard',
-        'url'  => '/home',
-        'icon' => 'fas fa-fw fa-home',
-    ],
+        // 🏠 NAVEGACIÓN
+        [
+            'header' => 'Navegación',
+        ],
+        [
+            'text' => 'Dashboard',
+            'url'  => '/home',
+            'icon' => 'fas fa-fw fa-home',
+        ],
 
-    // 🏭 GESTIÓN DE INVENTARIO
-    [
-        'header' => 'Gestión de inventario',
-    ],
-    [
-        'text'    => 'Inventario',
-        'icon'    => 'fas fa-fw fa-cubes',
-        'can'     => 'productos_ver',
-        'submenu' => [
-            [
-                'text' => 'Listado de Productos',
-                'url'  => 'admin/products',
-                'icon' => 'fas fa-fw fa-cube',
-                'can'  => 'productos_ver',
-            ],
-            [
-                'text' => 'Kits / Paquetes',
-                'url'  => 'admin/kits',
-                'icon' => 'fas fa-fw fa-cubes',
-                'can'  => 'kits_ver',
-            ],
-            [
-                'text' => 'Entradas de Stock',
-                'url'  => 'admin/stock-in',
-                'icon' => 'fas fa-fw fa-arrow-alt-circle-up',
-                'can'  => 'entradas_ver',
-            ],
-            [
-                'text' => 'Solicitudes de Salida',
-                'url'  => 'admin/requests',
-                'icon' => 'fas fa-fw fa-arrow-alt-circle-down',
-                'can'  => 'solicitudes_ver',
-                // 'label' => 5, // <-- ¡Pronto veremos cómo hacer esto dinámico!
-                // 'label_color' => 'warning',
+        // 🏭 GESTIÓN DE INVENTARIO
+        [
+            'header' => 'Gestión de inventario',
+        ],
+        [
+            'text'    => 'Inventario',
+            'icon'    => 'fas fa-fw fa-cubes',
+            'can'     => 'productos_ver',
+            'submenu' => [
+                [
+                    'text' => 'Listado de Productos',
+                    'url'  => 'admin/products',
+                    'icon' => 'fas fa-fw fa-cube',
+                    'can'  => 'productos_ver',
+                ],
+                [
+                    'text' => 'Kits / Paquetes',
+                    'url'  => 'admin/kits',
+                    'icon' => 'fas fa-fw fa-cubes',
+                    'can'  => 'kits_ver',
+                ],
+                [
+                    'text' => 'Entradas de Stock',
+                    'url'  => 'admin/stock-in',
+                    'icon' => 'fas fa-fw fa-arrow-alt-circle-up',
+                    'can'  => 'entradas_ver',
+                ],
+                [
+                    'text' => 'Solicitudes de Salida',
+                    'url'  => 'admin/requests',
+                    'icon' => 'fas fa-fw fa-arrow-alt-circle-down',
+                    'can'  => 'solicitudes_ver',
+                ],
             ],
         ],
-    ],
-    [
-        'text'    => 'Maestros',
-        'icon'    => 'fas fa-fw fa-boxes',
-        'can'     => 'categorias_ver',
-        'submenu' => [
-            [
-                'text' => 'Categorías',
-                'url'  => 'admin/categories',
-                'icon' => 'fas fa-fw fa-folder',
-                'can'  => 'categorias_ver',
-            ],
-            [
-                'text' => 'Unidades de Medida',
-                'url'  => 'admin/units',
-                'icon' => 'fas fa-fw fa-balance-scale',
-                'can'  => 'unidades_ver',
-            ],
-            [
-                'text' => 'Ubicaciones',
-                'url'  => 'admin/locations',
-                'icon' => 'fas fa-fw fa-warehouse',
-                'can'  => 'ubicaciones_ver',
-            ],
-            [
-                'text' => 'Marcas',
-                'url'  => 'admin/brands',
-                'icon' => 'fas fa-fw fa-tags',
-                'can'  => 'marcas_ver',
-            ],
-            [
-                'text' => 'Proveedores',
-                'url'  => 'admin/suppliers',
-                'icon' => 'fas fa-fw fa-truck',
-                'can'  => 'proveedores_ver',
-            ],
-        ],
-    ],
-    
-    // 📈 ANÁLISIS
-    [
-        'header' => 'Análisis y Reportes',
-    ],
-    [
-        'text'    => 'Reportes',
-        'icon'    => 'fas fa-fw fa-chart-bar',
-        'can'     => 'reportes_ver',
-        'submenu' => [
-            [
-                'text' => 'Stock Actual',
-                'url'  => 'admin/reports/stock',
-                'icon' => 'fas fa-box-open',
-                'can'  => 'reportes_stock',
-            ],
-            [
-                'text' => 'Solicitudes/Movimientos',
-                'url'  => 'admin/reports/requests',
-                'icon' => 'fas fa-history',
-                'can'  => 'reportes_movimientos',
-            ],
-            [
-                'text' => 'Buscar Kardex',
-                'url'  => '#',
-                'icon' => 'fas fa-search',
-                'can'  => 'reportes_kardex',
+        [
+            'text'    => 'Maestros',
+            'icon'    => 'fas fa-fw fa-boxes',
+            'can'     => 'categorias_ver',
+            'submenu' => [
+                [
+                    'text' => 'Categorías',
+                    'url'  => 'admin/categories',
+                    'icon' => 'fas fa-fw fa-folder',
+                    'can'  => 'categorias_ver',
+                ],
+                [
+                    'text' => 'Unidades de Medida',
+                    'url'  => 'admin/units',
+                    'icon' => 'fas fa-fw fa-balance-scale',
+                    'can'  => 'unidades_ver',
+                ],
+                [
+                    'text' => 'Ubicaciones',
+                    'url'  => 'admin/locations',
+                    'icon' => 'fas fa-fw fa-warehouse',
+                    'can'  => 'ubicaciones_ver',
+                ],
+                [
+                    'text' => 'Marcas',
+                    'url'  => 'admin/brands',
+                    'icon' => 'fas fa-fw fa-tags',
+                    'can'  => 'marcas_ver',
+                ],
+                [
+                    'text' => 'Proveedores',
+                    'url'  => 'admin/suppliers',
+                    'icon' => 'fas fa-fw fa-truck',
+                    'can'  => 'proveedores_ver',
+                ],
             ],
         ],
-    ],
 
-    // 🛡️ ADMINISTRACIÓN DEL SISTEMA
-    [
-        'header' => 'Administración del sistema',
-    ],
-    [
-        'text'    => 'Seguridad',
-        'icon'    => 'fas fa-fw fa-shield-alt',
-        'can'     => 'usuarios_ver',
-        'submenu' => [
-            [
-                'text' => 'Usuarios',
-                'url'  => 'admin/users',
-                'icon' => 'fas fa-fw fa-users',
-                'can'  => 'usuarios_ver',
+        // 📈 ANÁLISIS
+        [
+            'header' => 'Análisis y Reportes',
+        ],
+        [
+            'text'    => 'Reportes',
+            'icon'    => 'fas fa-fw fa-chart-bar',
+            'can'     => 'reportes_ver',
+            'submenu' => [
+                [
+                    'text' => 'Stock Actual',
+                    'url'  => 'admin/reports/stock',
+                    'icon' => 'fas fa-box-open',
+                    'can'  => 'reportes_stock',
+                ],
+                [
+                    'text' => 'Solicitudes/Movimientos',
+                    'url'  => 'admin/reports/requests',
+                    'icon' => 'fas fa-history',
+                    'can'  => 'reportes_movimientos',
+                ],
             ],
-            [
-                'text' => 'Roles y Permisos',
-                'url'  => '#',
-                'icon' => 'fas fa-fw fa-user-tag',
-                'can'  => 'roles_ver',
+        ],
+
+        // 🛡️ ADMINISTRACIÓN DEL SISTEMA
+        [
+            'header' => 'Administración del sistema',
+        ],
+        [
+            'text'    => 'Seguridad',
+            'icon'    => 'fas fa-fw fa-shield-alt',
+            'can'     => 'usuarios_ver',
+            'submenu' => [
+                [
+                    'text' => 'Usuarios',
+                    'url'  => 'admin/users',
+                    'icon' => 'fas fa-fw fa-users',
+                    'can'  => 'usuarios_ver',
+                ],
+                [
+                    'text'    => 'Auditoría',
+                    'icon'    => 'fas fa-fw fa-history',
+                    'url'     => 'admin/audit-logs',
+                    'can'     => 'auditoria_ver',
+                ],
             ],
         ],
     ],
-],
     /*
     |--------------------------------------------------------------------------
     | Menu Filters
