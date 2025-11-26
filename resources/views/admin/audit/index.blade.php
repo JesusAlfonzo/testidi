@@ -35,7 +35,7 @@
         <div class="card-header">
             <h3 class="card-title">Registro de Actividades (Últimos 1000 eventos)</h3>
         </div>
-        <div class="card-body p-0">
+        <div class="card-body p-4">
             <div class="table-responsive">
                 <table id="auditTable" class="table table-striped table-bordered display nowrap" style="width:100%">
                     <thead>

@@ -51,7 +51,7 @@
                     </div>
                 </div>
 
-                <div class="card-body p-0">
+                <div class="card-body p-4">
                     {{-- table-responsive y clases de Datatables --}}
                     <div class="table-responsive">
                         <table id="unitsTable" class="table table-striped table-bordered display nowrap">

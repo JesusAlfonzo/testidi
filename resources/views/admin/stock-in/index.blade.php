@@ -71,7 +71,7 @@
             @include('admin.partials.session-messages')
 
             <div class="card card-outline card-success">
-                <div class="card-body p-0">
+                <div class="card-body p-4">
                     <div class="table-responsive">
                         <table id="stockInTable" class="table table-striped table-bordered display nowrap" style="width:100%">
                             <thead>

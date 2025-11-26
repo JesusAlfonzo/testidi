@@ -41,7 +41,7 @@
             @include('admin.partials.session-messages')
 
             <div class="card card-outline card-info">
-                <div class="card-body p-0">
+                <div class="card-body p-4">
                     {{-- table-responsive y clases de Datatables --}}
                     <div class="table-responsive">
                         <table id="suppliersTable" class="table table-striped table-bordered display nowrap">

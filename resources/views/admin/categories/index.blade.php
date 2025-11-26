@@ -53,7 +53,7 @@
                     </div>
                 </div>
 
-                <div class="card-body p-0">
+                <div class="card-body p-4">
                     {{-- 🔑 table-responsive y clases de Datatables (Se eliminó style="width:100%") --}}
                     <div class="table-responsive">
                         <table id="categoriesTable" class="table table-striped table-bordered display nowrap">

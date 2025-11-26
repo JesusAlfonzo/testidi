@@ -101,14 +101,49 @@ class RolesAndPermissionsSeeder extends Seeder
         }
 
         // 2. Crear Roles
-        // El rol Super-Admin debe ser el más alto y tener todos los permisos.
-        $superAdminRole = Role::firstOrCreate(['name' => 'Super-Admin']);
-        $adminRole = Role::firstOrCreate(['name' => 'Administrador']);
-        $userRole = Role::firstOrCreate(['name' => 'Usuario Estandar']);
+        $superAdminRole = Role::firstOrCreate(['name' => 'Superadmin']);
+        $supervisorRole = Role::firstOrCreate(['name' => 'Supervisor']);
+        $solicitanteRole = Role::firstOrCreate(['name' => 'Solicitante']);
+        $logisticaRole = Role::firstOrCreate(['name' => 'Logistica']);
 
-        // 3. Asignar todos los permisos al rol Super-Admin
+        // 3. Asignar permisos
+        
+        // Superadmin: Todos los permisos
         $allPermissions = Permission::pluck('name');
         $superAdminRole->givePermissionTo($allPermissions);
+
+        // Supervisor: Reportes y casi todo el sistema
+        $supervisorPermissions = $allPermissions->reject(function ($permission) {
+            return str_starts_with($permission, 'usuarios_') || str_starts_with($permission, 'roles_');
+        });
+        $supervisorRole->givePermissionTo($supervisorPermissions);
+
+        // Solicitante: Solo puede solicitar y ver sus solicitudes
+        $solicitanteRole->givePermissionTo([
+            'dashboard_acceso',
+            'solicitudes_crear',
+            'solicitudes_ver',
+        ]);
+
+        // Logistica: Gestion de inventario y maestros
+        $logisticaRole->givePermissionTo([
+            'dashboard_acceso',
+            // Maestros
+            'categorias_ver', 'categorias_crear', 'categorias_editar', 'categorias_eliminar',
+            'unidades_ver', 'unidades_crear', 'unidades_editar', 'unidades_eliminar',
+            'ubicaciones_ver', 'ubicaciones_crear', 'ubicaciones_editar', 'ubicaciones_eliminar',
+            'marcas_ver', 'marcas_crear', 'marcas_editar', 'marcas_eliminar',
+            'proveedores_ver', 'proveedores_crear', 'proveedores_editar', 'proveedores_eliminar',
+            // Inventario
+            'productos_ver', 'productos_crear', 'productos_editar', 'productos_eliminar',
+            'kits_ver', 'kits_crear', 'kits_editar', 'kits_eliminar',
+            'entradas_ver', 'entradas_crear', 'entradas_eliminar',
+            // Solicitudes
+            'solicitudes_ver', 'solicitudes_aprobar',
+            // Reportes
+            'reportes_stock',
+        ]);
+
 
         // 4. Crear un usuario inicial (Super Administrador)
         // Esto es crucial para poder acceder al sistema y asignar roles.

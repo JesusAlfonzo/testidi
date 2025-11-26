@@ -95,7 +95,7 @@
             @include('admin.partials.session-messages')
 
             <div class="card card-outline card-info">
-                <div class="card-body p-0">
+                <div class="card-body p-4">
                     <div class="table-responsive">
                         <table id="productsTable" class="table table-striped table-bordered display nowrap" style="width:100%">
                             <thead>
@@ -138,7 +138,7 @@
                                         <td><strong>{{ $product->code ?? 'N/A' }}</strong></td>
                                         <td><span class="badge badge-secondary">{{ $product->category->name ?? 'N/A' }}</span></td>
                                         <td>{{ $product->location->name ?? 'N/A' }}</td>
-                                        <td><small class="d-block text-muted">C: ${{ number_format($product->cost, 2) }}</small> P: **${{ number_format($product->price, 2) }}**</td>
+                                        <td><small class="d-block text-muted">C: ${{ number_format($product->cost, 2) }}</small> P: <strong>${{ number_format($product->price, 2) }}</strong></td>
                                         <td>
                                             <span class="badge badge-{{ $product->is_active ? 'info' : 'secondary' }}">
                                                 {{ $product->is_active ? 'Activo' : 'Inactivo' }}

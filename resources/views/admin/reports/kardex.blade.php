@@ -22,7 +22,7 @@
                         </a>
                     </div>
                 </div>
-                <div class="card-body p-0">
+                <div class="card-body p-4">
                     <table class="table table-striped table-sm">
                         <thead>
                             <tr>

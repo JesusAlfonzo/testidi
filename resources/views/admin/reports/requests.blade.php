@@ -78,7 +78,7 @@
                 </a>
             </div>
         </div>
-        <div class="card-body p-0">
+        <div class="card-body p-4">
             <div class="table-responsive">
                 <table id="requestsTable" class="table table-striped table-bordered display nowrap" style="width:100%">
                     <thead>
