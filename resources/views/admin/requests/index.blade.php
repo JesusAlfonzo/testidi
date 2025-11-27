@@ -2,6 +2,7 @@
 
 @section('title', 'Inventario | Solicitudes de Salida')
 
+{{-- Plugins necesarios --}}
 @section('plugins.Datatables', true) 
 @section('plugins.DatatablesPlugins', true) 
 @section('plugins.Responsive', true) 
@@ -20,17 +21,22 @@
 
 @section('css')
     <style>
-        table.dataTable.dtr-inline.collapsed > tbody > tr > td:first-child:before, table.dataTable.dtr-inline.collapsed > tbody > tr > th:first-child:before { left: 4px; }
+        /* Ajustes para DataTables Responsive */
+        table.dataTable.dtr-inline.collapsed > tbody > tr > td:first-child:before, 
+        table.dataTable.dtr-inline.collapsed > tbody > tr > th:first-child:before { left: 4px; }
         .table.dataTable.dtr-inline.collapsed > tbody > tr > td:first-child { padding-left: 10px !important; }
     </style>
 @stop
 
 @section('content')
-    {{-- FILTROS --}}
+    
+    {{-- 🔎 FILTROS --}}
     <div class="card card-outline card-info collapsed-card">
         <div class="card-header">
-            <h3 class="card-title"><i class="fas fa-filter"></i> Filtros</h3>
-            <div class="card-tools"><button type="button" class="btn btn-tool" data-card-widget="collapse"><i class="fas fa-plus"></i></button></div>
+            <h3 class="card-title"><i class="fas fa-filter"></i> Filtros de Búsqueda</h3>
+            <div class="card-tools">
+                <button type="button" class="btn btn-tool" data-card-widget="collapse"><i class="fas fa-plus"></i></button>
+            </div>
         </div>
         <div class="card-body">
             <form method="GET" action="{{ route('admin.requests.index') }}">
@@ -61,6 +67,7 @@
                     <div class="col-md-3">
                         <div class="form-group">
                             <label>Solicitante</label>
+                            {{-- Asumiendo que pasas $requesters desde el controlador --}}
                             <select name="requester_id" class="form-control select2">
                                 <option value="">Todos</option>
                                 @foreach($requesters as $id => $name)
@@ -70,7 +77,7 @@
                         </div>
                     </div>
                 </div>
-                <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-search"></i> Filtrar</button>
+                <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-search"></i> Filtrar Resultados</button>
             </form>
         </div>
     </div>
@@ -79,15 +86,15 @@
         <div class="col-12">
             @include('admin.partials.session-messages')
 
-            <div class="card card-outline card-info">
+            <div class="card card-outline card-primary">
                 <div class="card-body p-4">
                     <div class="table-responsive">
                         <table id="requestsTable" class="table table-striped table-bordered display nowrap" style="width:100%">
                             <thead>
                                 <tr>
                                     <th style="width: 10%">ID</th>
-                                    <th style="width: 25%">Solicitante</th>
-                                    <th style="width: 15%">Estado</th>
+                                    <th style="width: 20%">Solicitante</th>
+                                    <th style="width: 10%">Estado</th>
                                     <th style="width: 10%">Acciones</th>
                                     <th>Justificación</th>
                                     <th>Fecha Solicitud</th>
@@ -95,26 +102,36 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @php $badgeColors = ['Pending' => 'warning', 'Approved' => 'success', 'Rejected' => 'danger']; @endphp
                                 @forelse ($requests as $request)
                                     <tr>
                                         <td>REQ-{{ $request->id }}</td>
                                         <td>{{ $request->requester->name ?? 'N/A' }}</td>
-                                        <td><span class="badge badge-{{ $badgeColors[$request->status] ?? 'secondary' }}">{{ $request->status }}</span></td>
                                         <td>
-                                            <div class="btn-group btn-group-sm" role="group">
-                                                <a href="{{ route('admin.requests.show', $request) }}" class="btn btn-default text-info" title="Ver Detalle"><i class="fas fa-eye"></i></a>
-                                                @if ($request->status === 'Pending' && Gate::allows('solicitudes_aprobar'))
-                                                    <a href="{{ route('admin.requests.show', $request) }}" class="btn btn-default text-warning" title="Aprobar/Rechazar"><i class="fas fa-check-circle"></i></a>
+                                            <span class="badge badge-{{ $request->status_badge_class }}">
+                                                {{ $request->status_label }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <a href="{{ route('admin.requests.show', $request) }}" class="btn btn-default text-info" title="Ver Detalle">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                {{-- Botón de acción rápida si está pendiente --}}
+                                                @if ($request->status === 'Pending' && auth()->user()->can('solicitudes_aprobar'))
+                                                    <a href="{{ route('admin.requests.show', $request) }}" class="btn btn-default text-warning" title="Revisar y Aprobar/Rechazar">
+                                                        <i class="fas fa-check-circle"></i>
+                                                    </a>
                                                 @endif
                                             </div>
                                         </td>
                                         <td>{{ Str::limit($request->justification, 50) }}</td>
-                                        <td data-order="{{ optional($request->requested_at)->timestamp }}">{{ optional($request->requested_at)->format('Y-m-d H:i') }}</td>
+                                        <td data-order="{{ optional($request->requested_at)->timestamp }}">
+                                            {{ optional($request->requested_at)->format('d/m/Y H:i') }}
+                                        </td>
                                         <td>{{ $request->approver->name ?? '---' }}</td>
                                     </tr>
                                 @empty
-                                    <tr><td colspan="7" class="text-center">No se encontraron solicitudes.</td></tr>
+                                    {{-- DataTables manejará la tabla vacía --}}
                                 @endforelse
                             </tbody>
                         </table>
@@ -128,17 +145,32 @@
 @section('js')
     <script>
         $(document).ready(function() {
+            // Inicializar Select2 para filtros
             $('.select2').select2({ theme: 'bootstrap4' });
-            
+
+            // Inicializar DataTables
             const requestsTable = $('#requestsTable').DataTable({
-                "responsive": true, "paging": true, "lengthChange": true, "searching": true, "ordering": true, "info": true, "autoWidth": false,
-                "order": [[ 5, "desc" ]], // Ordenar por fecha (índice 5)
+                "responsive": true, 
+                "paging": true,
+                "lengthChange": true,
+                "searching": true,
+                "ordering": true,
+                "info": true,
+                "autoWidth": false,
+                "order": [[ 5, "desc" ]], // Ordenar por Fecha Solicitud (índice 5) descendente
                 "language": { "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Spanish.json" },
                 "columnDefs": [
-                    { "orderable": false, "targets": [3] }, { "type": "date", "targets": 5 },
-                    { "responsivePriority": 1, "targets": 0 }, { "responsivePriority": 2, "targets": 1 }, { "responsivePriority": 3, "targets": 3 }, { "responsivePriority": 4, "targets": 2 }, { "responsivePriority": 100, "targets": [4, 5, 6] }
+                    { "orderable": false, "targets": [3] }, // Acciones no ordenables
+                    { "type": "date", "targets": 5 },       // Tipo fecha
+                    // Prioridades Responsive
+                    { "responsivePriority": 1, "targets": 0 }, // ID
+                    { "responsivePriority": 2, "targets": 2 }, // Estado
+                    { "responsivePriority": 3, "targets": 3 }, // Acciones
+                    { "responsivePriority": 4, "targets": 1 }, // Solicitante
+                    { "responsivePriority": 100, "targets": [4, 5, 6] } // Ocultar primero
                 ]
             });
+            
             setTimeout(function() { requestsTable.columns.adjust().responsive.recalc(); }, 500);
         });
     </script>

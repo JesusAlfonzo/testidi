@@ -4,55 +4,94 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Casts\Attribute;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
+use App\Models\User; // Asegurar importación de User
 
 class InventoryRequest extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
-    // 🔑 Debe apuntar al nombre de la tabla (plurar y snake_case)
     protected $table = 'requests';
 
-    // Los campos que pueden ser llenados masivamente
+    // 🔑 CORRECCIÓN: Agregamos 'reference' para permitir su guardado
     protected $fillable = [
-        'requester_id', 'approver_id', 'status', 'justification',
-        'rejection_reason', 'requested_at', 'processed_at', 'destination_area'
+        'requester_id', 
+        'approver_id', 
+        'status', 
+        'justification',
+        'rejection_reason', 
+        'requested_at', 
+        'processed_at', 
+        'destination_area',
+        'reference' // <-- ESTE CAMPO FALTABA
     ];
 
-    // Casting de fechas
     protected $casts = [
         'requested_at' => 'datetime',
         'processed_at' => 'datetime',
     ];
 
+    // ---------------------- ACCESORES ----------------------
+
+    protected function statusLabel(): Attribute
+    {
+        return Attribute::make(
+            get: function ($value, $attributes) {
+                return match ($attributes['status'] ?? '') {
+                    'Pending' => 'Pendiente',
+                    'Approved' => 'Aprobada',
+                    'Rejected' => 'Rechazada',
+                    default => $attributes['status'] ?? 'Desconocido',
+                };
+            }
+        );
+    }
+    
+    protected function statusBadgeClass(): Attribute
+    {
+        return Attribute::make(
+            get: function ($value, $attributes) {
+                return match ($attributes['status'] ?? '') {
+                    'Pending' => 'warning',
+                    'Approved' => 'success',
+                    'Rejected' => 'danger',
+                    default => 'secondary',
+                };
+            }
+        );
+    }
+
     // ---------------------- RELACIONES ----------------------
 
-    // Relación con el usuario que creó la solicitud (requester_id)
-    public function requester()
+    public function requester(): BelongsTo
     {
         return $this->belongsTo(User::class, 'requester_id');
     }
 
-    // Relación con el usuario que aprobó la solicitud (approver_id)
-    public function approver()
+    public function approver(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approver_id');
     }
 
-    // Relación con los ítems de la solicitud (RequestItem)
-    public function items()
+    public function items(): HasMany
     {
-        // Debe apuntar al modelo que maneja los ítems de la solicitud
-        return $this->hasMany(RequestItem::class, 'request_id');
+        return $this->hasMany(RequestItem::class, 'request_id', 'id');
     }
 
-    /**
-     * Get the route key for the model.
-     *
-     * @return string
-     */
     public function getRouteKeyName()
     {
-        // 🔑 CLAVE: Forzamos a Laravel a usar 'id' como clave de la ruta.
         return 'id';
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logFillable()
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
     }
 }

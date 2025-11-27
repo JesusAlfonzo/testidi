@@ -2,14 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\InventoryRequest as RequestModel; // Alias para el Modelo de Solicitud
+use App\Models\InventoryRequest as RequestModel; // 🔑 Alias para el Modelo de Solicitud renombrado
 use App\Models\Product;
 use App\Models\Kit;
 use App\Models\RequestItem;
-use App\Models\User; 
-use App\Http\Requests\StoreRequestRequest;
+use App\Models\User; // Necesario para el filtro de solicitantes en index
+use App\Http\Requests\StoreRequestRequest; // Clase de validación
 use Illuminate\Support\Facades\DB;
-use Illuminate\Http\Request as HttpRequest;
+use Illuminate\Http\Request as HttpRequest; // Alias para la clase base de Request de Laravel
 use Carbon\Carbon;
 
 class RequestController extends Controller
@@ -23,11 +23,20 @@ class RequestController extends Controller
 
     public function index(HttpRequest $request)
     {
+        // 1. Cargar lista de usuarios para el filtro
         $requesters = User::pluck('name', 'id');
 
+        // 2. Iniciar consulta base
         $query = RequestModel::with(['requester', 'approver', 'items.product'])
             ->orderBy('requested_at', 'desc');
 
+        // 3. Aplicar Filtros de Seguridad (Si no es aprobador, solo ve lo suyo)
+        $user = auth()->user();
+        if (!$user->can('solicitudes_aprobar')) {
+            $query->where('requester_id', $user->id);
+        }
+
+        // 4. Aplicar Filtros de Búsqueda
         if ($request->filled('date_from')) {
             $query->whereDate('requested_at', '>=', $request->date_from);
         }
@@ -41,42 +50,45 @@ class RequestController extends Controller
             $query->where('requester_id', $request->requester_id);
         }
 
-        $requests = $query->get(); // Usamos get() para DataTables client-side
+        // 5. Obtener resultados
+        $requests = $query->get();
 
         return view('admin.requests.index', compact('requests', 'requesters'));
     }
 
     public function create()
     {
+        // Cargar productos y kits activos para el selector
         $products = Product::where('is_active', true)->orderBy('name')->get(['id', 'name', 'stock']);
         $kits = Kit::where('is_active', true)->orderBy('name')->get(['id', 'name']);
         
         return view('admin.requests.create', compact('products', 'kits'));
     }
 
+    // Lógica: Guardar la solicitud y sus items
     public function store(StoreRequestRequest $request)
     {
-        // Ahora $validatedData SI contendrá 'justification' y 'destination_area'
         $validatedData = $request->validated();
 
         DB::beginTransaction();
         try {
-            // 1. Crear la cabecera
+            // 1. Crear la cabecera de la solicitud
             $requestModel = RequestModel::create([
                 'requester_id' => auth()->id(),
-                'reference' => $validatedData['reference'],
                 'status' => 'Pending',
-                'justification' => $validatedData['justification'], // 🔑 Ya no fallará
-                'destination_area' => $validatedData['destination_area'] ?? null, // 🔑 Ya no fallará
+                'justification' => $validatedData['justification'],
+                'destination_area' => $validatedData['destination_area'] ?? null,
                 'requested_at' => Carbon::now(),
             ]);
 
-            // 2. Preparar los ítems (Optimización N+1 aplicada)
+            // 2. OPTIMIZACIÓN N+1: Preparar datos en memoria para precios
             $itemsCollection = collect($validatedData['items']);
             
-            $productIds = $itemsCollection->where('item_type', 'product')->pluck('product_id')->toArray();
-            $kitIds = $itemsCollection->where('item_type', 'kit')->pluck('kit_id')->toArray();
+            // Extraer IDs
+            $productIds = $itemsCollection->where('item_type', 'product')->pluck('product_id')->filter()->toArray();
+            $kitIds = $itemsCollection->where('item_type', 'kit')->pluck('kit_id')->filter()->toArray();
 
+            // Cargar diccionarios de precios
             $productsDict = Product::whereIn('id', $productIds)->get()->keyBy('id');
             $kitsDict = Kit::whereIn('id', $kitIds)->get()->keyBy('id');
 
@@ -84,39 +96,53 @@ class RequestController extends Controller
 
             foreach ($validatedData['items'] as $item) {
                 $price = 0;
+                $productId = null;
+                $kitId = null;
 
+                // Lógica para PRODUCTO
                 if ($item['item_type'] === 'product') {
-                    $product = $productsDict->get($item['product_id']);
-                    $price = $product ? $product->cost : 0; 
-                } elseif ($item['item_type'] === 'kit') {
-                    $kit = $kitsDict->get($item['kit_id']);
+                    $productId = $item['product_id'];
+                    $prod = $productsDict->get($productId);
+                    $price = $prod ? $prod->cost : 0; 
+                } 
+                // Lógica para KIT
+                elseif ($item['item_type'] === 'kit') {
+                    $kitId = $item['kit_id'];
+                    $kit = $kitsDict->get($kitId);
                     $price = $kit ? $kit->unit_price : 0;
                 }
 
+                // Preparamos el array para guardar
                 $itemsToStore[] = [
-                    'product_id' => $item['item_type'] === 'product' ? $item['product_id'] : null,
-                    'kit_id' => $item['item_type'] === 'kit' ? $item['kit_id'] : null,
+                    'product_id' => $productId,
+                    'kit_id' => $kitId,
                     'item_type' => $item['item_type'],
                     'quantity_requested' => $item['quantity'],
                     'unit_price_at_request' => $price,
                 ];
             }
 
+            // Guardado masivo usando la relación
             $requestModel->items()->createMany($itemsToStore);
 
             DB::commit();
             return redirect()->route('admin.requests.show', $requestModel)
-                ->with('success', '✅ Solicitud creada exitosamente: REQ-' . $requestModel->id);
+                ->with('success', '✅ Solicitud enviada para aprobación: REQ-' . $requestModel->id);
 
         } catch (\Exception $e) {
             DB::rollback();
-            return redirect()->back()->withInput()->with('error', '❌ Error al guardar: ' . $e->getMessage());
+            return redirect()->back()->withInput()->with('error', '❌ Error al guardar la solicitud: ' . $e->getMessage());
         }
     }
 
     // Muestra los detalles de la solicitud
     public function show(RequestModel $request)
     {
+        // 🛡️ SEGURIDAD ADICIONAL
+        if (!auth()->user()->can('solicitudes_aprobar') && $request->requester_id !== auth()->id()) {
+            abort(403, 'No tienes permiso para ver esta solicitud.');
+        }
+
         $request->load([
             'requester',
             'approver',
@@ -127,7 +153,7 @@ class RequestController extends Controller
         return view('admin.requests.show', compact('request'));
     }
 
-    // Método para APROBAR o RECHAZAR una solicitud
+    // Método especializado para APROBAR o RECHAZAR una solicitud
     public function process(HttpRequest $httpRequest, RequestModel $request)
     {
         if (!$request || $request->status !== 'Pending') {
@@ -149,31 +175,35 @@ class RequestController extends Controller
 
                 foreach ($request->items as $item) {
                     if ($item->item_type === 'product') {
-                        // Descuento directo de Producto
+                        // --- Lógica para PRODUCTO SIMPLE ---
                         $product = Product::lockForUpdate()->find($item->product_id);
+
                         if (!$product || $product->stock < $item->quantity_requested) {
                              throw new \Exception('Stock insuficiente para el producto: ' . ($product->name ?? 'Desconocido'));
                         }
+
                         $product->stock -= $item->quantity_requested;
                         $product->save();
 
                     } elseif ($item->item_type === 'kit') {
-                        // Descuento de Componentes del Kit
+                        // --- Lógica para KIT (Descontar componentes) ---
                         $kit = $item->kit;
-                        $qty = $item->quantity_requested;
+                        $qtyKit = $item->quantity_requested;
                         
                         if (!$kit) throw new \Exception("Kit ID {$item->kit_id} no encontrado.");
 
-                        foreach ($kit->components as $comp) {
-                            $total = $qty * $comp->pivot->quantity_required;
-                            $prod = Product::lockForUpdate()->find($comp->id);
+                        foreach ($kit->components as $component) {
+                            // Cantidad total = Cantidad Kits * Cantidad componente por kit
+                            $totalConsumption = $qtyKit * $component->pivot->quantity_required;
+
+                            $prodComponent = Product::lockForUpdate()->find($component->id);
                             
-                            if (!$prod || $prod->stock < $total) {
-                                throw new \Exception("Stock insuficiente para componente {$comp->name} de Kit {$kit->name}");
+                            if (!$prodComponent || $prodComponent->stock < $totalConsumption) {
+                                throw new \Exception("Stock insuficiente para componente '{$component->name}' del Kit '{$kit->name}'.");
                             }
                             
-                            $prod->stock -= $total;
-                            $prod->save();
+                            $prodComponent->stock -= $totalConsumption;
+                            $prodComponent->save();
                         }
                     }
                 }

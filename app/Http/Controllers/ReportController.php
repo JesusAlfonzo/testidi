@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\InventoryRequest as SolicitudModel; // Alias correcto
+use App\Models\InventoryRequest as SolicitudModel; // Alias correcto para el modelo renombrado
 use App\Models\Product;
 use App\Models\StockIn;
 use Illuminate\Http\Request;
@@ -19,7 +19,7 @@ class ReportController extends Controller
     }
 
     // =========================================================================
-    // 1. REPORTE DE STOCK ACTUAL (Con Filtros)
+    // 1. REPORTE DE STOCK ACTUAL
     // =========================================================================
 
     public function stockReport(Request $request)
@@ -31,6 +31,7 @@ class ReportController extends Controller
             ->where('is_active', true)
             ->orderBy('name', 'asc');
 
+        // Aplicar Filtros
         if ($request->filled('category_id')) {
             $query->where('category_id', $request->category_id);
         }
@@ -50,10 +51,14 @@ class ReportController extends Controller
         return view('admin.reports.stock', compact('products', 'categories', 'locations'));
     }
 
+    /**
+     * Exporta el stock actual a Excel (CSV Nativo)
+     */
     public function exportStockExcel(Request $request)
     {
         $fileName = 'inventario_stock_' . date('Y-m-d_H-i') . '.csv';
         
+        // Reutilizamos la lógica de filtrado
         $query = Product::with(['unit', 'category', 'location'])
             ->where('is_active', true)
             ->orderBy('name', 'asc');
@@ -75,7 +80,7 @@ class ReportController extends Controller
 
         $callback = function() use($products, $columns) {
             $file = fopen('php://output', 'w');
-            fputs($file, "\xEF\xBB\xBF"); // BOM
+            fputs($file, "\xEF\xBB\xBF"); // BOM para caracteres especiales
             fputcsv($file, $columns);
             foreach ($products as $product) {
                 $estado = $product->stock <= $product->min_stock ? 'BAJO STOCK' : 'Óptimo';
@@ -117,6 +122,7 @@ class ReportController extends Controller
         $query = SolicitudModel::with(['requester', 'approver'])
             ->orderBy('requested_at', 'desc');
 
+        // Aplicar Filtros
         if ($request->filled('date_from')) {
             $query->whereDate('requested_at', '>=', $request->date_from);
         }
@@ -182,7 +188,6 @@ class ReportController extends Controller
         if ($request->filled('status')) $query->where('status', $request->status);
 
         $requests = $query->get();
-
         $pdf = Pdf::loadView('admin.reports.pdf.requests', compact('requests'))
                   ->setPaper('a4', 'landscape');
         
@@ -195,6 +200,7 @@ class ReportController extends Controller
 
     /**
      * Lógica centralizada para calcular el Kardex.
+     * Unifica entradas y salidas en una sola línea de tiempo.
      */
     private function getKardexData(Product $product)
     {
@@ -261,6 +267,7 @@ class ReportController extends Controller
         $kardex = [];
 
         if ($movimientos->isNotEmpty()) {
+            // Saldo inicial calculado
             $saldoAcumulado = $product->stock - $movimientos->sum('quantity');
              $kardex[] = [
                  'date' => $movimientos->first()['date']->copy()->subSecond(),

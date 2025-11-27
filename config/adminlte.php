@@ -305,7 +305,7 @@ return [
             'header' => 'Navegación',
         ],
         [
-            'text' => 'Dashboard',
+            'text' => 'Menú de Inicio',
             'url'  => '/home',
             'icon' => 'fas fa-fw fa-home',
         ],

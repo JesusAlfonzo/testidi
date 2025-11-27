@@ -1,16 +1,18 @@
 @extends('adminlte::page')
 
-@section('title', 'Crear Nueva Solicitud')
+@section('title', 'Crear Solicitud')
+
+{{-- Plugins para Select2 --}}
+@section('plugins.Select2', true)
 
 @section('content_header')
-    <h1 class="m-0 text-dark">Crear Solicitud de Salida</h1>
+    <h1><i class="fas fa-file-medical"></i> Crear Solicitud de Salida</h1>
 @stop
 
 @section('content')
-    {{-- BLOQUE DE ERRORES DE VALIDACIÓN --}}
+    {{-- Mensajes de error de validación --}}
     @if ($errors->any())
-        <x-adminlte-alert theme="danger" title="Error de Validación">
-            Parece que hay problemas con la información proporcionada:
+        <x-adminlte-alert theme="danger" title="Error de Validación" dismissable>
             <ul>
                 @foreach ($errors->all() as $error)
                     <li>{{ $error }}</li>
@@ -18,117 +20,148 @@
             </ul>
         </x-adminlte-alert>
     @endif
-    
-    <x-adminlte-card title="Detalle de la Solicitud" icon="fas fa-file-invoice" theme="primary">
-        <form action="{{ route('admin.requests.store') }}" method="POST">
-            @csrf
 
-            <div class="row">
-                <div class="col-md-6">
-                    {{-- Campo de Referencia o Proyecto --}}
-                    <x-adminlte-input name="reference" label="Referencia / Proyecto" placeholder="Ej: Proyecto 'Reemplazo de Equipos'" value="{{ old('reference') }}" required/>
-                </div>
-                <div class="col-md-6">
-                    {{-- Campo de Solicitante --}}
-                    <x-adminlte-input name="user_name" label="Solicitante" value="{{ auth()->user()->name }}" disabled/>
-                    {{-- El ID del solicitante se pasa al controlador, usando 'requester_id' en el controlador --}}
-                    <input type="hidden" name="user_id" value="{{ auth()->id() }}"> 
+    <form action="{{ route('admin.requests.store') }}" method="POST" id="requestForm">
+        @csrf
+        <div class="row">
+            <div class="col-lg-9">
+                <div class="card card-primary card-outline">
+                    <div class="card-header">
+                        <h3 class="card-title">Datos de la Solicitud</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            {{-- Referencia --}}
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="reference">Referencia / Proyecto <span class="text-danger">*</span></label>
+                                    <input type="text" name="reference" class="form-control" value="{{ old('reference') }}" placeholder="Ej: Proyecto X, Uso Diario Lab" required>
+                                </div>
+                            </div>
+                            {{-- Destino --}}
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="destination_area">Área de Destino</label>
+                                    <input type="text" name="destination_area" class="form-control" value="{{ old('destination_area') }}" placeholder="Ej: Laboratorio Central">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="justification">Justificación <span class="text-danger">*</span></label>
+                            <textarea name="justification" class="form-control" rows="2" required placeholder="Explique brevemente el motivo...">{{ old('justification') }}</textarea>
+                        </div>
+
+                        <hr>
+                        <h5 class="mb-3"><i class="fas fa-boxes"></i> Ítems a Solicitar</h5>
+                        
+                        {{-- Contenedor de ítems dinámicos --}}
+                        <div id="items-container">
+                            {{-- Si hay error de validación, repoblar los ítems --}}
+                            @if(old('items'))
+                                @foreach(old('items') as $index => $item)
+                                    @include('admin.requests.partials.item_row_template', ['index' => $index, 'item' => $item])
+                                @endforeach
+                            @endif
+                        </div>
+
+                        <button type="button" class="btn btn-info btn-sm" id="add-item-btn">
+                            <i class="fas fa-plus"></i> Agregar Ítem
+                        </button>
+                    </div>
+                    <div class="card-footer">
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-save"></i> Guardar Solicitud
+                        </button>
+                        <a href="{{ route('admin.requests.index') }}" class="btn btn-default float-right">Cancelar</a>
+                    </div>
                 </div>
             </div>
-
-            <div class="row">
-                {{-- 🔑 CAMPO REQUERIDO: Justificación --}}
-                <div class="col-md-6">
-                    <x-adminlte-textarea name="justification" label="Justificación de la Solicitud" rows="3" placeholder="Detalle el motivo del requerimiento." required>{{ old('justification') }}</x-adminlte-textarea>
-                </div>
-                {{-- 🔑 CAMPO REQUERIDO/OPCIONAL: Área de Destino --}}
-                <div class="col-md-6">
-                    <x-adminlte-input name="destination_area" label="Área de Destino" placeholder="Ej: Mantenimiento, Taller B, Oficina Central" value="{{ old('destination_area') }}" />
-                </div>
-            </div>
-
-            {{-- -------------------------- ÍTEMS SOLICITADOS (Productos y Kits) -------------------------- --}}
-            <h5 class="mt-4"><i class="fas fa-list-ul"></i> Ítems a Solicitar</h5>
-            <div id="items-container">
-                {{-- Los ítems se insertarán aquí dinámicamente --}}
-            </div>
-
-            <button type="button" class="btn btn-sm btn-info mt-2" id="add-item-btn"><i class="fas fa-plus"></i> Agregar Producto / Kit</button>
             
-            <hr>
-
-            <x-adminlte-button class="btn-flat" type="submit" label="Enviar Solicitud" theme="success" icon="fas fa-lg fa-paper-plane"/>
-            <a href="{{ route('admin.requests.index') }}" class="btn btn-flat btn-default">Cancelar</a>
-        </form>
-    </x-adminlte-card>
+            {{-- Panel Informativo Lateral --}}
+            <div class="col-lg-3">
+                <div class="card card-secondary">
+                    <div class="card-header">
+                        <h3 class="card-title">Información</h3>
+                    </div>
+                    <div class="card-body">
+                        <strong>Solicitante:</strong>
+                        <p class="text-muted">{{ auth()->user()->name }}</p>
+                        <hr>
+                        <strong>Fecha:</strong>
+                        <p class="text-muted">{{ date('d/m/Y') }}</p>
+                        <hr>
+                        <p class="small">Recuerde que la solicitud quedará en estado <b>Pendiente</b> hasta que un administrador la apruebe.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
 @stop
 
-{{-- Incluimos el template JS. Asegúrate de que 'admin.requests.partials.item_row_template' existe --}}
-@include('admin.requests.partials.item_row_template', ['products' => $products, 'kits' => $kits])
+{{-- Template JS para filas nuevas (usa el mismo partial pero vacío) --}}
+<script id="item-row-template" type="text/template">
+    @include('admin.requests.partials.item_row_template', ['index' => '__INDEX__', 'item' => []])
+</script>
 
-@push('js')
+@section('js')
 <script>
-    let itemIndex = 0;
+    $(document).ready(function() {
+        let itemIndex = {{ count(old('items', [])) }};
 
-    // Función para añadir una nueva fila de ítem
-    function addItemRow() {
-        const template = $('#item-row-template').html();
-        let newRowHtml = template.replace(/__INDEX__/g, itemIndex);
-        
-        // Insertar la fila en el contenedor
-        $('#items-container').append(newRowHtml);
+        // Función para inicializar Select2 en una fila específica
+        function initSelect2(row) {
+            row.find('.select2').select2({
+                theme: 'bootstrap4',
+                width: '100%'
+            });
+        }
 
-        // 1. Inicializar Select2 para Productos y Kits en esta nueva fila
-        // Usamos los IDs específicos que definimos en el template
-        $('#input_product_' + itemIndex).select2({
-            placeholder: "Seleccione un producto",
-            allowClear: true,
-            width: '100%'
+        // Función para agregar fila
+        function addItemRow() {
+            let template = $('#item-row-template').html();
+            let newHtml = template.replace(/__INDEX__/g, itemIndex);
+            let newRow = $(newHtml);
+            
+            $('#items-container').append(newRow);
+            initSelect2(newRow);
+            
+            itemIndex++;
+        }
+
+        // Evento Click Agregar
+        $('#add-item-btn').click(function() {
+            addItemRow();
         });
 
-        $('#input_kit_' + itemIndex).select2({
-            placeholder: "Seleccione un kit",
-            allowClear: true,
-            width: '100%'
+        // Evento Click Eliminar (Delegado)
+        $('#items-container').on('click', '.remove-item-btn', function() {
+            $(this).closest('.item-row').remove();
         });
 
-        // 2. Configurar el evento de cambio de Tipo
-        $('#type_select_' + itemIndex).on('change', function() {
-            let index = $(this).data('index');
+        // Evento Cambio de Tipo (Producto vs Kit)
+        $('#items-container').on('change', '.type-selector', function() {
+            let row = $(this).closest('.item-row');
             let type = $(this).val();
             
             if (type === 'product') {
-                // Mostrar Producto, Ocultar Kit
-                $('#container_product_' + index).show();
-                $('#container_kit_' + index).hide();
-                
-                // Limpiamos el valor del Kit para evitar enviar datos basura
-                $('#input_kit_' + index).val('').trigger('change');
+                row.find('.container-product').show();
+                row.find('.container-kit').hide();
+                row.find('.select-kit').val('').trigger('change'); // Limpiar kit
             } else {
-                // Mostrar Kit, Ocultar Producto
-                $('#container_kit_' + index).show();
-                $('#container_product_' + index).hide();
-                
-                // Limpiamos el valor del Producto
-                $('#input_product_' + index).val('').trigger('change');
+                row.find('.container-product').hide();
+                row.find('.container-kit').show();
+                row.find('.select-product').val('').trigger('change'); // Limpiar producto
             }
         });
 
-        itemIndex++;
-    }
+        // Inicializar Select2 en filas existentes (si hubo old input)
+        initSelect2($('#items-container'));
 
-    // Botón Agregar
-    $('#add-item-btn').on('click', function() {
-        addItemRow();
+        // Agregar una fila inicial si está vacío
+        if (itemIndex === 0) {
+            addItemRow();
+        }
     });
-
-    // Botón Eliminar (Delegación de eventos)
-    $('#items-container').on('click', '.remove-item-btn', function() {
-        $(this).closest('.row').remove();
-    });
-
-    // Agregar la primera fila automáticamente al cargar
-    addItemRow();
-
 </script>
-@endpush
+@endsection

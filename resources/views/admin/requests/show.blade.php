@@ -1,13 +1,13 @@
 @extends('adminlte::page')
 
-@section('title', 'Detalle de Solicitud #' . $request->id)
+@section('title', 'Detalle Solicitud #' . $request->id)
 
 @section('content_header')
     <h1>
-        Detalle de Solicitud de Salida #REQ-{{ $request->id }}
-        {{-- Muestra el estado de la solicitud --}}
-        <span class="badge badge-{{ $request->status === 'Approved' ? 'success' : ($request->status === 'Rejected' ? 'danger' : 'warning') }} float-right">
-            <i class="fas fa-clipboard-list"></i> {{ $request->status }}
+        Detalle de Solicitud #REQ-{{ $request->id }}
+        {{-- 🔑 USO DEL ACCESOR: Muestra "Pendiente", "Aprobada" o "Rechazada" en español --}}
+        <span class="badge badge-{{ $request->status_badge_class }}">
+            {{ $request->status_label }}
         </span>
     </h1>
 @stop
@@ -16,39 +16,44 @@
     @include('admin.partials.session-messages')
 
     <div class="row">
-        {{-- =================================== COLUMNA DE DETALLES Y ACCIÓN =================================== --}}
+        {{-- --------------------------------- COLUMNA DE DETALLES --------------------------------- --}}
         <div class="col-md-5">
-            <div class="card card-outline card-info">
+            <div class="card card-info card-outline">
                 <div class="card-header">
                     <h3 class="card-title">Información General</h3>
-                    <div class="card-tools">
-                        <button type="button" class="btn btn-tool" data-card-widget="collapse"><i class="fas fa-minus"></i></button>
-                    </div>
                 </div>
                 <div class="card-body">
-                    <dl class="row mb-0">
-                        <dt class="col-sm-5">Solicitante:</dt>
-                        <dd class="col-sm-7">{{ $request->requester->name ?? 'N/A' }}</dd>
+                    <p><strong>Solicitante:</strong> {{ $request->requester->name ?? 'N/A' }}</p>
+                    
+                    {{-- 🔑 PROTECCIÓN DE FECHAS NULAS --}}
+                    <p><strong>Fecha Solicitud:</strong> {{ optional($request->requested_at)->format('d/m/Y h:i A') }}</p>
+                    
+                    <p><strong>Ubicación/Área Destino:</strong> {{ $request->destination_area ?? 'N/A' }}</p>
+                    
+                    @if($request->reference)
+                        <p><strong>Referencia:</strong> {{ $request->reference }}</p>
+                    @endif
 
-                        <dt class="col-sm-5">Área Destino:</dt>
-                        <dd class="col-sm-7">{{ $request->destination_area ?? 'N/A' }}</dd>
-
-                        <dt class="col-sm-5">Fecha Solicitud:</dt>
-                        <dd class="col-sm-7">{{ optional($request->requested_at)->format('Y-m-d H:i') }}</dd>
-                    </dl>
-
-                    <hr class="mt-3 mb-3">
-                    <h5 class="mb-2"><i class="fas fa-pencil-alt text-muted"></i> Justificación:</h5>
-                    <p class="text-muted">{{ $request->justification }}</p>
+                    <hr>
+                    <h4>Justificación</h4>
+                    <p>{{ $request->justification }}</p>
 
                     @if ($request->status !== 'Pending')
-                        <hr class="mt-3 mb-3">
-                        <h5 class="mb-2">Decisión Final ({{ $request->status }})</h5>
-                        <p class="mb-0"><strong>Procesado por:</strong> {{ $request->approver->name ?? 'Sistema' }}</p>
-                        <p><strong>Fecha Procesado:</strong> {{ optional($request->processed_at)->format('Y-m-d H:i') }}</p>
+                        <hr>
+                        <h4>Decisión Final</h4>
+                        <p><strong>Procesado por:</strong> {{ $request->approver->name ?? 'Sistema' }}</p>
+                        <p><strong>Fecha Procesado:</strong> {{ optional($request->processed_at)->format('d/m/Y h:i A') }}</p>
+                        
+                        {{-- 🔑 USO DEL ACCESOR DE ESTADO --}}
+                        <p><strong>Resolución:</strong> 
+                            <span class="text-{{ $request->status_badge_class }} font-weight-bold">
+                                {{ strtoupper($request->status_label) }}
+                            </span>
+                        </p>
+
                         @if ($request->rejection_reason)
-                            <div class="alert alert-danger p-2 mt-2 mb-0">
-                                <strong>Motivo Rechazo:</strong> {{ $request->rejection_reason }}
+                            <div class="alert alert-danger">
+                                <strong>Motivo de Rechazo:</strong> {{ $request->rejection_reason }}
                             </div>
                         @endif
                     @endif
@@ -60,121 +65,116 @@
                 @can('solicitudes_aprobar')
                     <div class="card card-primary">
                         <div class="card-header">
-                            <h3 class="card-title">Tomar Decisión</h3>
+                            <h3 class="card-title">Acción de Aprobación</h3>
                         </div>
                         <div class="card-body">
-                            <p class="text-danger small"><i class="fas fa-exclamation-triangle"></i> La aprobación ajustará el stock. Verifique la disponibilidad de los ítems en la tabla de la derecha.</p>
-
-                            {{-- Formulario de Aprobación --}}
-                            <form action="{{ route('admin.requests.process', $request) }}" method="POST" class="d-inline">
+                            <p class="text-danger">¡Atención! La aprobación de esta solicitud ajustará el stock de los productos.</p>
+                            
+                            {{-- FORMULARIO DE APROBACIÓN --}}
+                            <form action="{{ route('admin.requests.process', ['request' => $request->id]) }}" method="POST">
                                 @csrf
                                 <input type="hidden" name="action" value="approve">
-                                <button type="submit" class="btn btn-success btn-lg btn-block mb-2" onclick="return confirm('¿Confirma que desea APROBAR esta solicitud y reducir el stock de inventario?')">
+                                <button type="submit" class="btn btn-success btn-lg btn-block mb-3" onclick="return confirm('¿Confirma que desea APROBAR esta solicitud y reducir el stock de inventario?')">
                                     <i class="fas fa-check-circle"></i> Aprobar Solicitud
                                 </button>
                             </form>
-
-                            {{-- Botón para activar el Rechazo --}}
-                            <button type="button" class="btn btn-danger btn-block" data-toggle="modal" data-target="#rejectModal">
-                                <i class="fas fa-times-circle"></i> Rechazar Solicitud
+                            
+                            {{-- BOTÓN PARA ACTIVAR EL RECHAZO (MODAL) --}}
+                            <button type="button" class="btn btn-danger btn-lg btn-block" data-toggle="modal" data-target="#rejectModal">
+                                <i class="fas fa-times-circle"></i> Rechazar
                             </button>
                         </div>
+                    </div>
+                @else
+                    <div class="alert alert-warning">
+                        Esta solicitud está pendiente de aprobación. Su rol no tiene permisos para tomar decisiones.
                     </div>
                 @endcan
             @endif
         </div>
-
-        {{-- =================================== COLUMNA DE ÍTEMS SOLICITADOS =================================== --}}
+        
+        {{-- --------------------------------- COLUMNA DE ÍTEMS --------------------------------- --}}
         <div class="col-md-7">
             <div class="card card-secondary card-outline">
                 <div class="card-header">
-                    <h3 class="card-title"><i class="fas fa-list-alt"></i> Detalle de Ítems</h3>
+                    <h3 class="card-title">Ítems Solicitados</h3>
                 </div>
                 <div class="card-body p-0">
-                    <table class="table table-striped table-sm">
+                    <table class="table table-sm table-striped">
                         <thead>
                             <tr>
-                                <th>Ítem Solicitado</th>
-                                <th class="text-center" style="width: 15%">Cantidad</th>
-                                <th class="text-center" style="width: 15%">Stock Requerido</th>
-                                <th class="text-right" style="width: 15%">Costo Unitario</th>
+                                <th>Producto / Kit</th>
+                                <th style="width: 15%">Solicitado</th>
+                                <th style="width: 20%">Stock Actual</th>
+                                <th style="width: 15%">Costo Unit.</th>
                             </tr>
                         </thead>
                         <tbody>
                             @forelse ($request->items as $item)
+                                {{-- Lógica para determinar estado de stock y nombres --}}
                                 @php
-                                    // 1. Determinar el ítem base (Producto o Kit)
-                                    $baseItem = $item->item_type === 'product' ? $item->product : $item->kit;
                                     $isKit = $item->item_type === 'kit';
-                                    $itemName = $baseItem->name ?? 'ÍTEM ELIMINADO';
+                                    $itemName = $isKit ? ($item->kit->name ?? 'Kit Eliminado') : ($item->product->name ?? 'Producto Eliminado');
+                                    $itemCode = $isKit ? 'KIT' : ($item->product->code ?? 'N/A');
+                                    $unitAbbr = $isKit ? 'unid' : ($item->product->unit->abbreviation ?? 'unid');
                                     
-                                    // 2. Calcular el stock global (solo para mostrar la advertencia en la fila principal)
-                                    $hasInsufficientStock = false;
-                                    
-                                    if ($isKit && $baseItem) {
-                                        // Para kits, iteramos los componentes
-                                        foreach ($baseItem->components as $component) {
-                                            $totalConsumption = $item->quantity_requested * $component->pivot->quantity_required;
-                                            if ($component->stock < $totalConsumption) {
-                                                $hasInsufficientStock = true;
-                                                break;
-                                            }
-                                        }
-                                    } elseif (!$isKit && $baseItem) {
-                                        // Para productos simples, validamos directamente
-                                        if ($baseItem->stock < $item->quantity_requested) {
-                                            $hasInsufficientStock = true;
-                                        }
+                                    // Verificación rápida de stock para productos simples
+                                    $stockOk = true;
+                                    if (!$isKit && $item->product) {
+                                        $stockOk = $item->product->stock >= $item->quantity_requested;
                                     }
-
-                                    $stockBadgeClass = $hasInsufficientStock ? 'danger' : 'success';
                                 @endphp
 
-                                {{-- Fila principal: Producto o Kit --}}
-                                <tr class="{{ $hasInsufficientStock ? 'table-danger' : '' }}">
+                                <tr class="{{ (!$isKit && !$stockOk) ? 'table-danger' : '' }}">
                                     <td>
-                                        <i class="fas fa-{{ $isKit ? 'cubes text-info' : 'cube text-primary' }}"></i> 
-                                        <strong>{{ $itemName }}</strong> 
                                         @if($isKit)
-                                            <small class="d-block text-muted">({{ $baseItem->components->count() ?? 0 }} Productos)</small>
+                                            <i class="fas fa-cubes text-info"></i> 
+                                        @else
+                                            <i class="fas fa-cube text-primary"></i>
+                                        @endif
+                                        <strong>{{ $itemName }}</strong>
+                                        <small class="d-block text-muted">{{ $itemCode }}</small>
+                                        
+                                        @if($isKit && $item->kit)
+                                            <small class="text-muted">Contiene: {{ $item->kit->components->count() }} productos</small>
                                         @endif
                                     </td>
-                                    <td class="text-center">
-                                        <strong>{{ $item->quantity_requested }}</strong> 
-                                        <span class="small text-muted">{{ $item->product->unit->abbreviation ?? 'unid' }}</span>
+                                    <td class="text-center font-weight-bold">
+                                        {{ $item->quantity_requested }} {{ $unitAbbr }}
                                     </td>
-                                    <td class="text-center">
-                                        @if($hasInsufficientStock)
-                                            <span class="badge badge-danger" title="Stock insuficiente para aprobar">
-                                                <i class="fas fa-exclamation-circle"></i> Faltante
-                                            </span>
+                                    <td>
+                                        @if(!$isKit)
+                                            @if($stockOk)
+                                                <span class="badge badge-success">{{ $item->product->stock ?? 0 }} (OK)</span>
+                                            @else
+                                                <span class="badge badge-danger">{{ $item->product->stock ?? 0 }} (Falta)</span>
+                                            @endif
                                         @else
-                                            <span class="badge badge-success">OK</span>
+                                            <span class="text-muted text-xs">Ver componentes</span>
                                         @endif
                                     </td>
                                     <td class="text-right">${{ number_format($item->unit_price_at_request, 2) }}</td>
                                 </tr>
-                                
-                                {{-- Fila secundaria: Componentes del Kit (Mejorada) --}}
-                                @if($isKit && $baseItem && $baseItem->components->count())
-                                    <tr class="p-0">
-                                        <td colspan="4" class="p-0 border-0">
-                                            <div class="card card-body p-2 m-0 border-left-0 border-right-0 border-top-0 bg-light">
-                                                <strong class="text-info small mb-1"><i class="fas fa-sitemap"></i> Componentes necesarios para {{ $item->quantity_requested }} Kits:</strong>
-                                                <ul class="list-unstyled mb-0 pl-3">
-                                                    @foreach($baseItem->components as $component)
-                                                        @php
-                                                            $totalConsumption = $item->quantity_requested * $component->pivot->quantity_required;
-                                                            $componentStockStatus = $component->stock < $totalConsumption ? 'danger' : 'success';
+
+                                {{-- DESGLOSE DE COMPONENTES SI ES UN KIT --}}
+                                @if($isKit && $item->kit && $item->kit->components->count())
+                                    <tr>
+                                        <td colspan="4" class="bg-light p-0">
+                                            <div class="px-4 py-2">
+                                                <strong class="text-xs text-muted text-uppercase">Componentes necesarios:</strong>
+                                                <ul class="list-unstyled text-sm mt-1 mb-0">
+                                                    @foreach($item->kit->components as $comp)
+                                                        @php 
+                                                            $reqQty = $comp->pivot->quantity_required * $item->quantity_requested;
+                                                            $compStockOk = $comp->stock >= $reqQty;
                                                         @endphp
-                                                        <li class="small text-muted d-flex justify-content-between">
+                                                        <li class="d-flex justify-content-between border-bottom pb-1 mb-1 {{ $compStockOk ? '' : 'text-danger font-weight-bold' }}">
                                                             <span>
-                                                                &#x25B8; {{ $component->name }} (Requiere: {{ $component->pivot->quantity_required }}/Kit)
+                                                                <i class="fas fa-angle-right text-muted mr-1"></i> {{ $comp->name }}
                                                             </span>
-                                                            <span class="text-right">
-                                                                **{{ $totalConsumption }}** {{ $component->unit->abbreviation ?? 'unid' }} | 
-                                                                Stock: 
-                                                                <span class="badge badge-{{ $componentStockStatus }}">{{ $component->stock }}</span>
+                                                            <span>
+                                                                Req: {{ $reqQty }} | Stock: {{ $comp->stock }}
+                                                                @if(!$compStockOk) <i class="fas fa-exclamation-circle"></i> @endif
                                                             </span>
                                                         </li>
                                                     @endforeach
@@ -183,25 +183,28 @@
                                         </td>
                                     </tr>
                                 @endif
-                                
+
                             @empty
                                 <tr>
-                                    <td colspan="4" class="text-center">No hay ítems registrados para esta solicitud.</td>
+                                    <td colspan="4" class="text-center py-3">No hay ítems registrados para esta solicitud.</td>
                                 </tr>
                             @endforelse
                         </tbody>
                     </table>
                 </div>
+                <div class="card-footer">
+                    <a href="{{ route('admin.requests.index') }}" class="btn btn-default">Volver al Listado</a>
+                </div>
             </div>
         </div>
     </div>
-
-    {{-- --------------------------------- MODAL DE RECHAZO (Sin cambios) --------------------------------- --}}
+    
+    {{-- --------------------------------- MODAL DE RECHAZO --------------------------------- --}}
     @if ($request->status === 'Pending' && Gate::allows('solicitudes_aprobar'))
         <div class="modal fade" id="rejectModal" tabindex="-1" role="dialog" aria-labelledby="rejectModalLabel" aria-hidden="true">
             <div class="modal-dialog" role="document">
                 <div class="modal-content">
-                    <form action="{{ route('admin.requests.process', $request) }}" method="POST">
+                    <form action="{{ route('admin.requests.process', ['request' => $request->id]) }}" method="POST">
                         @csrf
                         <input type="hidden" name="action" value="reject">
                         <div class="modal-header bg-danger">
@@ -216,7 +219,7 @@
                                 <textarea name="rejection_reason" id="rejection_reason" class="form-control" rows="3" required placeholder="Explique brevemente por qué se rechaza la solicitud."></textarea>
                             </div>
                         </div>
-                        <div class="modal-footer">
+                        <div class="modal-footer justify-content-between">
                             <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
                             <button type="submit" class="btn btn-danger">Confirmar Rechazo</button>
                         </div>
