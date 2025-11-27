@@ -2,23 +2,23 @@
 
 @section('title', 'Auditoría del Sistema')
 
-{{-- Plugins para DataTables --}}
+{{-- Plugins --}}
 @section('plugins.Datatables', true)
 @section('plugins.DatatablesPlugins', true)
 @section('plugins.Responsive', true)
+@section('plugins.Select2', true)
 
 @section('content_header')
+    {{-- CORRECCIÓN: Eliminada la referencia a $log->id que causaba el error --}}
     <h1><i class="fas fa-history"></i> Auditoría y Logs del Sistema</h1>
 @stop
 
 @section('css')
     <style>
-        /* Ajustes para DataTables Responsive */
         table.dataTable.dtr-inline.collapsed > tbody > tr > td:first-child:before, 
         table.dataTable.dtr-inline.collapsed > tbody > tr > th:first-child:before { left: 4px; }
         .table.dataTable.dtr-inline.collapsed > tbody > tr > td:first-child { padding-left: 10px !important; }
         
-        /* Estilo para el JSON formateado en el modal */
         pre.json-box {
             background-color: #f4f6f9;
             border: 1px solid #dcdcdc;
@@ -31,11 +31,88 @@
 @stop
 
 @section('content')
+    
+    {{-- 🔎 FILTROS DE BÚSQUEDA --}}
+    <div class="card card-outline card-primary collapsed-card">
+        <div class="card-header">
+            <h3 class="card-title"><i class="fas fa-filter"></i> Filtros Avanzados</h3>
+            <div class="card-tools">
+                <button type="button" class="btn btn-tool" data-card-widget="collapse"><i class="fas fa-plus"></i></button>
+            </div>
+        </div>
+        <div class="card-body">
+            <form method="GET" action="{{ route('admin.audit.index') }}">
+                <div class="row">
+                    {{-- Usuario --}}
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label>Usuario Responsable</label>
+                            <select name="causer_id" class="form-control select2">
+                                <option value="">Todos</option>
+                                @foreach($users as $id => $name)
+                                    <option value="{{ $id }}" {{ request('causer_id') == $id ? 'selected' : '' }}>{{ $name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+
+                    {{-- Acción --}}
+                    <div class="col-md-2">
+                        <div class="form-group">
+                            <label>Acción</label>
+                            <select name="action_type" class="form-control select2">
+                                <option value="">Todas</option>
+                                <option value="created" {{ request('action_type') == 'created' ? 'selected' : '' }}>Creación (Created)</option>
+                                <option value="updated" {{ request('action_type') == 'updated' ? 'selected' : '' }}>Edición (Updated)</option>
+                                <option value="deleted" {{ request('action_type') == 'deleted' ? 'selected' : '' }}>Eliminación (Deleted)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    {{-- Modelo/Módulo --}}
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label>Módulo Afectado</label>
+                            <select name="subject_type" class="form-control select2">
+                                <option value="">Todos</option>
+                                @foreach($subjects as $class => $label)
+                                    <option value="{{ $class }}" {{ request('subject_type') == $class ? 'selected' : '' }}>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+
+                    {{-- Fechas --}}
+                    <div class="col-md-2">
+                        <div class="form-group">
+                            <label>Desde</label>
+                            <input type="date" name="date_from" class="form-control" value="{{ request('date_from') }}">
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-group">
+                            <label>Hasta</label>
+                            <input type="date" name="date_to" class="form-control" value="{{ request('date_to') }}">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-12 text-right">
+                        <a href="{{ route('admin.audit.index') }}" class="btn btn-default mr-2">Limpiar</a>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> Buscar</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {{-- TABLA DE RESULTADOS --}}
     <div class="card card-outline card-dark">
         <div class="card-header">
-            <h3 class="card-title">Registro de Actividades (Últimos 1000 eventos)</h3>
+            <h3 class="card-title">Registro de Actividades ({{ $activities->total() }} eventos encontrados)</h3>
         </div>
-        <div class="card-body p-4">
+        <div class="card-body p-0">
             <div class="table-responsive">
                 <table id="auditTable" class="table table-striped table-bordered display nowrap" style="width:100%">
                     <thead>
@@ -44,8 +121,8 @@
                             <th style="width: 15%">Usuario</th>
                             <th style="width: 10%">Acción</th>
                             <th style="width: 20%">Módulo / Entidad</th>
-                            <th style="width: 10%">ID Afectado</th>
-                            <th>Detalles</th>
+                            <th style="width: 10%">ID Ref.</th>
+                            <th>Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -59,8 +136,8 @@
                                     default => 'info',
                                 };
                                 
-                                // Obtener nombre limpio del modelo (App\Models\Product -> Product)
-                                $modelName = class_basename($log->subject_type);
+                                // Obtener nombre limpio del modelo
+                                $modelLabel = $subjects[$log->subject_type] ?? class_basename($log->subject_type);
                             @endphp
                             <tr>
                                 <td data-order="{{ $log->created_at->timestamp }}">
@@ -77,10 +154,10 @@
                                 <td>
                                     <span class="badge badge-{{ $color }}">{{ strtoupper($log->description) }}</span>
                                 </td>
-                                <td>{{ $modelName }}</td>
+                                <td>{{ $modelLabel }}</td>
                                 <td>{{ $log->subject_id }}</td>
                                 <td>
-                                    {{-- Botón para ver cambios JSON --}}
+                                    {{-- Botón para ver cambios JSON (Modal) --}}
                                     @if($log->properties->count() > 0)
                                         <button type="button" class="btn btn-xs btn-default text-primary view-changes-btn" 
                                             data-toggle="modal" 
@@ -98,6 +175,10 @@
                     </tbody>
                 </table>
             </div>
+        </div>
+        <div class="card-footer">
+            {{-- Paginación que mantiene los filtros --}}
+            {{ $activities->appends(request()->query())->links() }}
         </div>
     </div>
 
@@ -134,15 +215,24 @@
 @section('js')
     <script>
         $(document).ready(function() {
+            // Inicializar Select2
+            $('.select2').select2({
+                theme: 'bootstrap4',
+                width: '100%'
+            });
+
             // Inicializar DataTable
-            var table = $('#auditTable').DataTable({
+            $('#auditTable').DataTable({
                 "responsive": true,
-                "order": [[ 0, "desc" ]], // Ordenar por fecha descendente
+                "paging": false, 
+                "info": false,
+                "searching": false, 
+                "order": [[ 0, "desc" ]], 
                 "language": { "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Spanish.json" },
                 "columnDefs": [
                     { "responsivePriority": 1, "targets": 0 }, // Fecha
-                    { "responsivePriority": 2, "targets": 1 }, // Usuario
-                    { "responsivePriority": 3, "targets": 2 }, // Acción
+                    { "responsivePriority": 2, "targets": 2 }, // Acción
+                    { "responsivePriority": 3, "targets": 5 }, // Botón Ver
                 ]
             });
 
@@ -151,10 +241,8 @@
                 var button = $(event.relatedTarget); 
                 var attributes = button.data('attributes'); 
                 var old = button.data('old'); 
-
                 var modal = $(this);
                 
-                // Formatear JSON bonito
                 modal.find('#json-attributes').text(JSON.stringify(attributes, null, 4));
                 
                 if (jQuery.isEmptyObject(old)) {
