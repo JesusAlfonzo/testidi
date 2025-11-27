@@ -9,12 +9,12 @@
 @section('plugins.Select2', true)
 
 @section('content_header')
-    {{-- CORRECCIÓN: Eliminada la referencia a $log->id que causaba el error --}}
     <h1><i class="fas fa-history"></i> Auditoría y Logs del Sistema</h1>
 @stop
 
 @section('css')
     <style>
+        /* Ajustes para DataTables Responsive */
         table.dataTable.dtr-inline.collapsed > tbody > tr > td:first-child:before, 
         table.dataTable.dtr-inline.collapsed > tbody > tr > th:first-child:before { left: 4px; }
         .table.dataTable.dtr-inline.collapsed > tbody > tr > td:first-child { padding-left: 10px !important; }
@@ -26,6 +26,7 @@
             border-radius: 5px;
             max-height: 300px;
             overflow-y: auto;
+            font-size: 0.85rem;
         }
     </style>
 @stop
@@ -35,8 +36,7 @@
     {{-- 🔎 FILTROS DE BÚSQUEDA --}}
     <div class="card card-outline card-primary collapsed-card">
         <div class="card-header">
-            <h3 class="card-title
-            "><i class="fas fa-filter"></i> Filtros Avanzados</h3>
+            <h3 class="card-title"><i class="fas fa-filter"></i> Filtros Avanzados</h3>
             <div class="card-tools">
                 <button type="button" class="btn btn-tool" data-card-widget="collapse"><i class="fas fa-plus"></i></button>
             </div>
@@ -111,7 +111,7 @@
     {{-- TABLA DE RESULTADOS --}}
     <div class="card card-outline card-dark">
         <div class="card-header">
-            <h3 class="card-title">Registro de Actividades ({{ $activities->total() }} eventos encontrados)</h3>
+            <h3 class="card-title">Registro de Actividades</h3>
         </div>
         <div class="card-body p-4">
             <div class="table-responsive">
@@ -129,7 +129,6 @@
                     <tbody>
                         @foreach ($activities as $log)
                             @php
-                                // Determinar color según la acción
                                 $color = match($log->description) {
                                     'created' => 'success',
                                     'updated' => 'warning',
@@ -137,12 +136,11 @@
                                     default => 'info',
                                 };
                                 
-                                // Obtener nombre limpio del modelo
                                 $modelLabel = $subjects[$log->subject_type] ?? class_basename($log->subject_type);
                             @endphp
                             <tr>
-                                <td data-order="{{ $log->created_at->timestamp }}">
-                                    {{ $log->created_at->format('d/m/Y H:i:s') }}
+                                <td data-order="{{ optional($log->created_at)->timestamp }}">
+                                    {{ optional($log->created_at)->format('d/m/Y H:i:s') }}
                                 </td>
                                 <td>
                                     @if($log->causer)
@@ -158,13 +156,12 @@
                                 <td>{{ $modelLabel }}</td>
                                 <td>{{ $log->subject_id }}</td>
                                 <td>
-                                    {{-- Botón para ver cambios JSON (Modal) --}}
-                                    @if($log->properties->count() > 0)
+                                    @if($log->properties && $log->properties->count() > 0)
                                         <button type="button" class="btn btn-xs btn-default text-primary view-changes-btn" 
                                             data-toggle="modal" 
                                             data-target="#modalChanges"
-                                            data-attributes='{{ json_encode($log->properties['attributes'] ?? []) }}'
-                                            data-old='{{ json_encode($log->properties['old'] ?? []) }}'>
+                                            data-attributes="{{ json_encode($log->properties['attributes'] ?? []) }}"
+                                            data-old="{{ json_encode($log->properties['old'] ?? []) }}">
                                             <i class="fas fa-eye"></i> Ver Cambios
                                         </button>
                                     @else
@@ -177,10 +174,8 @@
                 </table>
             </div>
         </div>
-        <div class="card-footer">
-            {{-- Paginación que mantiene los filtros --}}
-            {{ $activities->appends(request()->query())->links() }}
-        </div>
+        {{-- 🔑 Nota: Hemos quitado la paginación de Laravel aquí para que no se duplique con la de DataTables --}}
+        {{-- Si necesitas ver más registros, aumenta el paginate() en el controlador. --}}
     </div>
 
     {{-- MODAL PARA VER DETALLES --}}
@@ -223,30 +218,51 @@
             });
 
             // Inicializar DataTable
-            $('#auditTable').DataTable({
+            const auditTable = $('#auditTable').DataTable({
                 "responsive": true,
-                "paging": false, 
-                "info": false,
-                "searching": false, 
+                "paging": true, // 🔑 Activado: Paginación de DataTables
+                "lengthChange": true, // 🔑 Activado: Selector de cantidad de registros
+                "searching": true, // 🔑 Activado: Buscador rápido (en los resultados actuales)
+                "ordering": true,
+                "info": true, // 🔑 Activado: "Mostrando X de Y"
+                "autoWidth": false,
                 "order": [[ 0, "desc" ]], 
-                "language": { "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Spanish.json" },
+                
+                // Traducción Nativa
+                "language": {
+                    "decimal": "", "emptyTable": "No hay información disponible", "info": "Mostrando _START_ a _END_ de _TOTAL_ registros", 
+                    "infoEmpty": "Mostrando 0 a 0 de 0 registros", "infoFiltered": "(Filtrado de _MAX_ total registros)", "infoPostFix": "", 
+                    "thousands": ",", "lengthMenu": "Mostrar _MENU_ registros", "loadingRecords": "Cargando...", "processing": "Procesando...", 
+                    "search": "Buscar:", "zeroRecords": "Sin resultados encontrados", 
+                    "paginate": { "first": "Primero", "last": "Último", "next": "Siguiente", "previous": "Anterior" }
+                },
                 "columnDefs": [
                     { "responsivePriority": 1, "targets": 0 }, // Fecha
                     { "responsivePriority": 2, "targets": 2 }, // Acción
                     { "responsivePriority": 3, "targets": 5 }, // Botón Ver
+                    { "orderable": false, "targets": 5 }      // Desactivar orden en acciones
                 ]
             });
 
-            // Lógica del Modal para formatear JSON
+            // Forzar Redibujo
+            setTimeout(function() {
+                auditTable.columns.adjust().responsive.recalc();
+            }, 500);
+
+            // Lógica del Modal
             $('#modalChanges').on('show.bs.modal', function (event) {
                 var button = $(event.relatedTarget); 
                 var attributes = button.data('attributes'); 
                 var old = button.data('old'); 
                 var modal = $(this);
                 
+                // Convertir a objeto si viene como string
+                if (typeof attributes === 'string') { try { attributes = JSON.parse(attributes); } catch(e) {} }
+                if (typeof old === 'string') { try { old = JSON.parse(old); } catch(e) {} }
+                
                 modal.find('#json-attributes').text(JSON.stringify(attributes, null, 4));
                 
-                if (jQuery.isEmptyObject(old)) {
+                if ($.isEmptyObject(old)) {
                     modal.find('#json-old').text('No aplica / Creación inicial');
                 } else {
                     modal.find('#json-old').text(JSON.stringify(old, null, 4));
