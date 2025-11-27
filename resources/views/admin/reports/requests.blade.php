@@ -1,27 +1,50 @@
 @extends('adminlte::page')
 
-@section('title', 'Reporte de Solicitudes')
+@section('title', 'Inventario | Solicitudes de Salida')
 
 {{-- Plugins necesarios --}}
-@section('plugins.Datatables', true) 
-@section('plugins.DatatablesPlugins', true) 
-@section('plugins.Responsive', true) 
+@section('plugins.Datatables', true)
+@section('plugins.DatatablesPlugins', true)
+@section('plugins.Responsive', true)
+@section('plugins.Select2', true) {{-- Necesario para el filtro de solicitantes --}}
 
 @section('content_header')
-    <h1><i class="fas fa-list-alt"></i> Reporte de Solicitudes</h1>
+    <div class="d-flex justify-content-between">
+        <h1><i class="fas fa-clipboard-list"></i> Solicitudes de Salida</h1>
+        @can('solicitudes_crear')
+            <a href="{{ route('admin.requests.create') }}" class="btn btn-primary">
+                <i class="fas fa-plus-circle"></i> Crear Solicitud
+            </a>
+        @endcan
+    </div>
 @stop
 
 @section('css')
     <style>
-        table.dataTable.dtr-inline.collapsed > tbody > tr > td:first-child:before, 
-        table.dataTable.dtr-inline.collapsed > tbody > tr > th:first-child:before { left: 4px; }
-        .table.dataTable.dtr-inline.collapsed > tbody > tr > td:first-child { padding-left: 10px !important; }
+        /* Ajustes para DataTables Responsive */
+        table.dataTable.dtr-inline.collapsed>tbody>tr>td:first-child:before,
+        table.dataTable.dtr-inline.collapsed>tbody>tr>th:first-child:before {
+            left: 4px;
+        }
+
+        .table.dataTable.dtr-inline.collapsed>tbody>tr>td:first-child {
+            padding-left: 10px !important;
+        }
+
+        /* Ajuste visual para Select2 en los filtros */
+        .select2-container .select2-selection--single {
+            height: 38px !important;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 36px !important;
+        }
     </style>
 @stop
 
 @section('content')
-    
-    {{-- 🔎 FILTROS DE FECHA Y ESTADO --}}
+
+    {{-- 🔎 FILTROS DE BÚSQUEDA --}}
     <div class="card card-outline card-primary collapsed-card">
         <div class="card-header">
             <h3 class="card-title"><i class="fas fa-filter"></i> Filtros de Búsqueda</h3>
@@ -30,7 +53,7 @@
             </div>
         </div>
         <div class="card-body">
-            <form method="GET" action="{{ route('admin.reports.requests') }}">
+            <form method="GET" action="{{ route('admin.requests.index') }}">
                 <div class="row">
                     <div class="col-md-3">
                         <div class="form-group">
@@ -49,75 +72,109 @@
                             <label>Estado</label>
                             <select name="status" class="form-control">
                                 <option value="">Todos</option>
-                                <option value="Pending" {{ request('status') == 'Pending' ? 'selected' : '' }}>Pendiente</option>
-                                <option value="Approved" {{ request('status') == 'Approved' ? 'selected' : '' }}>Aprobada</option>
-                                <option value="Rejected" {{ request('status') == 'Rejected' ? 'selected' : '' }}>Rechazada</option>
+                                <option value="Pending" {{ request('status') == 'Pending' ? 'selected' : '' }}>Pendiente
+                                </option>
+                                <option value="Approved" {{ request('status') == 'Approved' ? 'selected' : '' }}>Aprobada
+                                </option>
+                                <option value="Rejected" {{ request('status') == 'Rejected' ? 'selected' : '' }}>Rechazada
+                                </option>
                             </select>
                         </div>
                     </div>
-                    <div class="col-md-3 d-flex align-items-end">
-                        <div class="form-group w-100">
-                            <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-search"></i> Filtrar Resultados</button>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label>Solicitante</label>
+                            <select name="requester_id" class="form-control select2">
+                                <option value="">Todos</option>
+                                @foreach ($requesters as $id => $name)
+                                    <option value="{{ $id }}"
+                                        {{ request('requester_id') == $id ? 'selected' : '' }}>{{ $name }}</option>
+                                @endforeach
+                            </select>
                         </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-12 text-right">
+                        <a href="{{ route('admin.requests.index') }}" class="btn btn-default mr-2">Limpiar</a>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> Filtrar
+                            Resultados</button>
                     </div>
                 </div>
             </form>
         </div>
     </div>
 
-    <div class="card card-outline card-info">
-        <div class="card-header">
-            <h3 class="card-title">Resultados ({{ count($requests) }} registros encontrados)</h3>
-            <div class="card-tools">
-                {{-- Botones de Exportación: Mantienen los filtros actuales --}}
-                <a href="{{ route('admin.reports.requests.excel', request()->query()) }}" class="btn btn-success btn-sm" title="Descargar Excel">
-                    <i class="fas fa-file-excel"></i> Excel
-                </a>
-                <a href="{{ route('admin.reports.requests.pdf', request()->query()) }}" class="btn btn-danger btn-sm" target="_blank" title="Ver PDF">
-                    <i class="fas fa-file-pdf"></i> PDF
-                </a>
-            </div>
-        </div>
-        <div class="card-body p-4">
-            <div class="table-responsive">
-                <table id="requestsTable" class="table table-striped table-bordered display nowrap" style="width:100%">
-                    <thead>
-                        <tr>
-                            <th>ID</th> {{-- Prio 4 --}}
-                            <th>Estado</th> {{-- Prio 1 --}}
-                            <th>Fecha Solicitud</th> {{-- Prio 3 --}}
-                            <th>Detalle</th> {{-- Prio 2 --}}
-                            <th>Solicitante</th> {{-- Ocultable --}}
-                            <th>Justificación</th> {{-- Ocultable --}}
-                            <th>Procesado por</th> {{-- Ocultable --}}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach ($requests as $request)
-                            @php
-                                $badge = match($request->status) { 
-                                    'Pending' => 'warning', 
-                                    'Approved' => 'success', 
-                                    'Rejected' => 'danger', 
-                                    default => 'secondary' 
-                                };
-                            @endphp
-                            <tr>
-                                <td>REQ-{{ $request->id }}</td>
-                                <td><span class="badge badge-{{ $badge }}">{{ $request->status }}</span></td>
-                                <td data-order="{{ $request->requested_at ? $request->requested_at->timestamp : 0 }}">
-                                    {{ $request->requested_at ? $request->requested_at->format('Y-m-d H:i') : '-' }}
-                                </td>
-                                <td>
-                                    <a href="{{ route('admin.requests.show', $request->id) }}" class="btn btn-xs btn-info"><i class="fas fa-eye"></i></a>
-                                </td>
-                                <td>{{ $request->requester->name ?? 'N/A' }}</td>
-                                <td>{{ Str::limit($request->justification, 50) }}</td>
-                                <td>{{ $request->approver->name ?? 'Pendiente' }}</td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
+    <div class="row">
+        <div class="col-12">
+            @include('admin.partials.session-messages')
+
+            <div class="card card-outline card-info">
+                <div class="card-body p-4">
+                    <div class="table-responsive">
+                        <table id="requestsTable" class="table table-striped table-bordered display nowrap"
+                            style="width:100%">
+                            <thead>
+                                <tr>
+                                    <th style="width: 10%">ID</th>
+                                    <th style="width: 20%">Solicitante</th>
+                                    <th style="width: 10%">Estado</th>
+                                    <th style="width: 10%">Acciones</th>
+                                    <th>Justificación</th>
+                                    <th>Fecha Solicitud</th>
+                                    <th>Aprobador</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @php
+                                    $badgeColors = [
+                                        'Pending' => 'warning',
+                                        'Approved' => 'success',
+                                        'Rejected' => 'danger',
+                                    ];
+                                @endphp
+
+                                @forelse ($requests as $request)
+                                    <tr>
+                                        <td>REQ-{{ $request->id }}</td>
+                                        <td>{{ $request->requester->name ?? 'N/A' }}</td>
+                                        <td>
+                                            <span class="badge badge-{{ $badgeColors[$request->status] ?? 'secondary' }}">
+                                                {{-- Usamos el accesor status_label si existe en el modelo, sino el valor raw --}}
+                                                {{ $request->status_label ?? $request->status }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <a href="{{ route('admin.requests.show', $request) }}"
+                                                    class="btn btn-default text-info" title="Ver Detalle">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+
+                                                @if ($request->status === 'Pending')
+                                                    @can('solicitudes_aprobar')
+                                                        <a href="{{ route('admin.requests.show', $request) }}"
+                                                            class="btn btn-default text-warning"
+                                                            title="Revisar y Aprobar/Rechazar">
+                                                            <i class="fas fa-check-circle"></i>
+                                                        </a>
+                                                    @endcan
+                                                @endif
+                                            </div>
+                                        </td>
+                                        <td>{{ Str::limit($request->justification, 50) }}</td>
+                                        <td data-order="{{ optional($request->requested_at)->timestamp }}">
+                                            {{ optional($request->requested_at)->format('d/m/Y H:i') }}
+                                        </td>
+                                        <td>{{ $request->approver->name ?? '---' }}</td>
+                                    </tr>
+                                @empty
+                                    {{-- DataTables manejará el vacío, pero dejamos esto por estructura --}}
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -126,30 +183,86 @@
 @section('js')
     <script>
         $(document).ready(function() {
+            // Inicializar Select2
+            $('.select2').select2({
+                theme: 'bootstrap4',
+                width: '100%'
+            });
+
+            // Inicializar DataTables
             const requestsTable = $('#requestsTable').DataTable({
-                "responsive": true, 
-                "paging": true, 
-                "lengthChange": true, 
-                "searching": true, 
-                "ordering": true, 
-                "info": true, 
-                "autoWidth": false, 
-                "order": [[ 2, "desc" ]], // Ordenar por Fecha (índice 2) descendente
-                "language": { "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Spanish.json" },
-                "columnDefs": [
-                    { "orderable": false, "targets": [3] }, // Columna Detalle no ordenable
-                    { "type": "date", "targets": 2 }, // Columna Fecha
-                    // Prioridades Responsive
-                    { "responsivePriority": 1, "targets": 1 }, // Estado
-                    { "responsivePriority": 2, "targets": 3 }, // Botón Detalle
-                    { "responsivePriority": 3, "targets": 2 }, // Fecha
-                    { "responsivePriority": 4, "targets": 0 }, // ID
-                    { "responsivePriority": 100, "targets": [4, 5, 6] } // Resto ocultable
+                "responsive": true,
+                "paging": true,
+                "lengthChange": true,
+                "searching": true,
+                "ordering": true,
+                "info": true,
+                "autoWidth": false,
+                "order": [
+                    [5, "desc"]
+                ], // Ordenar por Fecha Solicitud (índice 5) descendente
+
+                // Traducción Nativa
+                "language": {
+                    "decimal": "",
+                    "emptyTable": "No hay información disponible",
+                    "info": "Mostrando _START_ a _END_ de _TOTAL_ registros",
+                    "infoEmpty": "Mostrando 0 a 0 de 0 registros",
+                    "infoFiltered": "(Filtrado de _MAX_ total registros)",
+                    "infoPostFix": "",
+                    "thousands": ",",
+                    "lengthMenu": "Mostrar _MENU_ registros",
+                    "loadingRecords": "Cargando...",
+                    "processing": "Procesando...",
+                    "search": "Buscar:",
+                    "zeroRecords": "Sin resultados encontrados",
+                    "paginate": {
+                        "first": "Primero",
+                        "last": "Último",
+                        "next": "Siguiente",
+                        "previous": "Anterior"
+                    }
+                },
+
+                "columnDefs": [{
+                        "orderable": false,
+                        "targets": [3]
+                    }, // Acciones no ordenables
+                    {
+                        "type": "date",
+                        "targets": 5
+                    }, // Tipo fecha
+
+                    // Prioridades Responsive para Móvil
+                    {
+                        "responsivePriority": 1,
+                        "targets": 0
+                    }, // ID
+                    {
+                        "responsivePriority": 2,
+                        "targets": 2
+                    }, // Estado
+                    {
+                        "responsivePriority": 3,
+                        "targets": 3
+                    }, // Acciones
+                    {
+                        "responsivePriority": 4,
+                        "targets": 1
+                    }, // Solicitante
+
+                    // Ocultar primero
+                    {
+                        "responsivePriority": 100,
+                        "targets": [4, 5, 6]
+                    }
                 ]
             });
-            
-            // Redibujo para AdminLTE
-            setTimeout(function() { requestsTable.columns.adjust().responsive.recalc(); }, 500);
+
+            // Ajuste de renderizado para AdminLTE
+            setTimeout(function() {
+                requestsTable.columns.adjust().responsive.recalc();
+            }, 500);
         });
     </script>
 @endsection

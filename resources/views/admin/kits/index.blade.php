@@ -2,6 +2,7 @@
 
 @section('title', 'Inventario | Kits')
 
+{{-- Plugins necesarios --}}
 @section('plugins.Datatables', true) 
 @section('plugins.DatatablesPlugins', true) 
 @section('plugins.Responsive', true) 
@@ -9,21 +10,32 @@
 @section('content_header')
     <div class="d-flex justify-content-between">
         <h1 class="m-0 text-dark"><i class="fas fa-boxes"></i> Kits de Inventario</h1>
-        <a href="{{ route('admin.kits.create') }}" class="btn btn-primary">
-            <i class="fas fa-plus-circle"></i> Crear Nuevo Kit
-        </a>
+        @can('kits_crear')
+            <a href="{{ route('admin.kits.create') }}" class="btn btn-primary">
+                <i class="fas fa-plus-circle"></i> Crear Nuevo Kit
+            </a>
+        @endcan
     </div>
 @stop
 
+{{-- Estilos para corregir visualización --}}
 @section('css')
     <style>
-        table.dataTable.dtr-inline.collapsed > tbody > tr > td:first-child:before, table.dataTable.dtr-inline.collapsed > tbody > tr > th:first-child:before { left: 4px; }
-        .table.dataTable.dtr-inline.collapsed > tbody > tr > td:first-child { padding-left: 10px !important; }
+        /* Ajuste para el botón de expansión en móvil */
+        table.dataTable.dtr-inline.collapsed > tbody > tr > td:first-child:before, 
+        table.dataTable.dtr-inline.collapsed > tbody > tr > th:first-child:before { 
+            left: 4px; 
+        }
+        /* Quitar padding extra en PC */
+        .table.dataTable.dtr-inline.collapsed > tbody > tr > td:first-child { 
+            padding-left: 10px !important; 
+        }
     </style>
 @stop
 
 @section('content')
-    {{-- FILTROS --}}
+    
+    {{-- FILTROS (Opcional, si el controlador los soporta) --}}
     <div class="card card-outline card-primary collapsed-card">
         <div class="card-header">
             <h3 class="card-title"><i class="fas fa-filter"></i> Filtros</h3>
@@ -57,6 +69,7 @@
             <div class="card card-outline card-info">
                 <div class="card-body p-4">
                     <div class="table-responsive">
+                        {{-- 🔑 ID 'kitsTable', clases 'display nowrap' --}}
                         <table id="kitsTable" class="table table-striped table-bordered display nowrap" style="width:100%">
                             <thead>
                                 <tr>
@@ -74,11 +87,16 @@
                                         <td><strong>{{ $kit->name }}</strong></td>
                                         <td>
                                             <div class="btn-group btn-group-sm" role="group">
-                                                <a href="{{ route('admin.kits.edit', $kit) }}" class="btn btn-default text-primary" title="Editar"><i class="fas fa-edit"></i></a>
-                                                <form action="{{ route('admin.kits.destroy', $kit) }}" method="POST" style="display:inline;" onsubmit="return confirm('¿Eliminar Kit?');">
-                                                    @csrf @method('DELETE')
-                                                    <button type="submit" class="btn btn-default text-danger" title="Eliminar"><i class="fas fa-trash"></i></button>
-                                                </form>
+                                                @can('kits_editar')
+                                                    <a href="{{ route('admin.kits.edit', $kit) }}" class="btn btn-default text-primary" title="Editar"><i class="fas fa-edit"></i></a>
+                                                @endcan
+                                                
+                                                @can('kits_eliminar')
+                                                    <form action="{{ route('admin.kits.destroy', $kit) }}" method="POST" style="display:inline;" onsubmit="return confirm('¿Está seguro de eliminar este Kit?');">
+                                                        @csrf @method('DELETE')
+                                                        <button type="submit" class="btn btn-default text-danger" title="Eliminar"><i class="fas fa-trash"></i></button>
+                                                    </form>
+                                                @endcan
                                             </div>
                                         </td>
                                         <td data-order="{{ $kit->unit_price }}">${{ number_format($kit->unit_price, 2) }}</td>
@@ -91,6 +109,7 @@
                         </table>
                     </div>
                 </div>
+                {{-- Se elimina la paginación manual de Laravel --}}
             </div>
         </div>
     </div>
@@ -100,14 +119,51 @@
     <script>
         $(document).ready(function() {
             const kitsTable = $('#kitsTable').DataTable({
-                "responsive": true, "paging": true, "lengthChange": true, "searching": true, "ordering": true, "info": true, "autoWidth": false,
-                "order": [[ 1, "asc" ]],
-                "language": { "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Spanish.json" },
+                "responsive": true, 
+                "paging": true, 
+                "lengthChange": true, 
+                "searching": true, 
+                "ordering": true, 
+                "info": true, 
+                "autoWidth": false,
+                "order": [[ 1, "asc" ]], // Ordenar por Nombre (índice 1)
+                
+                // 🔑 Traducción Nativa
+                "language": {
+                    "decimal": "",
+                    "emptyTable": "No hay información disponible",
+                    "info": "Mostrando _START_ a _END_ de _TOTAL_ registros",
+                    "infoEmpty": "Mostrando 0 a 0 de 0 registros",
+                    "infoFiltered": "(Filtrado de _MAX_ total registros)",
+                    "infoPostFix": "",
+                    "thousands": ",",
+                    "lengthMenu": "Mostrar _MENU_ registros",
+                    "loadingRecords": "Cargando...",
+                    "processing": "Procesando...",
+                    "search": "Buscar:",
+                    "zeroRecords": "Sin resultados encontrados",
+                    "paginate": {
+                        "first": "Primero",
+                        "last": "Último",
+                        "next": "Siguiente",
+                        "previous": "Anterior"
+                    }
+                },
+
                 "columnDefs": [
-                    { "orderable": false, "targets": [2] },
-                    { "responsivePriority": 1, "targets": 1 }, { "responsivePriority": 2, "targets": 2 }, { "responsivePriority": 3, "targets": 0 }, { "responsivePriority": 100, "targets": [3, 4] }
+                    { "orderable": false, "targets": [2] }, // Acciones no ordenables
+                    
+                    // 🔑 PRIORIDADES MÓVIL
+                    { "responsivePriority": 1, "targets": 1 }, // Nombre
+                    { "responsivePriority": 2, "targets": 2 }, // Acciones
+                    { "responsivePriority": 3, "targets": 0 }, // ID
+                    
+                    // Ocultar resto en móvil
+                    { "responsivePriority": 100, "targets": [3, 4] } 
                 ]
             });
+            
+            // Ajuste de renderizado
             setTimeout(function() { kitsTable.columns.adjust().responsive.recalc(); }, 500);
         });
     </script>

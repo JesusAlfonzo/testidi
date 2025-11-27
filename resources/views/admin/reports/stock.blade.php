@@ -3,10 +3,10 @@
 @section('title', 'Reporte de Stock Actual')
 
 {{-- Plugins necesarios --}}
-@section('plugins.Datatables', true) 
-@section('plugins.DatatablesPlugins', true) 
-@section('plugins.Responsive', true) 
-@section('plugins.Select2', true) {{-- Carga CSS y JS de Select2 + Tema Bootstrap4 --}}
+@section('plugins.Datatables', true)
+@section('plugins.DatatablesPlugins', true)
+@section('plugins.Responsive', true)
+@section('plugins.Select2', true)
 
 @section('content_header')
     <h1><i class="fas fa-chart-bar"></i> Reporte de Stock Actual</h1>
@@ -14,19 +14,43 @@
 
 @section('css')
     <style>
-        /* Ajustes para la tabla responsive */
-        table.dataTable.dtr-inline.collapsed > tbody > tr > td:first-child:before, 
-        table.dataTable.dtr-inline.collapsed > tbody > tr > th:first-child:before { left: 4px; }
-        .table.dataTable.dtr-inline.collapsed > tbody > tr > td:first-child { padding-left: 10px !important; }
+        /* Ajustes para DataTables Responsive */
+        table.dataTable.dtr-inline.collapsed>tbody>tr>td:first-child:before,
+        table.dataTable.dtr-inline.collapsed>tbody>tr>th:first-child:before {
+            left: 4px;
+        }
 
-        /* Ajuste opcional para igualar alturas si usas tema estándar */
-        .select2-container .select2-selection--single { height: 38px !important; }
-        .select2-container--default .select2-selection--single .select2-selection__arrow { height: 36px !important; }
+        .table.dataTable.dtr-inline.collapsed>tbody>tr>td:first-child {
+            padding-left: 10px !important;
+        }
+
+        /* 🔑 AJUSTE VISUAL PARA SELECT2: Altura y Alineación */
+        /* Esto corrige que se vea "apretado" o más pequeño que los inputs normales */
+        .select2-container .select2-selection--single {
+            height: calc(2.25rem + 2px) !important;
+            /* Altura estándar de Bootstrap 4 */
+            padding: 0.375rem 0.75rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 100% !important;
+            top: 0 !important;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            padding-left: 0;
+            line-height: normal;
+            margin-top: -2px;
+            color: #495057;
+            /* Color de texto estándar de BS4 */
+        }
     </style>
 @stop
 
 @section('content')
-    
+
     {{-- 🔎 FILTROS DE BÚSQUEDA --}}
     <div class="card card-outline card-primary collapsed-card">
         <div class="card-header">
@@ -43,8 +67,9 @@
                             <label>Categoría</label>
                             <select name="category_id" class="form-control select2">
                                 <option value="">Todas</option>
-                                @foreach($categories as $id => $name)
-                                    <option value="{{ $id }}" {{ request('category_id') == $id ? 'selected' : '' }}>{{ $name }}</option>
+                                @foreach ($categories as $id => $name)
+                                    <option value="{{ $id }}"
+                                        {{ request('category_id') == $id ? 'selected' : '' }}>{{ $name }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -54,8 +79,9 @@
                             <label>Ubicación</label>
                             <select name="location_id" class="form-control select2">
                                 <option value="">Todas</option>
-                                @foreach($locations as $id => $name)
-                                    <option value="{{ $id }}" {{ request('location_id') == $id ? 'selected' : '' }}>{{ $name }}</option>
+                                @foreach ($locations as $id => $name)
+                                    <option value="{{ $id }}"
+                                        {{ request('location_id') == $id ? 'selected' : '' }}>{{ $name }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -63,17 +89,20 @@
                     <div class="col-md-3">
                         <div class="form-group">
                             <label>Estado de Stock</label>
-                            {{-- Aplicamos select2 aquí también para uniformidad visual --}}
+                            {{-- También aplicamos select2 aquí para que se vea uniforme --}}
                             <select name="stock_status" class="form-control select2">
                                 <option value="">Todos</option>
-                                <option value="low" {{ request('stock_status') == 'low' ? 'selected' : '' }}>Bajo Stock (Alerta)</option>
-                                <option value="ok" {{ request('stock_status') == 'ok' ? 'selected' : '' }}>Óptimo</option>
+                                <option value="low" {{ request('stock_status') == 'low' ? 'selected' : '' }}>Bajo Stock
+                                    (Alerta)</option>
+                                <option value="ok" {{ request('stock_status') == 'ok' ? 'selected' : '' }}>Óptimo
+                                </option>
                             </select>
                         </div>
                     </div>
                     <div class="col-md-3 d-flex align-items-end">
                         <div class="form-group w-100">
-                            <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-search"></i> Filtrar Resultados</button>
+                            <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-search"></i> Filtrar
+                                Resultados</button>
                         </div>
                     </div>
                 </div>
@@ -86,11 +115,12 @@
         <div class="card-header">
             <h3 class="card-title">Resultados ({{ count($products) }} productos encontrados)</h3>
             <div class="card-tools">
-                {{-- Botones de Exportación --}}
-                <a href="{{ route('admin.reports.stock.excel', request()->query()) }}" class="btn btn-success btn-sm" title="Descargar Excel">
+                <a href="{{ route('admin.reports.stock.excel', request()->query()) }}" class="btn btn-success btn-sm"
+                    title="Descargar Excel">
                     <i class="fas fa-file-excel"></i> Excel
                 </a>
-                <a href="{{ route('admin.reports.stock.pdf', request()->query()) }}" class="btn btn-danger btn-sm" target="_blank" title="Ver PDF">
+                <a href="{{ route('admin.reports.stock.pdf', request()->query()) }}" class="btn btn-danger btn-sm"
+                    target="_blank" title="Ver PDF">
                     <i class="fas fa-file-pdf"></i> PDF
                 </a>
             </div>
@@ -116,14 +146,17 @@
                             <tr data-stock-actual="{{ $product->stock }}">
                                 <td>
                                     @if ($isLow)
-                                        <span class="badge badge-danger">Bajo</span>
+                                        <span class="badge badge-danger"><i class="fas fa-exclamation-triangle"></i>
+                                            Bajo</span>
                                     @else
                                         <span class="badge badge-success">Óptimo</span>
                                     @endif
                                 </td>
                                 <td><strong>{{ $product->name }}</strong></td>
                                 <td>
-                                    <h4><span class="badge badge-{{ $isLow ? 'danger' : 'success' }}">{{ $product->stock }}</span></h4>
+                                    <h4><span
+                                            class="badge badge-{{ $isLow ? 'danger' : 'success' }}">{{ $product->stock }}</span>
+                                    </h4>
                                 </td>
                                 <td><span class="text-muted">{{ $product->code }}</span></td>
                                 <td>{{ $product->unit->abbreviation ?? 'N/A' }}</td>
@@ -140,33 +173,83 @@
 @section('js')
     <script>
         $(document).ready(function() {
-            // 🔑 MEJORA VISUAL: Configuración de Select2
+            // 🔑 Inicializar Select2 con configuración de ancho
             $('.select2').select2({
-                theme: 'bootstrap4', // Usa el tema integrado de AdminLTE para que coincida con los inputs
-                width: '100%',       // Fuerza el ancho al 100% del contenedor (evita que se vea apretado)
+                theme: 'bootstrap4', // Intenta usar el tema bootstrap4 si está disponible
+                width: '100%', // Fuerza el ancho al 100% del contenedor padre
                 placeholder: 'Seleccione una opción',
                 allowClear: true
             });
 
             const stockTable = $('#stockTable').DataTable({
-                "responsive": true, 
+                "responsive": true,
                 "paging": true,
                 "lengthChange": true,
                 "searching": true,
                 "ordering": true,
                 "info": true,
-                "autoWidth": false, 
-                "order": [[ 0, "asc" ]],
-                "language": { "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Spanish.json" },
-                "columnDefs": [
-                    { "responsivePriority": 1, "targets": 0 },
-                    { "responsivePriority": 2, "targets": 1 },
-                    { "responsivePriority": 3, "targets": 2 },
-                    { "responsivePriority": 100, "targets": [3, 4, 5] }
+                "autoWidth": false,
+                "order": [
+                    [0, "asc"]
+                ],
+
+                // Traducción Nativa
+                "language": {
+                    "decimal": "",
+                    "emptyTable": "No hay información disponible",
+                    "info": "Mostrando _START_ a _END_ de _TOTAL_ registros",
+                    "infoEmpty": "Mostrando 0 a 0 de 0 registros",
+                    "infoFiltered": "(Filtrado de _MAX_ total registros)",
+                    "infoPostFix": "",
+                    "thousands": ",",
+                    "lengthMenu": "Mostrar _MENU_ registros",
+                    "loadingRecords": "Cargando...",
+                    "processing": "Procesando...",
+                    "search": "Buscar:",
+                    "zeroRecords": "Sin resultados encontrados",
+                    "paginate": {
+                        "first": "Primero",
+                        "last": "Último",
+                        "next": "Siguiente",
+                        "previous": "Anterior"
+                    }
+                },
+
+                "columnDefs": [{
+                        "targets": 2,
+                        "render": function(data, type, row) {
+                            if (type === 'sort' || type === 'type') {
+                                return $('<div>').html(data).find('span').text().trim();
+                            }
+                            return data;
+                        }
+                    },
+                    {
+                        "targets": 0,
+                        "orderData": 2
+                    },
+                    {
+                        "responsivePriority": 1,
+                        "targets": 0
+                    },
+                    {
+                        "responsivePriority": 2,
+                        "targets": 1
+                    },
+                    {
+                        "responsivePriority": 3,
+                        "targets": 2
+                    },
+                    {
+                        "responsivePriority": 100,
+                        "targets": [3, 4, 5]
+                    }
                 ]
             });
-            
-            setTimeout(function() { stockTable.columns.adjust().responsive.recalc(); }, 500);
+
+            setTimeout(function() {
+                stockTable.columns.adjust().responsive.recalc();
+            }, 500);
         });
     </script>
 @endsection

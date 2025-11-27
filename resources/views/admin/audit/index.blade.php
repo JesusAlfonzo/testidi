@@ -35,7 +35,8 @@
     {{-- 🔎 FILTROS DE BÚSQUEDA --}}
     <div class="card card-outline card-primary collapsed-card">
         <div class="card-header">
-            <h3 class="card-title"><i class="fas fa-filter"></i> Filtros Avanzados</h3>
+            <h3 class="card-title
+            "><i class="fas fa-filter"></i> Filtros Avanzados</h3>
             <div class="card-tools">
                 <button type="button" class="btn btn-tool" data-card-widget="collapse"><i class="fas fa-plus"></i></button>
             </div>
@@ -112,7 +113,7 @@
         <div class="card-header">
             <h3 class="card-title">Registro de Actividades ({{ $activities->total() }} eventos encontrados)</h3>
         </div>
-        <div class="card-body p-0">
+        <div class="card-body p-4">
             <div class="table-responsive">
                 <table id="auditTable" class="table table-striped table-bordered display nowrap" style="width:100%">
                     <thead>

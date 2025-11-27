@@ -2,30 +2,35 @@
 
 @section('title', 'Maestros | Categorías')
 
-{{-- Plugins necesarios: DataTables, Plugins y Responsive --}}
+{{-- Plugins necesarios --}}
 @section('plugins.Datatables', true) 
 @section('plugins.DatatablesPlugins', true) 
 @section('plugins.Responsive', true) 
 
 @section('content_header')
-    <h1 class="m-0 text-dark"><i class="fas fa-layer-group"></i> Categorías de Inventario</h1>
+    <div class="d-flex justify-content-between">
+        <h1 class="m-0 text-dark"><i class="fas fa-layer-group"></i> Categorías de Inventario</h1>
+        @can('categorias_crear')
+            <a href="{{ route('admin.categories.create') }}" class="btn btn-primary">
+                <i class="fas fa-plus-circle"></i> Crear Nueva Categoría
+            </a>
+        @endcan
+    </div>
 @stop
 
-{{-- 🔑 AJUSTE CRÍTICO EN EL CSS (Para eliminar el padding extra del Responsive en PC) --}}
+{{-- Estilos para corregir visualización --}}
 @section('css')
     <style>
-        /* La clase dtr-details es el div que contiene la información expandida en móvil. */
-        /* Eliminamos el padding izquierdo que genera el espacio extra en desktop cuando no hay expansión. */
+        /* Ajuste para el botón de expansión en móvil */
         table.dataTable.dtr-inline.collapsed > tbody > tr > td:first-child:before, 
-        table.dataTable.dtr-inline.collapsed > tbody > tr > th:first-child:before {
-            left: 4px; /* Movemos el botón de expansión un poco para que no quede pegado */
+        table.dataTable.dtr-inline.collapsed > tbody > tr > th:first-child:before { 
+            left: 4px; 
+            top: 50%;
+            transform: translateY(-50%);
         }
-        
-        /* 🔑 Solución principal: Eliminar el padding forzado por Datatables en la primera columna */
-        /* Esto elimina el desplazamiento horizontal en desktop */
-        .table.dataTable.dtr-inline.collapsed > tbody > tr > td:first-child, 
-        .table.dataTable.dtr-inline.collapsed > tbody > tr > th:first-child {
-            padding-left: 10px !important; /* Ajustar este valor a un tamaño pequeño si no lo quieres a 0 */
+        /* Quitar padding extra en PC */
+        .table.dataTable.dtr-inline.collapsed > tbody > tr > td:first-child { 
+            padding-left: 10px !important; 
         }
     </style>
 @stop
@@ -33,30 +38,17 @@
 @section('content')
     <div class="row">
         <div class="col-12">
-            {{-- Mensajes de feedback --}}
-            @if(session('success'))
-                <div class="alert alert-success">{{ session('success') }}</div>
-            @endif
-            @if(session('error'))
-                <div class="alert alert-danger">{{ session('error') }}</div>
-            @endif
+            @include('admin.partials.session-messages')
 
             <div class="card card-outline card-info">
                 <div class="card-header">
                     <h3 class="card-title">Listado de Categorías</h3>
-                    <div class="card-tools">
-                        @can('categorias_crear')
-                            <a href="{{ route('admin.categories.create') }}" class="btn btn-primary btn-sm">
-                                <i class="fas fa-plus-circle"></i> Crear Nueva Categoría
-                            </a>
-                        @endcan
-                    </div>
                 </div>
 
                 <div class="card-body p-4">
-                    {{-- 🔑 table-responsive y clases de Datatables (Se eliminó style="width:100%") --}}
                     <div class="table-responsive">
-                        <table id="categoriesTable" class="table table-striped table-bordered display nowrap">
+                        {{-- 🔑 ID 'categoriesTable', clases 'display nowrap' --}}
+                        <table id="categoriesTable" class="table table-striped table-bordered display nowrap" style="width:100%">
                             <thead>
                                 <tr>
                                     {{-- Prioridad Alta en Móvil --}}
@@ -75,7 +67,7 @@
                                         <td>{{ $category->id }}</td>
                                         <td><strong>{{ $category->name }}</strong></td>
                                         <td>
-                                            <div class="btn-group btn-group-sm" role="group" aria-label="Acciones de Categoría">
+                                            <div class="btn-group btn-group-sm" role="group">
                                                 @can('categorias_editar')
                                                     <a href="{{ route('admin.categories.edit', $category) }}" class="btn btn-default text-primary" title="Editar">
                                                         <i class="fas fa-edit"></i>
@@ -83,10 +75,9 @@
                                                 @endcan
 
                                                 @can('categorias_eliminar')
-                                                    <form action="{{ route('admin.categories.destroy', $category) }}" method="POST" class="d-inline">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button type="submit" class="btn btn-default text-danger" onclick="return confirm('⚠️ ADVERTENCIA: ¿Está seguro de eliminar esta categoría? Esto podría afectar a productos asociados.')" title="Eliminar">
+                                                    <form action="{{ route('admin.categories.destroy', $category) }}" method="POST" style="display:inline-block;">
+                                                        @csrf @method('DELETE')
+                                                        <button type="submit" class="btn btn-default text-danger" onclick="return confirm('⚠️ ADVERTENCIA: ¿Está seguro de eliminar esta categoría?')" title="Eliminar">
                                                             <i class="fas fa-trash"></i>
                                                         </button>
                                                     </form>
@@ -98,14 +89,13 @@
                                         <td>{{ $category->user->name ?? 'Sistema' }}</td>
                                     </tr>
                                 @empty
-                                    <tr>
-                                        <td colspan="5" class="text-center">No hay categorías registradas.</td>
-                                    </tr>
+                                    {{-- DataTables maneja el vacío --}}
                                 @endforelse
                             </tbody>
                         </table>
-                    </div> {{-- Cierre de table-responsive --}}
+                    </div>
                 </div>
+                {{-- Eliminamos la paginación manual --}}
             </div>
         </div>
     </div>
@@ -114,36 +104,53 @@
 @section('js')
     <script>
         $(document).ready(function() {
-            // Inicializar Datatables
             const categoriesTable = $('#categoriesTable').DataTable({
                 "responsive": true, 
-                "paging": true,
-                "lengthChange": true,
-                "searching": true,
-                "ordering": true,
-                "info": true,
-                "autoWidth": false, // 🔑 Importante: Dejar que Datatables decida el ancho
-                "order": [[ 1, "asc" ]], 
+                "paging": true, 
+                "lengthChange": true, 
+                "searching": true, 
+                "ordering": true, 
+                "info": true, 
+                "autoWidth": false,
+                "order": [[ 1, "asc" ]], // Ordenar por Nombre
+                
+                // 🔑 Traducción Nativa (Sin CDN)
                 "language": {
-                    "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Spanish.json"
+                    "decimal": "",
+                    "emptyTable": "No hay información disponible",
+                    "info": "Mostrando _START_ a _END_ de _TOTAL_ registros",
+                    "infoEmpty": "Mostrando 0 a 0 de 0 registros",
+                    "infoFiltered": "(Filtrado de _MAX_ total registros)",
+                    "infoPostFix": "",
+                    "thousands": ",",
+                    "lengthMenu": "Mostrar _MENU_ registros",
+                    "loadingRecords": "Cargando...",
+                    "processing": "Procesando...",
+                    "search": "Buscar:",
+                    "zeroRecords": "Sin resultados encontrados",
+                    "paginate": {
+                        "first": "Primero",
+                        "last": "Último",
+                        "next": "Siguiente",
+                        "previous": "Anterior"
+                    }
                 },
+
                 "columnDefs": [
-                    { "orderable": false, "targets": [2] }, // Acciones (índice 2)
+                    { "orderable": false, "targets": [2] }, // Acciones no ordenables
                     
-                    // PRIORIDADES MÓVIL:
+                    // 🔑 PRIORIDADES MÓVIL
                     { "responsivePriority": 1, "targets": 1 }, // Nombre
                     { "responsivePriority": 2, "targets": 2 }, // Acciones
                     { "responsivePriority": 3, "targets": 0 }, // ID
                     
-                    // Bajas prioridades:
-                    { "responsivePriority": 100, "targets": [3, 4] } // Descripción, Registrado Por
+                    // Ocultar el resto
+                    { "responsivePriority": 100, "targets": [3, 4] } 
                 ]
             });
             
-            // Forzar Redibujo para corregir renderizado inicial
-            setTimeout(function() {
-                categoriesTable.columns.adjust().responsive.recalc();
-            }, 500);
+            // Ajuste de renderizado
+            setTimeout(function() { categoriesTable.columns.adjust().responsive.recalc(); }, 500);
         });
     </script>
 @endsection

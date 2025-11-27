@@ -157,8 +157,30 @@
                 "ordering": true,
                 "info": true,
                 "autoWidth": false,
-                "order": [[ 5, "desc" ]], // Ordenar por Fecha Solicitud (índice 5) descendente
-                "language": { "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Spanish.json" },
+                "order": [[ 5, "desc" ]], 
+                
+                // 🔑 SOLUCIÓN: Traducción incrustada directamente (Funciona en cualquier versión)
+                "language": {
+                    "decimal": "",
+                    "emptyTable": "No hay información disponible",
+                    "info": "Mostrando _START_ a _END_ de _TOTAL_ registros",
+                    "infoEmpty": "Mostrando 0 a 0 de 0 registros",
+                    "infoFiltered": "(Filtrado de _MAX_ total registros)",
+                    "infoPostFix": "",
+                    "thousands": ",",
+                    "lengthMenu": "Mostrar _MENU_ registros",
+                    "loadingRecords": "Cargando...",
+                    "processing": "Procesando...",
+                    "search": "Buscar:",
+                    "zeroRecords": "Sin resultados encontrados",
+                    "paginate": {
+                        "first": "Primero",
+                        "last": "Último",
+                        "next": "Siguiente",
+                        "previous": "Anterior"
+                    }
+                },
+
                 "columnDefs": [
                     { "orderable": false, "targets": [3] }, // Acciones no ordenables
                     { "type": "date", "targets": 5 },       // Tipo fecha
@@ -171,6 +193,7 @@
                 ]
             });
             
+            // Ajuste para AdminLTE
             setTimeout(function() { requestsTable.columns.adjust().responsive.recalc(); }, 500);
         });
     </script>
