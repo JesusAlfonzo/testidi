@@ -313,11 +313,11 @@ return [
         // 🏭 GESTIÓN DE INVENTARIO
         [
             'header' => 'Gestión de inventario',
+            'can' => 'solicitudes_ver'
         ],
         [
             'text'    => 'Inventario',
             'icon'    => 'fas fa-fw fa-cubes',
-            'can'     => 'productos_ver',
             'submenu' => [
                 [
                     'text' => 'Listado de Productos',
@@ -386,6 +386,7 @@ return [
         // 📈 ANÁLISIS
         [
             'header' => 'Análisis y Reportes',
+            'can' => 'reportes_ver'
         ],
         [
             'text'    => 'Reportes',
@@ -410,6 +411,7 @@ return [
         // 🛡️ ADMINISTRACIÓN DEL SISTEMA
         [
             'header' => 'Administración del sistema',
+            'can' => 'usuarios_ver'
         ],
         [
             'text'    => 'Seguridad',
