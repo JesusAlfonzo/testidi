@@ -141,7 +141,7 @@ class RolesAndPermissionsSeeder extends Seeder
             // Solicitudes
             'solicitudes_ver', 'solicitudes_aprobar', 'solicitudes_crear',
             // Reportes
-            'reportes_stock',
+            'reportes_stock', 'reportes_ver', 'reportes_kardex','reportes_movimientos',
         ]);
 
 
