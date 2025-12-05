@@ -4,7 +4,7 @@
 @section('plugins.Chartjs', true)
 
 @section('content_header')
-    <h1><i class="fas fa-eye"></i> Supervisión Operativa</h1>
+    <h1><i class="fas fa-eye text-primary"></i> Supervisión Operativa</h1>
 @stop
 
 @section('content')
@@ -30,6 +30,11 @@
             <div class="card card-info card-outline">
                 <div class="card-header">
                     <h3 class="card-title">Actividad Semanal</h3>
+                    <div class="card-tools">
+                        <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                    </div>
                 </div>
                 <div class="card-body">
                     <canvas id="supervisorLineChart" style="height: 250px; width: 100%;"></canvas>
@@ -37,9 +42,14 @@
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card card-secondary">
+            <div class="card card-secondary card-outline">
                 <div class="card-header">
                     <h3 class="card-title">Distribución de Estado</h3>
+                    <div class="card-tools">
+                        <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                    </div>
                 </div>
                 <div class="card-body">
                     <canvas id="supervisorDonutChart" style="height: 250px; width: 100%;"></canvas>
@@ -52,6 +62,8 @@
 @push('js')
 <script>
     $(function() {
+        'use strict'
+
         // Gráfico de Línea (Igual al admin pero con ID único para evitar conflictos si se cachea)
         var lineCtx = $('#supervisorLineChart').get(0).getContext('2d');
         new Chart(lineCtx, {
@@ -62,10 +74,24 @@
                     label: 'Solicitudes',
                     data: @json($lineChartData),
                     borderColor: '#17a2b8',
-                    fill: false
+                    pointBackgroundColor: '#17a2b8',
+                    pointRadius: 4,
+                    fill: false,
+                    tension: 0.4
                 }]
             },
-            options: { responsive: true, maintainAspectRatio: false, scales: { yAxes: [{ ticks: { beginAtZero: true, precision: 0 } }] } }
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false, 
+                scales: { 
+                    yAxes: [{ 
+                        ticks: { beginAtZero: true, precision: 0 },
+                        gridLines: { display: true, color: '#efefef' }
+                    }],
+                    xAxes: [{ gridLines: { display: false } }]
+                },
+                legend: { display: false }
+            }
         });
 
         // Gráfico Donut
@@ -79,7 +105,11 @@
                     backgroundColor: ['#ffc107', '#28a745', '#dc3545'],
                 }]
             },
-            options: { responsive: true, maintainAspectRatio: false, legend: { position: 'bottom' } }
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false, 
+                legend: { position: 'bottom' } 
+            }
         });
     });
 </script>

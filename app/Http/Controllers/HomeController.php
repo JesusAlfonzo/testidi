@@ -24,20 +24,24 @@ class HomeController extends Controller
     {
         $user = Auth::user();
 
+        // 1. Superadmin (Vista Global + Sistema)
         if ($user->hasRole('Superadmin') || $user->hasRole('Super Administrador')) {
             return $this->superAdminDashboard();
         } 
+        // 2. Logística (Vista Operativa de Inventario)
         elseif ($user->hasRole('Logistica') || $user->hasRole('Encargado Inventario')) {
             return $this->logisticaDashboard();
         } 
+        // 3. Supervisor (Vista de Auditoría/Métricas)
         elseif ($user->hasRole('Supervisor')) {
             return $this->supervisorDashboard();
         } 
+        // 4. Solicitante (Vista Personal)
         elseif ($user->hasRole('Solicitante')) {
             return $this->solicitanteDashboard($user);
         }
 
-        // Vista de respaldo para usuarios sin rol definido
+        // 5. Fallback: Vista de respaldo para usuarios sin rol definido
         return view('home'); 
     }
 
@@ -50,7 +54,7 @@ class HomeController extends Controller
         // Obtiene estadísticas globales de inventario y gráficos
         $data = $this->getGlobalInventoryStats();
         
-        // Datos exclusivos de Superadmin (Sistema)
+        // Datos exclusivos de Superadmin (Salud del Sistema)
         $data['usersCount'] = User::count();
         $data['rolesCount'] = Role::count();
         
@@ -66,14 +70,14 @@ class HomeController extends Controller
 
     private function supervisorDashboard()
     {
-        // Supervisor ve métricas similares a logística/admin
+        // Supervisor ve métricas similares a logística/admin (foco en tendencias)
         $data = $this->getGlobalInventoryStats();
         return view('admin.dashboards.supervisor', $data);
     }
 
     private function solicitanteDashboard($user)
     {
-        // El Solicitante SOLO ve sus propios datos. Consulta muy ligera.
+        // El Solicitante SOLO ve sus propios datos. Consulta optimizada.
         $myPendingCount = InventoryRequest::where('requester_id', $user->id)->where('status', 'Pending')->count();
         $myApprovedCount = InventoryRequest::where('requester_id', $user->id)->where('status', 'Approved')->count();
         $myRejectedCount = InventoryRequest::where('requester_id', $user->id)->where('status', 'Rejected')->count();
@@ -111,7 +115,7 @@ class HomeController extends Controller
         $lineChartLabels = [];
         $lineChartData = [];
         
-        // Rellenar días vacíos con 0
+        // Rellenar días vacíos con 0 para continuidad visual
         for ($i = 6; $i >= 0; $i--) {
             $date = Carbon::now()->subDays($i)->format('Y-m-d');
             $record = $dailyRequests->firstWhere('date', $date);
