@@ -139,7 +139,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'kits_ver', 'kits_crear', 'kits_editar', 'kits_eliminar',
             'entradas_ver', 'entradas_crear', 'entradas_eliminar',
             // Solicitudes
-            'solicitudes_ver', 'solicitudes_aprobar',
+            'solicitudes_ver', 'solicitudes_aprobar', 'solicitudes_crear',
             // Reportes
             'reportes_stock',
         ]);
