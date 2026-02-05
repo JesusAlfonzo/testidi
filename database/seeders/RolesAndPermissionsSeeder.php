@@ -93,6 +93,15 @@ class RolesAndPermissionsSeeder extends Seeder
 
             // MÓDULO AUDITORÍA
             'auditoria_ver',
+
+            // MÓDULO ÓRDENES DE COMPRA
+            'ordenes_compra_ver',
+            'ordenes_compra_crear',
+            'ordenes_compra_editar',
+            'ordenes_compra_eliminar',
+            'ordenes_compra_aprobar',
+            'ordenes_compra_rechazar',
+            'ordenes_compra_anular',
         ];
 
         foreach ($permissions as $permission) {
@@ -140,6 +149,8 @@ class RolesAndPermissionsSeeder extends Seeder
             'entradas_ver', 'entradas_crear', 'entradas_eliminar',
             // Solicitudes
             'solicitudes_ver', 'solicitudes_aprobar', 'solicitudes_crear',
+            // Órdenes de Compra
+            'ordenes_compra_ver', 'ordenes_compra_crear', 'ordenes_compra_editar', 'ordenes_compra_eliminar',
             // Reportes
             'reportes_stock', 'reportes_ver', 'reportes_kardex','reportes_movimientos',
         ]);
