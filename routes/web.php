@@ -14,7 +14,9 @@ use App\Http\Controllers\StockInController;
 use App\Http\Controllers\RequestController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\KitController;
-use App\Http\Controllers\ActivityLogController; // 🔑 IMPORTANTE: Importar el controlador
+use App\Http\Controllers\ActivityLogController;
+use App\Http\Controllers\PurchaseOrdersControllers;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -50,6 +52,9 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     // MÓDULO KITS
     Route::resource('kits', KitController::class);
     Route::post('kits/{kit}/components', [KitController::class, 'syncComponents'])->name('kits.sync_components');
+
+    // MÓDULO ORDENES DE COMPRAS
+    Route::resource('purchaseOrders', PurchaseOrdersControllers::class);
 
     // MOVIMIENTOS - ENTRADAS DE STOCK
     Route::resource('stock-in', StockInController::class)->except(['edit', 'update']);
@@ -106,5 +111,4 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
             ->name('kardex.pdf')
             ->middleware('can:kardex_ver');
     });
-
 });
