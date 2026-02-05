@@ -309,6 +309,25 @@ return [
             'url'  => '/home',
             'icon' => 'fas fa-fw fa-home',
         ],
+        
+        // GESTION DE COMPRAS
+        [
+            'header' => 'Gestión de compras',
+            // 'can' => 'compras_ver'
+        ],
+        [
+            'text'    => 'Compras',
+            'icon'    => 'fas fa-fw fa-shopping-cart',
+            'submenu' => [
+                [
+                    'text' => 'Listado de Compras',
+                    'url'  => 'admin/purchaseOrders',
+                    'icon' => 'fas fa-fw fa-shopping-cart',
+                    // 'can'  => 'compras_ver',
+                ],
+            ],
+        ],
+
 
         // 🏭 GESTIÓN DE INVENTARIO
         [
