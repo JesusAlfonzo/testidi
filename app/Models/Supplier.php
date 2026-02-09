@@ -34,4 +34,10 @@ class Supplier extends Model
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs();
     }
+
+    // Un proveedor tiene MUCHAS cotizaciones
+    public function quotes()
+    {
+        return $this->hasMany(PurchaseQuote::class);
+    }
 }

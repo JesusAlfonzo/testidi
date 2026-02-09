@@ -59,6 +59,8 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
 
     // MÓDULO COTIZACIONES
     Route::resource('quotations', QuotationController::class);
+    Route::post('quotations/{quotation}/approve', [QuotationController::class, 'approve'])->name('quotations.approve');
+    Route::post('quotations/{quotation}/reject', [QuotationController::class, 'reject'])->name('quotations.reject');
 
     // MOVIMIENTOS - ENTRADAS DE STOCK
     Route::resource('stock-in', StockInController::class)->except(['edit', 'update']);
