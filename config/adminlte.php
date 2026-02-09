@@ -320,11 +320,18 @@ return [
             'icon'    => 'fas fa-fw fa-shopping-cart',
             'submenu' => [
                 [
-                    'text' => 'Listado de Compras',
+                    'text' => 'Cotizaciones',
+                    'url'  => 'admin/quotations',
+                    'icon' => 'fas fa-fw fa-file-invoice',
+                    // 'can'  => 'cotizaciones_ver',
+                ],
+                [
+                    'text' => 'Ordenes de Compra',
                     'url'  => 'admin/purchaseOrders',
                     'icon' => 'fas fa-fw fa-shopping-cart',
                     // 'can'  => 'compras_ver',
                 ],
+
             ],
         ],
 
