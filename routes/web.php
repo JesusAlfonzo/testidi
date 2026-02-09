@@ -15,7 +15,8 @@ use App\Http\Controllers\RequestController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\KitController;
 use App\Http\Controllers\ActivityLogController;
-use App\Http\Controllers\PurchaseOrdersControllers;
+use App\Http\Controllers\PurchaseOrdersController;
+use App\Http\Controllers\QuotationController;
 
 
 /*
@@ -54,7 +55,10 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::post('kits/{kit}/components', [KitController::class, 'syncComponents'])->name('kits.sync_components');
 
     // MÓDULO ORDENES DE COMPRAS
-    Route::resource('purchaseOrders', PurchaseOrdersControllers::class);
+    Route::resource('purchaseOrders', PurchaseOrdersController::class);
+
+    // MÓDULO COTIZACIONES
+    Route::resource('quotations', QuotationController::class);
 
     // MOVIMIENTOS - ENTRADAS DE STOCK
     Route::resource('stock-in', StockInController::class)->except(['edit', 'update']);
