@@ -6,9 +6,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\PurchaseQuote;
 use App\Models\PurchaseQuoteItem;
+use App\Models\RequestForQuotation;
 use App\Models\Supplier;
 use App\Models\Product;
-use Carbon\Carbon;
 
 class QuotationController extends Controller
 {
@@ -18,44 +18,47 @@ class QuotationController extends Controller
         $this->middleware('permission:cotizaciones_crear')->only('create', 'store');
         $this->middleware('permission:cotizaciones_editar')->only('edit', 'update');
         $this->middleware('permission:cotizaciones_eliminar')->only('destroy');
-        $this->middleware('permission:cotizaciones_aprobar')->only('approve');
+        $this->middleware('permission:cotizaciones_aprobar')->only('select', 'approve');
         $this->middleware('permission:cotizaciones_rechazar')->only('reject');
     }
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+
+    public function index(Request $request)
     {
-        $quotations = PurchaseQuote::with(['supplier', 'user'])
-            ->latest()
-            ->paginate(10);
-            
+        $query = PurchaseQuote::with(['supplier', 'user', 'rfq']);
+
+        if ($request->filled('rfq_id')) {
+            $query->where('rfq_id', $request->rfq_id);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $quotations = $query->latest()->paginate(10);
+
         return view('admin.quotations.index', compact('quotations'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function create(Request $request)
     {
         $suppliers = Supplier::orderBy('name')->get();
         $products = Product::with(['category', 'unit'])->where('is_active', true)->get();
-        
-        // Generar código único para la cotización
-        $lastQuote = PurchaseQuote::latest('id')->first();
-        $code = 'COT-' . date('Y') . '-' . str_pad(($lastQuote ? $lastQuote->id + 1 : 1), 3, '0', STR_PAD_LEFT);
-        
-        return view('admin.quotations.create', compact('suppliers', 'products', 'code'));
+        $rfqs = RequestForQuotation::whereIn('status', ['sent', 'closed'])->orderBy('created_at', 'desc')->get();
+
+        $selectedRfq = null;
+        if ($request->filled('rfq_id')) {
+            $selectedRfq = RequestForQuotation::with('items.product')->find($request->rfq_id);
+        }
+
+        $code = PurchaseQuote::generateCode();
+
+        return view('admin.quotations.create', compact('suppliers', 'products', 'code', 'rfqs', 'selectedRfq'));
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
         $request->validate([
-            'supplier_id' => 'required|exists:suppliers,id',
-            'supplier_reference' => 'nullable|string|max:255',
+            'supplier_type' => 'required|in:registered,temp',
             'date_issued' => 'required|date',
             'valid_until' => 'nullable|date|after_or_equal:date_issued',
             'delivery_date' => 'nullable|date|after_or_equal:date_issued',
@@ -66,25 +69,42 @@ class QuotationController extends Controller
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.unit_cost' => 'required|numeric|min:0',
+        ], [
+            'supplier_type.required' => 'Debe seleccionar el tipo de proveedor.',
+            'supplier_type.in' => 'El tipo de proveedor debe ser registrado o temporal.',
         ]);
+
+        if ($request->supplier_type === 'registered') {
+            $request->validate([
+                'supplier_id' => 'required|exists:suppliers,id',
+            ], [
+                'supplier_id.required' => 'Debe seleccionar un proveedor registrado.',
+            ]);
+        } else {
+            $request->validate([
+                'supplier_name_temp' => 'required|string|max:255',
+                'supplier_email_temp' => 'nullable|email|max:255',
+                'supplier_phone_temp' => 'nullable|string|max:50',
+            ], [
+                'supplier_name_temp.required' => 'Debe ingresar el nombre del proveedor temporal.',
+            ]);
+        }
 
         try {
             DB::beginTransaction();
-            
-            // Calcular totales
+
             $subtotal = 0;
             foreach ($request->items as $item) {
                 $subtotal += $item['quantity'] * $item['unit_cost'];
             }
-            
-            $taxAmount = 0; // Por ahora sin impuestos
+
+            $taxAmount = 0;
             $total = $subtotal + $taxAmount;
 
-            // Crear cotización
-            $quote = PurchaseQuote::create([
-                'supplier_id' => $request->supplier_id,
-                'user_id' => auth()->user()->id,
-                'code' => $request->code,
+            $quoteData = [
+                'rfq_id' => $request->rfq_id ?: null,
+                'user_id' => auth()->id(),
+                'code' => $request->code ?? PurchaseQuote::generateCode(),
                 'supplier_reference' => $request->supplier_reference,
                 'date_issued' => $request->date_issued,
                 'valid_until' => $request->valid_until,
@@ -96,12 +116,21 @@ class QuotationController extends Controller
                 'total' => $total,
                 'notes' => $request->notes,
                 'status' => 'pending',
-            ]);
+            ];
 
-            // Crear items
+            if ($request->supplier_type === 'registered') {
+                $quoteData['supplier_id'] = $request->supplier_id;
+            } else {
+                $quoteData['supplier_name_temp'] = $request->supplier_name_temp;
+                $quoteData['supplier_email_temp'] = $request->supplier_email_temp;
+                $quoteData['supplier_phone_temp'] = $request->supplier_phone_temp;
+            }
+
+            $quote = PurchaseQuote::create($quoteData);
+
             foreach ($request->items as $item) {
                 $product = Product::find($item['product_id']);
-                
+
                 PurchaseQuoteItem::create([
                     'purchase_quote_id' => $quote->id,
                     'product_id' => $item['product_id'],
@@ -115,7 +144,7 @@ class QuotationController extends Controller
             DB::commit();
 
             return redirect()->route('admin.quotations.show', $quote)
-                ->with('success', 'Cotización creada exitosamente.');
+                ->with('success', 'Cotización registrada exitosamente.');
 
         } catch (\Exception $e) {
             DB::rollback();
@@ -124,46 +153,34 @@ class QuotationController extends Controller
         }
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(PurchaseQuote $quotation)
     {
-        $quotation->load(['supplier', 'user', 'items.product']);
-        
+        $quotation->load(['supplier', 'user', 'items.product', 'rfq', 'approver']);
+
         return view('admin.quotations.show', compact('quotation'));
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
     public function edit(PurchaseQuote $quotation)
     {
-        // Solo permitir editar cotizaciones pendientes
-        if ($quotation->status !== 'pending') {
-            return back()->with('error', 'Solo se pueden editar cotizaciones con estado pendiente.');
+        if (!$quotation->isEditable()) {
+            return back()->with('error', 'Solo se pueden editar cotizaciones pendientes.');
         }
-        
-        $quotation->load('items');
+
+        $quotation->load('items.product');
         $suppliers = Supplier::orderBy('name')->get();
         $products = Product::with(['category', 'unit'])->where('is_active', true)->get();
-        
+
         return view('admin.quotations.edit', compact('quotation', 'suppliers', 'products'));
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, PurchaseQuote $quotation)
     {
-        // Solo permitir editar cotizaciones pendientes
-        if ($quotation->status !== 'pending') {
-            return back()->with('error', 'Solo se pueden editar cotizaciones con estado pendiente.');
+        if (!$quotation->isEditable()) {
+            return back()->with('error', 'Solo se pueden editar cotizaciones pendientes.');
         }
 
         $request->validate([
-            'supplier_id' => 'required|exists:suppliers,id',
-            'supplier_reference' => 'nullable|string|max:255',
+            'supplier_type' => 'required|in:registered,temp',
             'date_issued' => 'required|date',
             'valid_until' => 'nullable|date|after_or_equal:date_issued',
             'delivery_date' => 'nullable|date|after_or_equal:date_issued',
@@ -174,26 +191,39 @@ class QuotationController extends Controller
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.unit_cost' => 'required|numeric|min:0',
+        ], [
+            'supplier_type.required' => 'Debe seleccionar el tipo de proveedor.',
+            'supplier_type.in' => 'El tipo de proveedor debe ser registrado o temporal.',
         ]);
+
+        if ($request->supplier_type === 'registered') {
+            $request->validate([
+                'supplier_id' => 'required|exists:suppliers,id',
+            ], [
+                'supplier_id.required' => 'Debe seleccionar un proveedor registrado.',
+            ]);
+        } else {
+            $request->validate([
+                'supplier_name_temp' => 'required|string|max:255',
+            ], [
+                'supplier_name_temp.required' => 'Debe ingresar el nombre del proveedor temporal.',
+            ]);
+        }
 
         try {
             DB::beginTransaction();
-            
-            // Eliminar items existentes
+
             $quotation->items()->delete();
-            
-            // Calcular totales
+
             $subtotal = 0;
             foreach ($request->items as $item) {
                 $subtotal += $item['quantity'] * $item['unit_cost'];
             }
-            
-            $taxAmount = 0; // Por ahora sin impuestos
+
+            $taxAmount = 0;
             $total = $subtotal + $taxAmount;
 
-            // Actualizar cotización
-            $quotation->update([
-                'supplier_id' => $request->supplier_id,
+            $updateData = [
                 'supplier_reference' => $request->supplier_reference,
                 'date_issued' => $request->date_issued,
                 'valid_until' => $request->valid_until,
@@ -204,12 +234,25 @@ class QuotationController extends Controller
                 'tax_amount' => $taxAmount,
                 'total' => $total,
                 'notes' => $request->notes,
-            ]);
+            ];
 
-            // Crear nuevos items
+            if ($request->supplier_type === 'registered') {
+                $updateData['supplier_id'] = $request->supplier_id;
+                $updateData['supplier_name_temp'] = null;
+                $updateData['supplier_email_temp'] = null;
+                $updateData['supplier_phone_temp'] = null;
+            } else {
+                $updateData['supplier_id'] = null;
+                $updateData['supplier_name_temp'] = $request->supplier_name_temp;
+                $updateData['supplier_email_temp'] = $request->supplier_email_temp;
+                $updateData['supplier_phone_temp'] = $request->supplier_phone_temp;
+            }
+
+            $quotation->update($updateData);
+
             foreach ($request->items as $item) {
                 $product = Product::find($item['product_id']);
-                
+
                 PurchaseQuoteItem::create([
                     'purchase_quote_id' => $quotation->id,
                     'product_id' => $item['product_id'],
@@ -232,73 +275,107 @@ class QuotationController extends Controller
         }
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(PurchaseQuote $quotation)
     {
-        // Solo permitir eliminar cotizaciones pendientes
-        if ($quotation->status !== 'pending') {
-            return back()->with('error', 'Solo se pueden eliminar cotizaciones con estado pendiente.');
+        if (!$quotation->isEditable()) {
+            return back()->with('error', 'Solo se pueden eliminar cotizaciones pendientes.');
         }
 
         try {
             $quotation->delete();
-            
+
             return redirect()->route('admin.quotations.index')
                 ->with('success', 'Cotización eliminada exitosamente.');
-                
+
         } catch (\Exception $e) {
             return back()->with('error', 'Error al eliminar la cotización: ' . $e->getMessage());
         }
     }
 
-    /**
-     * Approve the specified quotation.
-     */
-    public function approve(PurchaseQuote $quotation)
+    public function select(PurchaseQuote $quotation)
     {
-        if ($quotation->status !== 'pending') {
-            return back()->with('error', 'Solo se pueden aprobar cotizaciones con estado pendiente.');
+        if (!$quotation->canBeSelected()) {
+            return back()->with('error', 'Esta cotización no puede ser seleccionada.');
         }
 
-        try {
-            $quotation->update([
-                'status' => 'approved',
-            ]);
+        $quotation->update(['status' => 'selected']);
 
-            return redirect()->route('admin.quotations.show', $quotation)
-                ->with('success', 'Cotización aprobada exitosamente.');
-
-        } catch (\Exception $e) {
-            return back()->with('error', 'Error al aprobar la cotización: ' . $e->getMessage());
-        }
+        return back()->with('success', 'Cotización seleccionada para revisión administrativa.');
     }
 
-    /**
-     * Reject the specified quotation.
-     */
+    public function approve(Request $request, PurchaseQuote $quotation)
+    {
+        if (!$quotation->canBeApproved()) {
+            return back()->with('error', 'Esta cotización no puede ser aprobada.');
+        }
+
+        $quotation->update([
+            'status' => 'approved',
+            'approved_by' => auth()->id(),
+            'approved_at' => now(),
+        ]);
+
+        return redirect()->route('admin.quotations.show', $quotation)
+            ->with('success', 'Cotización aprobada exitosamente. Ya puede generar la Orden de Compra.');
+    }
+
     public function reject(Request $request, PurchaseQuote $quotation)
     {
-        if ($quotation->status !== 'pending') {
-            return back()->with('error', 'Solo se pueden rechazar cotizaciones con estado pendiente.');
+        if (!in_array($quotation->status, ['pending', 'selected'])) {
+            return back()->with('error', 'Esta cotización no puede ser rechazada.');
         }
 
         $request->validate([
             'rejection_reason' => 'required|string|max:500',
         ]);
 
-        try {
-            $quotation->update([
-                'status' => 'rejected',
-                'notes' => ($quotation->notes ?? '') . "\n\nRECHAZADA: " . $request->rejection_reason,
-            ]);
+        $quotation->update([
+            'status' => 'rejected',
+            'rejection_reason' => $request->rejection_reason,
+        ]);
 
-            return redirect()->route('admin.quotations.show', $quotation)
-                ->with('success', 'Cotización rechazada exitosamente.');
+        return redirect()->route('admin.quotations.show', $quotation)
+            ->with('success', 'Cotización rechazada.');
+    }
 
-        } catch (\Exception $e) {
-            return back()->with('error', 'Error al rechazar la cotización: ' . $e->getMessage());
+    public function convertToSupplier(Request $request, PurchaseQuote $quotation)
+    {
+        if ($quotation->hasRegisteredSupplier()) {
+            return back()->with('error', 'Esta cotización ya tiene un proveedor registrado.');
         }
+
+        $request->validate([
+            'tax_id' => 'nullable|string|max:50',
+            'contact_person' => 'nullable|string|max:255',
+            'address' => 'nullable|string|max:500',
+        ]);
+
+        $supplier = Supplier::create([
+            'name' => $quotation->supplier_name_temp,
+            'tax_id' => $request->tax_id,
+            'email' => $quotation->supplier_email_temp,
+            'phone' => $quotation->supplier_phone_temp,
+            'contact_person' => $request->contact_person,
+            'address' => $request->address,
+            'user_id' => auth()->id(),
+        ]);
+
+        $quotation->update([
+            'supplier_id' => $supplier->id,
+            'supplier_name_temp' => null,
+            'supplier_email_temp' => null,
+            'supplier_phone_temp' => null,
+        ]);
+
+        return back()->with('success', 'Proveedor registrado exitosamente y vinculado a la cotización.');
+    }
+
+    public function pdf(PurchaseQuote $quotation)
+    {
+        $quotation->load(['supplier', 'user', 'items.product']);
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.quotations.pdf', compact('quotation'));
+
+        return $pdf->stream('COT-' . $quotation->code . '.pdf');
     }
 }

@@ -11,10 +11,11 @@ class StoreStockInRequest extends FormRequest
         return [
             'product_id' => ['required', 'exists:products,id'],
             'supplier_id' => ['nullable', 'exists:suppliers,id'],
+            'purchase_order_id' => ['nullable', 'exists:purchase_orders,id'],
 
             'document_type' => ['nullable', 'string', 'max:50'],
             'document_number' => ['nullable', 'string', 'max:50'],
-            'quantity' => ['required', 'integer', 'min:1'], // Debe ser al menos 1
+            'quantity' => ['required', 'integer', 'min:1'],
             'unit_cost' => ['required', 'numeric', 'min:0'],
             'reason' => ['nullable', 'string', 'max:255'],
             'entry_date' => ['required', 'date'],

@@ -1,11 +1,11 @@
 @extends('adminlte::page')
 
-@section('title', 'Crear Orden de Compra')
+@section('title', 'Editar Orden de Compra')
 
 @section('plugins.Select2', true)
 
 @section('content_header')
-    <h1><i class="fas fa-shopping-cart"></i> Nueva Orden de Compra</h1>
+    <h1><i class="fas fa-shopping-cart"></i> Editar Orden de Compra {{ $purchaseOrder->code }}</h1>
 @stop
 
 @section('content')
@@ -15,24 +15,17 @@
 
             <div class="card card-primary">
                 <div class="card-header">
-                    <h3 class="card-title">Datos de la Orden</h3>
+                    <h3 class="card-title">Datos de la Orden - {!! $purchaseOrder->status_badge !!}</h3>
                 </div>
 
-                <form action="{{ route('admin.purchaseOrders.store') }}" method="POST" id="orderForm">
-                    @csrf
+                <form action="{{ route('admin.purchaseOrders.update', $purchaseOrder) }}" method="POST" id="orderForm">
+                    @csrf @method('PUT')
                     <div class="card-body">
-                        @if($quote)
-                            <div class="alert alert-success">
-                                <i class="fas fa-link"></i> Generada desde cotización <strong>{{ $quote->code }}</strong>
-                                <input type="hidden" name="purchase_quote_id" value="{{ $quote->id }}">
-                            </div>
-                        @endif
-
                         <div class="row">
                             <div class="col-12 col-md-4">
                                 <div class="form-group">
                                     <label for="code">Código OC</label>
-                                    <input type="text" name="code" class="form-control" value="{{ $code }}" readonly>
+                                    <input type="text" name="code" class="form-control" value="{{ $purchaseOrder->code }}" readonly>
                                 </div>
                             </div>
                             <div class="col-12 col-md-4">
@@ -41,7 +34,7 @@
                                     <select name="supplier_id" id="supplier_id" class="form-control select2" required>
                                         <option value="">Seleccione...</option>
                                         @foreach($suppliers as $supplier)
-                                            <option value="{{ $supplier->id }}" {{ ($quote->supplier_id ?? null) == $supplier->id ? 'selected' : '' }}>
+                                            <option value="{{ $supplier->id }}" {{ $purchaseOrder->supplier_id == $supplier->id ? 'selected' : '' }}>
                                                 {{ $supplier->name }}
                                             </option>
                                         @endforeach
@@ -51,7 +44,7 @@
                             <div class="col-12 col-md-4">
                                 <div class="form-group">
                                     <label for="date_issued">Fecha de Emisión (*)</label>
-                                    <input type="date" name="date_issued" class="form-control" value="{{ old('date_issued', date('Y-m-d')) }}" required>
+                                    <input type="date" name="date_issued" class="form-control" value="{{ old('date_issued', $purchaseOrder->date_issued->format('Y-m-d')) }}" required>
                                 </div>
                             </div>
                         </div>
@@ -60,30 +53,30 @@
                             <div class="col-12 col-md-4">
                                 <div class="form-group">
                                     <label for="delivery_date">Fecha de Entrega</label>
-                                    <input type="date" name="delivery_date" class="form-control" value="{{ old('delivery_date', $quote?->delivery_date?->format('Y-m-d')) }}">
+                                    <input type="date" name="delivery_date" class="form-control" value="{{ old('delivery_date', $purchaseOrder->delivery_date?->format('Y-m-d')) }}">
                                 </div>
                             </div>
                             <div class="col-12 col-md-4">
                                 <div class="form-group">
                                     <label for="currency">Moneda</label>
                                     <select name="currency" class="form-control">
-                                        <option value="USD" {{ old('currency', $quote?->currency) == 'USD' ? 'selected' : '' }}>USD - Dólar</option>
-                                        <option value="VES" {{ old('currency', $quote?->currency) == 'VES' ? 'selected' : '' }}>VES - Bolívar</option>
-                                        <option value="EUR" {{ old('currency', $quote?->currency) == 'EUR' ? 'selected' : '' }}>EUR - Euro</option>
+                                        <option value="USD" {{ $purchaseOrder->currency == 'USD' ? 'selected' : '' }}>USD - Dólar</option>
+                                        <option value="VES" {{ $purchaseOrder->currency == 'VES' ? 'selected' : '' }}>VES - Bolívar</option>
+                                        <option value="EUR" {{ $purchaseOrder->currency == 'EUR' ? 'selected' : '' }}>EUR - Euro</option>
                                     </select>
                                 </div>
                             </div>
                             <div class="col-12 col-md-4">
                                 <div class="form-group">
                                     <label for="exchange_rate">Tasa de Cambio</label>
-                                    <input type="number" step="0.0001" name="exchange_rate" class="form-control" value="{{ old('exchange_rate', $quote?->exchange_rate ?? 1) }}">
+                                    <input type="number" step="0.0001" name="exchange_rate" class="form-control" value="{{ old('exchange_rate', $purchaseOrder->exchange_rate) }}">
                                 </div>
                             </div>
                         </div>
 
                         <div class="form-group">
                             <label for="delivery_address">Dirección de Entrega</label>
-                            <input type="text" name="delivery_address" class="form-control" value="{{ old('delivery_address') }}" placeholder="Dirección donde recibir la mercancía">
+                            <input type="text" name="delivery_address" class="form-control" value="{{ old('delivery_address', $purchaseOrder->delivery_address) }}" placeholder="Dirección donde recibir la mercancía">
                         </div>
 
                         <h4 class="mt-4"><i class="fas fa-boxes"></i> Items de la Orden</h4>
@@ -101,63 +94,38 @@
                                     </tr>
                                 </thead>
                                 <tbody id="itemsBody">
-                                    @if($quote)
-                                        @foreach($quote->items as $index => $item)
-                                            <tr>
-                                                <td>
-                                                    <select name="items[{{ $index }}][product_id]" class="form-control select2-product" required>
-                                                        @foreach($products as $product)
-                                                            <option value="{{ $product->id }}" {{ $item->product_id == $product->id ? 'selected' : '' }}>
-                                                                {{ $product->name }} ({{ $product->code ?? 'S/C' }})
-                                                            </option>
-                                                        @endforeach
-                                                    </select>
-                                                </td>
-                                                <td>
-                                                    <input type="number" name="items[{{ $index }}][quantity]" class="form-control item-qty" min="1" value="{{ $item->quantity }}" required>
-                                                </td>
-                                                <td>
-                                                    <input type="number" step="0.01" name="items[{{ $index }}][unit_cost]" class="form-control item-cost" min="0" value="{{ $item->unit_cost }}" required>
-                                                </td>
-                                                <td>
-                                                    <span class="item-total">{{ number_format($item->quantity * $item->unit_cost, 2) }}</span>
-                                                </td>
-                                                <td class="text-center align-middle">
-                                                    <button type="button" class="btn btn-sm btn-danger remove-item" style="display:none;">
-                                                        <i class="fas fa-times"></i>
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        @endforeach
-                                    @else
+                                    @foreach($purchaseOrder->items as $index => $item)
                                         <tr>
                                             <td>
-                                                <select name="items[0][product_id]" class="form-control select2-product" required>
-                                                    <option value="">Seleccione...</option>
+                                                <select name="items[{{ $index }}][product_id]" class="form-control select2-product" required>
                                                     @foreach($products as $product)
-                                                        <option value="{{ $product->id }}">{{ $product->name }} ({{ $product->code ?? 'S/C' }})</option>
+                                                        <option value="{{ $product->id }}" {{ $item->product_id == $product->id ? 'selected' : '' }}>
+                                                            {{ $product->name }} ({{ $product->code ?? 'S/C' }})
+                                                        </option>
                                                     @endforeach
                                                 </select>
                                             </td>
                                             <td>
-                                                <input type="number" name="items[0][quantity]" class="form-control item-qty" min="1" value="1" required>
+                                                <input type="number" name="items[{{ $index }}][quantity]" class="form-control item-qty" min="1" value="{{ old("items.$index.quantity", $item->quantity) }}" required>
                                             </td>
                                             <td>
-                                                <input type="number" step="0.01" name="items[0][unit_cost]" class="form-control item-cost" min="0" value="0" required>
+                                                <input type="number" step="0.01" name="items[{{ $index }}][unit_cost]" class="form-control item-cost" min="0" value="{{ old("items.$index.unit_cost", $item->unit_cost) }}" required>
                                             </td>
-                                            <td><span class="item-total">0.00</span></td>
+                                            <td>
+                                                <span class="item-total">{{ number_format($item->quantity * $item->unit_cost, 2) }}</span>
+                                            </td>
                                             <td class="text-center align-middle">
                                                 <button type="button" class="btn btn-sm btn-danger remove-item" style="display:none;">
                                                     <i class="fas fa-times"></i>
                                                 </button>
                                             </td>
                                         </tr>
-                                    @endif
+                                    @endforeach
                                 </tbody>
                                 <tfoot>
                                     <tr>
                                         <th colspan="3" class="text-right">Total General:</th>
-                                        <th id="grandTotal">${{ number_format($quote?->total ?? 0, 2) }}</th>
+                                        <th id="grandTotal">${{ number_format($purchaseOrder->total, 2) }}</th>
                                         <th></th>
                                     </tr>
                                 </tfoot>
@@ -170,18 +138,18 @@
 
                         <div class="form-group mt-4">
                             <label for="terms">Términos y Condiciones</label>
-                            <textarea name="terms" id="terms" rows="3" class="form-control" placeholder="Condiciones de pago, garantías, etc.">{{ old('terms') }}</textarea>
+                            <textarea name="terms" id="terms" rows="3" class="form-control" placeholder="Condiciones de pago, garantías, etc.">{{ old('terms', $purchaseOrder->terms) }}</textarea>
                         </div>
 
                         <div class="form-group">
                             <label for="notes">Notas Internas</label>
-                            <textarea name="notes" id="notes" rows="2" class="form-control">{{ old('notes') }}</textarea>
+                            <textarea name="notes" id="notes" rows="2" class="form-control">{{ old('notes', $purchaseOrder->notes) }}</textarea>
                         </div>
                     </div>
 
                     <div class="card-footer">
-                        <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-save"></i> Guardar Orden</button>
-                        <a href="{{ route('admin.purchaseOrders.index') }}" class="btn btn-secondary btn-lg ml-2">Cancelar</a>
+                        <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-save"></i> Guardar Cambios</button>
+                        <a href="{{ route('admin.purchaseOrders.show', $purchaseOrder) }}" class="btn btn-secondary btn-lg ml-2">Cancelar</a>
                     </div>
                 </form>
             </div>
@@ -191,7 +159,7 @@
 
 @section('js')
     <script>
-        let itemIndex = {{ $quote ? $quote->items->count() : 1 }};
+        let itemIndex = {{ $purchaseOrder->items->count() }};
 
         function calculateTotals() {
             let grandTotal = 0;

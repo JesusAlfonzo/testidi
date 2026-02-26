@@ -17,6 +17,7 @@ use App\Http\Controllers\KitController;
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\PurchaseOrdersController;
 use App\Http\Controllers\QuotationController;
+use App\Http\Controllers\RequestForQuotationController;
 
 
 /*
@@ -54,13 +55,27 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::resource('kits', KitController::class);
     Route::post('kits/{kit}/components', [KitController::class, 'syncComponents'])->name('kits.sync_components');
 
+    // MÓDULO RFQ (Solicitudes de Cotización)
+    Route::resource('rfq', RequestForQuotationController::class);
+    Route::get('rfq/{rfq}/pdf', [RequestForQuotationController::class, 'pdf'])->name('rfq.pdf');
+    Route::post('rfq/{rfq}/mark-sent', [RequestForQuotationController::class, 'markAsSent'])->name('rfq.mark-sent');
+    Route::post('rfq/{rfq}/mark-closed', [RequestForQuotationController::class, 'markAsClosed'])->name('rfq.mark-closed');
+    Route::post('rfq/{rfq}/cancel', [RequestForQuotationController::class, 'cancel'])->name('rfq.cancel');
+
     // MÓDULO ORDENES DE COMPRAS
     Route::resource('purchaseOrders', PurchaseOrdersController::class);
+    Route::get('purchaseOrders/{purchaseOrder}/pdf', [PurchaseOrdersController::class, 'pdf'])->name('purchaseOrders.pdf');
+    Route::post('purchaseOrders/{purchaseOrder}/issue', [PurchaseOrdersController::class, 'issue'])->name('purchaseOrders.issue');
+    Route::post('purchaseOrders/{purchaseOrder}/complete', [PurchaseOrdersController::class, 'complete'])->name('purchaseOrders.complete');
+    Route::post('purchaseOrders/{purchaseOrder}/cancel', [PurchaseOrdersController::class, 'cancel'])->name('purchaseOrders.cancel');
 
     // MÓDULO COTIZACIONES
     Route::resource('quotations', QuotationController::class);
+    Route::get('quotations/{quotation}/pdf', [QuotationController::class, 'pdf'])->name('quotations.pdf');
+    Route::post('quotations/{quotation}/select', [QuotationController::class, 'select'])->name('quotations.select');
     Route::post('quotations/{quotation}/approve', [QuotationController::class, 'approve'])->name('quotations.approve');
     Route::post('quotations/{quotation}/reject', [QuotationController::class, 'reject'])->name('quotations.reject');
+    Route::post('quotations/{quotation}/convert-supplier', [QuotationController::class, 'convertToSupplier'])->name('quotations.convert-supplier');
 
     // MOVIMIENTOS - ENTRADAS DE STOCK
     Route::resource('stock-in', StockInController::class)->except(['edit', 'update']);

@@ -18,57 +18,66 @@
                     @csrf
                     <div class="card-body">
 
+                        @if($order)
+                            <div class="alert alert-info">
+                                <i class="fas fa-link"></i> Recibiendo desde Orden de Compra <strong>{{ $order->code }}</strong>
+                                <input type="hidden" name="purchase_order_id" value="{{ $order->id }}">
+                                <input type="hidden" name="supplier_id" value="{{ $order->supplier_id }}">
+                            </div>
+                        @endif
+
                         <div class="row">
-                            {{-- Producto --}}
                             <div class="col-md-8">
                                 <div class="form-group">
                                     <label for="product_id">Producto (*)</label>
                                     <select name="product_id" id="product_id" class="form-control @error('product_id') is-invalid @enderror" required>
                                         <option value="">Seleccione un producto...</option>
                                         @foreach($products as $id => $name)
-                                            <option value="{{ $id }}" {{ old('product_id') == $id ? 'selected' : '' }}>{{ $name }}</option>
+                                            <option value="{{ $id }}" {{ old('product_id', $orderItem?->product_id) == $id ? 'selected' : '' }}>{{ $name }}</option>
                                         @endforeach
                                     </select>
                                     @error('product_id')<span class="invalid-feedback">{{ $message }}</span>@enderror
                                 </div>
                             </div>
 
-                            {{-- Cantidad --}}
                             <div class="col-md-4">
                                 <div class="form-group">
                                     <label for="quantity">Cantidad a Ingresar (*)</label>
-                                    <input type="number" name="quantity" class="form-control @error('quantity') is-invalid @enderror" value="{{ old('quantity', 1) }}" min="1" required>
+                                    @if($orderItem)
+                                        <small class="text-muted d-block">Pendiente: {{ $orderItem->getPendingQuantity() }}</small>
+                                    @endif
+                                    <input type="number" name="quantity" class="form-control @error('quantity') is-invalid @enderror" value="{{ old('quantity', $orderItem?->getPendingQuantity() ?? 1) }}" min="1" required>
                                     @error('quantity')<span class="invalid-feedback">{{ $message }}</span>@enderror
                                 </div>
                             </div>
                         </div>
 
                         <div class="row">
-                            {{-- Proveedor --}}
                             <div class="col-md-6">
                                 <div class="form-group">
-                                    <label for="supplier_id">Proveedor (Opcional)</label>
-                                    <select name="supplier_id" id="supplier_id" class="form-control @error('supplier_id') is-invalid @enderror">
-                                        <option value="">Ajuste / Sin proveedor...</option>
-                                        @foreach($suppliers as $id => $name)
-                                            <option value="{{ $id }}" {{ old('supplier_id') == $id ? 'selected' : '' }}>{{ $name }}</option>
-                                        @endforeach
-                                    </select>
+                                    <label for="supplier_id_display">Proveedor</label>
+                                    @if($order)
+                                        <input type="text" class="form-control" value="{{ $order->supplier->name }}" readonly>
+                                    @else
+                                        <select name="supplier_id" id="supplier_id" class="form-control @error('supplier_id') is-invalid @enderror">
+                                            <option value="">Ajuste / Sin proveedor...</option>
+                                            @foreach($suppliers as $id => $name)
+                                                <option value="{{ $id }}" {{ old('supplier_id') == $id ? 'selected' : '' }}>{{ $name }}</option>
+                                            @endforeach
+                                        </select>
+                                    @endif
                                     @error('supplier_id')<span class="invalid-feedback">{{ $message }}</span>@enderror
                                 </div>
                             </div>
 
-                            {{-- Costo --}}
                             <div class="col-md-3">
                                 <div class="form-group">
                                     <label for="unit_cost">Costo Unitario (*)</label>
-                                    <input type="number" step="0.01" name="unit_cost" class="form-control @error('unit_cost') is-invalid @enderror" value="{{ old('unit_cost', 0.00) }}" min="0" required>
+                                    <input type="number" step="0.01" name="unit_cost" class="form-control @error('unit_cost') is-invalid @enderror" value="{{ old('unit_cost', $orderItem?->unit_cost ?? 0.00) }}" min="0" required>
                                     @error('unit_cost')<span class="invalid-feedback">{{ $message }}</span>@enderror
-                                    <small class="form-text text-muted">Este costo actualizará el costo promedio/último del producto.</small>
                                 </div>
                             </div>
 
-                            {{-- Fecha --}}
                             <div class="col-md-3">
                                 <div class="form-group">
                                     <label for="entry_date">Fecha de Ingreso (*)</label>

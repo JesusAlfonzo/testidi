@@ -320,16 +320,22 @@ return [
             'icon'    => 'fas fa-fw fa-shopping-cart',
             'submenu' => [
                 [
+                    'text' => 'Solicitudes de Cotización',
+                    'url'  => 'admin/rfq',
+                    'icon' => 'fas fa-fw fa-file-invoice',
+                    'can'  => 'rfq_ver',
+                ],
+                [
                     'text' => 'Cotizaciones',
                     'url'  => 'admin/quotations',
-                    'icon' => 'fas fa-fw fa-file-invoice',
-                    // 'can'  => 'cotizaciones_ver',
+                    'icon' => 'fas fa-fw fa-file-alt',
+                    'can'  => 'cotizaciones_ver',
                 ],
                 [
                     'text' => 'Ordenes de Compra',
                     'url'  => 'admin/purchaseOrders',
                     'icon' => 'fas fa-fw fa-shopping-cart',
-                    // 'can'  => 'compras_ver',
+                    'can'  => 'ordenes_compra_ver',
                 ],
 
             ],
