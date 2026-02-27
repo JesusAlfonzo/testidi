@@ -17,6 +17,7 @@ class StockInController extends Controller
     {
         $this->middleware('permission:entradas_ver')->only('index');
         $this->middleware('permission:entradas_crear')->only('create', 'store');
+        $this->middleware('permission:entradas_editar')->only('edit', 'update');
         $this->middleware('permission:entradas_eliminar')->only('destroy');
     }
 

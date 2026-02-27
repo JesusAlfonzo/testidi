@@ -78,6 +78,7 @@ class RolesAndPermissionsSeeder extends Seeder
             // MÓDULO INVENTARIO - ENTRADAS
             'entradas_ver',
             'entradas_crear',
+            'entradas_editar',
             'entradas_eliminar',
 
             // MÓDULO INVENTARIO - SOLICITUDES DE SALIDA

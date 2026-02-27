@@ -4,17 +4,26 @@ namespace App\Http\Controllers;
 
 use App\Models\InventoryRequest; 
 use App\Models\Product;
+use App\Models\Category;
+use App\Models\Brand;
+use App\Models\Unit;
+use App\Models\Location;
+use App\Models\Supplier;
+use App\Models\PurchaseQuote;
+use App\Models\PurchaseOrder;
 use App\Models\User;
+use App\Models\RequestForQuotation;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 use Spatie\Permission\Models\Role;
+use Spatie\Activitylog\Models\Activity;
 
 class HomeController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('auth');
+        $this->middleware(['auth', 'can:dashboard_acceso']);
     }
 
     /**
@@ -51,10 +60,8 @@ class HomeController extends Controller
 
     private function superAdminDashboard()
     {
-        // Obtiene estadísticas globales de inventario y gráficos
         $data = $this->getGlobalInventoryStats();
         
-        // Datos exclusivos de Superadmin (Salud del Sistema)
         $data['usersCount'] = User::count();
         $data['rolesCount'] = Role::count();
         
@@ -63,21 +70,18 @@ class HomeController extends Controller
 
     private function logisticaDashboard()
     {
-        // Logística necesita datos operativos de inventario
         $data = $this->getGlobalInventoryStats();
         return view('admin.dashboards.logistica', $data);
     }
 
     private function supervisorDashboard()
     {
-        // Supervisor ve métricas similares a logística/admin (foco en tendencias)
         $data = $this->getGlobalInventoryStats();
         return view('admin.dashboards.supervisor', $data);
     }
 
     private function solicitanteDashboard($user)
     {
-        // El Solicitante SOLO ve sus propios datos. Consulta optimizada.
         $myPendingCount = InventoryRequest::where('requester_id', $user->id)->where('status', 'Pending')->count();
         $myApprovedCount = InventoryRequest::where('requester_id', $user->id)->where('status', 'Approved')->count();
         $myRejectedCount = InventoryRequest::where('requester_id', $user->id)->where('status', 'Rejected')->count();
@@ -115,24 +119,76 @@ class HomeController extends Controller
         $lineChartLabels = [];
         $lineChartData = [];
         
-        // Rellenar días vacíos con 0 para continuidad visual
         for ($i = 6; $i >= 0; $i--) {
             $date = Carbon::now()->subDays($i)->format('Y-m-d');
             $record = $dailyRequests->firstWhere('date', $date);
-            // Formato de etiqueta: "Lun 12"
             $lineChartLabels[] = Carbon::parse($date)->isoFormat('ddd D'); 
             $lineChartData[] = $record ? $record->count : 0;
         }
 
+        // 2. Gráfico de Cotizaciones (últimos 30 días)
+        $quoteStats = [
+            'pending' => PurchaseQuote::where('status', 'pending')->count(),
+            'selected' => PurchaseQuote::where('status', 'selected')->count(),
+            'approved' => PurchaseQuote::where('status', 'approved')->count(),
+            'rejected' => PurchaseQuote::where('status', 'rejected')->count(),
+            'converted' => PurchaseQuote::where('status', 'converted')->count(),
+        ];
+
+        // 3. Gráfico de Órdenes de Compra
+        $orderStats = [
+            'draft' => PurchaseOrder::where('status', 'draft')->count(),
+            'issued' => PurchaseOrder::where('status', 'issued')->count(),
+            'received' => PurchaseOrder::where('status', 'received')->count(),
+            'cancelled' => PurchaseOrder::where('status', 'cancelled')->count(),
+        ];
+
+        // 4. RFQ stats
+        $rfqStats = [
+            'draft' => RequestForQuotation::where('status', 'draft')->count(),
+            'sent' => RequestForQuotation::where('status', 'sent')->count(),
+            'partial' => RequestForQuotation::where('status', 'partial')->count(),
+            'completed' => RequestForQuotation::where('status', 'completed')->count(),
+            'cancelled' => RequestForQuotation::where('status', 'cancelled')->count(),
+        ];
+
+        // 5. Estadísticas de Inventario
+        $inventoryStats = [
+            'products' => Product::count(),
+            'categories' => Category::count(),
+            'brands' => Brand::count(),
+            'units' => Unit::count(),
+            'locations' => Location::count(),
+            'suppliers' => Supplier::count(),
+        ];
+
+        // 6. Actividad reciente del sistema (últimos 10)
+        $recentActivity = Activity::with('causer')
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get();
+
         return [
-            // KPIs
+            // KPIs Inventario
             'totalProducts' => Product::where('is_active', true)->count(),
             'totalStockValue' => Product::where('is_active', true)->sum(DB::raw('stock * cost')),
             'lowStockCount' => Product::where('is_active', true)->whereColumn('stock', '<=', 'min_stock')->count(),
             'pendingRequests' => InventoryRequest::where('status', 'Pending')->count(),
             'approvedRequestsToday' => InventoryRequest::where('status', 'Approved')->whereDate('processed_at', Carbon::today())->count(),
             
-            // Datos Gráfico Donut
+            // Stats Inventario
+            'inventoryStats' => $inventoryStats,
+            
+            // Stats Cotizaciones
+            'quoteStats' => $quoteStats,
+            
+            // Stats Órdenes de Compra
+            'orderStats' => $orderStats,
+            
+            // Stats RFQs
+            'rfqStats' => $rfqStats,
+            
+            // Datos Gráfico Donut Solicitudes
             'chartApproved' => InventoryRequest::where('status', 'Approved')->count(),
             'chartRejected' => InventoryRequest::where('status', 'Rejected')->count(),
             'chartPending' => InventoryRequest::where('status', 'Pending')->count(),
@@ -147,6 +203,9 @@ class HomeController extends Controller
                                          ->orderBy('stock', 'asc')
                                          ->limit(5)
                                          ->get(),
+
+            // Actividad reciente
+            'recentActivity' => $recentActivity,
         ];
     }
 }

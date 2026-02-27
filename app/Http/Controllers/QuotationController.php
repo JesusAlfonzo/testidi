@@ -34,7 +34,7 @@ class QuotationController extends Controller
             $query->where('status', $request->status);
         }
 
-        $quotations = $query->latest()->paginate(10);
+        $quotations = $query->latest()->get();
 
         return view('admin.quotations.index', compact('quotations'));
     }

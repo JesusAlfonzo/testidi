@@ -23,7 +23,7 @@ class KitController extends Controller
      */
     public function index()
     {
-        $kits = Kit::orderBy('name')->paginate(10);
+        $kits = Kit::orderBy('name')->get();
         return view('admin.kits.index', compact('kits'));
     }
 

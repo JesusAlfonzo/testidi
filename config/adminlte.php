@@ -445,17 +445,23 @@ return [
             'header' => 'Administración del sistema',
             'can' => 'usuarios_ver'
         ],
-        [
-            'text'    => 'Seguridad',
-            'icon'    => 'fas fa-fw fa-shield-alt',
-            'can'     => 'usuarios_ver',
-            'submenu' => [
-                [
-                    'text' => 'Usuarios',
-                    'url'  => 'admin/users',
-                    'icon' => 'fas fa-fw fa-users',
-                    'can'  => 'usuarios_ver',
-                ],
+            [
+                'text'    => 'Seguridad',
+                'icon'    => 'fas fa-fw fa-shield-alt',
+                'can'     => 'usuarios_ver',
+                'submenu' => [
+                    [
+                        'text' => 'Usuarios',
+                        'url'  => 'admin/users',
+                        'icon' => 'fas fa-fw fa-users',
+                        'can'  => 'usuarios_ver',
+                    ],
+                    [
+                        'text' => 'Roles',
+                        'url'  => 'admin/roles',
+                        'icon' => 'fas fa-fw fa-user-tag',
+                        'can'  => 'roles_ver',
+                    ],
                 [
                     'text'    => 'Auditoría',
                     'icon'    => 'fas fa-fw fa-history',

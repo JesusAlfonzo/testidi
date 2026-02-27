@@ -18,6 +18,7 @@ use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\PurchaseOrdersController;
 use App\Http\Controllers\QuotationController;
 use App\Http\Controllers\RequestForQuotationController;
+use App\Http\Controllers\RoleController;
 
 
 /*
@@ -40,6 +41,7 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
 
     // GESTIÓN DE USUARIOS
     Route::resource('users', UserController::class);
+    Route::resource('roles', RoleController::class);
 
     // MÓDULOS MAESTROS
     Route::resource('categories', CategoryController::class);
@@ -78,7 +80,7 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::post('quotations/{quotation}/convert-supplier', [QuotationController::class, 'convertToSupplier'])->name('quotations.convert-supplier');
 
     // MOVIMIENTOS - ENTRADAS DE STOCK
-    Route::resource('stock-in', StockInController::class)->except(['edit', 'update']);
+    Route::resource('stock-in', StockInController::class);
 
     // MOVIMIENTOS - SOLICITUDES DE SALIDA
     // 1. Ruta especializada para APROBACIÓN/RECHAZO
@@ -124,12 +126,12 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
         // Reporte Kardex
         Route::get('kardex/{product}', [ReportController::class, 'kardexReport'])
             ->name('kardex')
-            ->middleware('can:kardex_ver');
+            ->middleware('can:reportes_kardex');
         Route::get('kardex/{product}/excel', [ReportController::class, 'exportKardexExcel'])
             ->name('kardex.excel')
-            ->middleware('can:kardex_ver');
+            ->middleware('can:reportes_kardex');
         Route::get('kardex/{product}/pdf', [ReportController::class, 'exportKardexPdf'])
             ->name('kardex.pdf')
-            ->middleware('can:kardex_ver');
+            ->middleware('can:reportes_kardex');
     });
 });

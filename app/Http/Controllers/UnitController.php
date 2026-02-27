@@ -18,7 +18,7 @@ class UnitController extends Controller
 
     public function index()
     {
-        $units = Unit::with('user')->paginate(10);
+        $units = Unit::with('user')->get();
         return view('admin.units.index', compact('units'));
     }
 

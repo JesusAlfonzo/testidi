@@ -2,16 +2,214 @@
 
 namespace Database\Seeders;
 
+use App\Models\Product;
+use App\Models\Category;
+use App\Models\Brand;
+use App\Models\Unit;
+use App\Models\Location;
+use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class ProductSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        //
+        $units = Unit::all();
+        $categories = Category::all();
+        $brands = Brand::all();
+        $locations = Location::all();
+        $userId = User::first()->id;
+
+        $productos = [
+            // Insumos de Laboratorio - Reactivos
+            ['name' => 'Reactivo detinctor de proteínas Bradford', 'code' => 'LAB-001'],
+            ['name' => 'Solución tampón PBS 10X', 'code' => 'LAB-002'],
+            ['name' => 'Medio de cultivo DMEM', 'code' => 'LAB-003'],
+            ['name' => 'Suerode fetal bovino (FBS)', 'code' => 'LAB-004'],
+            ['name' => 'Tripsina-EDTA 0.25%', 'code' => 'LAB-005'],
+            ['name' => 'Antibiótico Penicilina-Estreptomicina', 'code' => 'LAB-006'],
+            ['name' => 'Lisis buffer RIPA', 'code' => 'LAB-007'],
+            ['name' => 'PMSF inhibidor de proteasas', 'code' => 'LAB-008'],
+            ['name' => 'Acrylamide/Bis-acrylamide 30%', 'code' => 'LAB-009'],
+            ['name' => 'TEMED catalizador', 'code' => 'LAB-010'],
+            ['name' => 'Persulfato de amonio (APS)', 'code' => 'LAB-011'],
+            ['name' => 'Marcador de peso molecular (SDS-PAGE)', 'code' => 'LAB-012'],
+            ['name' => 'Colorante Coomassie Blue R-250', 'code' => 'LAB-013'],
+            ['name' => 'Tween 20 surfactante', 'code' => 'LAB-014'],
+            ['name' => 'Tris base grado reactivo', 'code' => 'LAB-015'],
+            ['name' => 'SDS polvo grado molecular', 'code' => 'LAB-016'],
+            ['name' => 'EDTA disódico', 'code' => 'LAB-017'],
+            ['name' => 'EGTA grado reactivo', 'code' => 'LAB-018'],
+            ['name' => 'Cloruro de sodio (NaCl)', 'code' => 'LAB-019'],
+            ['name' => 'Cloruro de potasio (KCl)', 'code' => 'LAB-020'],
+            ['name' => 'Fosfato de sodio monobásico', 'code' => 'LAB-021'],
+            ['name' => 'Fosfato de potasio dibásico', 'code' => 'LAB-022'],
+            ['name' => 'Glucosa grado reactivo', 'code' => 'LAB-023'],
+            ['name' => 'Urea grado molecular', 'code' => 'LAB-024'],
+            ['name' => 'Glicerol grado reactivo', 'code' => 'LAB-025'],
+            ['name' => 'Etanol absoluto grado HPLC', 'code' => 'LAB-026'],
+            ['name' => 'Metanol grado HPLC', 'code' => 'LAB-027'],
+            ['name' => 'Isopropanol grado molecular', 'code' => 'LAB-028'],
+            ['name' => 'Cloroformo grado molecular', 'code' => 'LAB-029'],
+            ['name' => 'Fenol saturado', 'code' => 'LAB-030'],
+            ['name' => 'Ácido tricloroacético (TCA)', 'code' => 'LAB-031'],
+            ['name' => 'Ditiotreitol (DTT)', 'code' => 'LAB-032'],
+            ['name' => 'β-Mercaptoetanol', 'code' => 'LAB-033'],
+            ['name' => 'PMSF inhibitior', 'code' => 'LAB-034'],
+            ['name' => 'Aprotinina inhibitior', 'code' => 'LAB-035'],
+            ['name' => 'Leupeptina inhibitior', 'code' => 'LAB-036'],
+            ['name' => 'Pepstatina inhibitior', 'code' => 'LAB-037'],
+            ['name' => 'Fresca protease inhibitor cocktail', 'code' => 'LAB-038'],
+            ['name' => 'Fosfatasa inhibidor cóctel', 'code' => 'LAB-039'],
+            ['name' => 'ATP sodium salt', 'code' => 'LAB-040'],
+            ['name' => 'GTP sodium salt', 'code' => 'LAB-041'],
+            ['name' => 'cAMP dependiente de proteína quinasa', 'code' => 'LAB-042'],
+            ['name' => 'SuperScript III transcriptasa reversa', 'code' => 'LAB-043'],
+            ['name' => 'Taq polimerasa', 'code' => 'LAB-044'],
+            ['name' => 'dNTP set (100mM each)', 'code' => 'LAB-045'],
+            ['name' => 'Oligos random primers', 'code' => 'LAB-046'],
+            ['name' => 'PCR buffer 10X', 'code' => 'LAB-047'],
+            ['name' => 'MgCl2 solución 25mM', 'code' => 'LAB-048'],
+            ['name' => 'Agarosa grado molecular', 'code' => 'LAB-049'],
+            ['name' => 'SYBR Safe tinctorial', 'code' => 'LAB-050'],
+
+            // Material de Vidrio
+            ['name' => 'Tubo de ensayo 13x100mm', 'code' => 'VID-001'],
+            ['name' => 'Tubo de ensayo 16x150mm', 'code' => 'VID-002'],
+            ['name' => 'Tubo centrífuga 15mL', 'code' => 'VID-003'],
+            ['name' => 'Tubo centrífuga 50mL', 'code' => 'VID-004'],
+            ['name' => 'Pipeta serológica 1mL', 'code' => 'VID-005'],
+            ['name' => 'Pipeta serológica 2mL', 'code' => 'VID-006'],
+            ['name' => 'Pipeta serológica 5mL', 'code' => 'VID-007'],
+            ['name' => 'Pipeta serológica 10mL', 'code' => 'VID-008'],
+            ['name' => 'Pipeta serológica 25mL', 'code' => 'VID-009'],
+            ['name' => 'Matraz Erlenmeyer 100mL', 'code' => 'VID-010'],
+            ['name' => 'Matraz Erlenmeyer 250mL', 'code' => 'VID-011'],
+            ['name' => 'Matraz Erlenmeyer 500mL', 'code' => 'VID-012'],
+            ['name' => 'Matraz volumetric 100mL', 'code' => 'VID-013'],
+            ['name' => 'Matraz volumetric 250mL', 'code' => 'VID-014'],
+            ['name' => 'Matraz volumetric 500mL', 'code' => 'VID-015'],
+            ['name' => 'Matraz volumetric 1000mL', 'code' => 'VID-016'],
+            ['name' => 'Probeta 50mL', 'code' => 'VID-017'],
+            ['name' => 'Probeta 100mL', 'code' => 'VID-018'],
+            ['name' => 'Probeta 250mL', 'code' => 'VID-019'],
+            ['name' => 'Bureta 25mL', 'code' => 'VID-020'],
+            ['name' => 'Bureta 50mL', 'code' => 'VID-021'],
+            ['name' => 'Pipeta volumétrica 1mL', 'code' => 'VID-022'],
+            ['name' => 'Pipeta volumétrica 2mL', 'code' => 'VID-023'],
+            ['name' => 'Pipeta volumétrica 5mL', 'code' => 'VID-024'],
+            ['name' => 'Pipeta volumétrica 10mL', 'code' => 'VID-025'],
+            ['name' => 'Cápsula de Petri 60x15mm', 'code' => 'VID-026'],
+            ['name' => 'Cápsula de Petri 100x15mm', 'code' => 'VID-027'],
+            ['name' => 'Cápsula de Petri 150x15mm', 'code' => 'VID-028'],
+            ['name' => 'Portaobjetos microscopy', 'code' => 'VID-029'],
+            ['name' => 'Cubreobjetos microscopy 22x22mm', 'code' => 'VID-030'],
+
+            // Material Plástico Descartable
+            ['name' => 'Caja de puntas amarillas 200μL', 'code' => 'PLA-001'],
+            ['name' => 'Caja de puntas azules 1000μL', 'code' => 'PLA-002'],
+            ['name' => 'Caja de puntas blancas 10μL', 'code' => 'PLA-003'],
+            ['name' => 'Punta yellow 200μL universal', 'code' => 'PLA-004'],
+            ['name' => 'Punta blue 1000μL universal', 'code' => 'PLA-005'],
+            ['name' => 'Punta white 10μL', 'code' => 'PLA-006'],
+            ['name' => 'Filtro puntas 200μL', 'code' => 'PLA-007'],
+            ['name' => 'Filtro puntas 1000μL', 'code' => 'PLA-008'],
+            ['name' => 'Placa 96 wells estéril', 'code' => 'PLA-009'],
+            ['name' => 'Placa 24 wells estéril', 'code' => 'PLA-010'],
+            ['name' => 'Placa 12 wells estéril', 'code' => 'PLA-011'],
+            ['name' => 'Placa 6 wells estéril', 'code' => 'PLA-012'],
+            ['name' => 'Placa Petri 90mm estéril', 'code' => 'PLA-013'],
+            ['name' => 'Tubo Falcon 15mL estéril', 'code' => 'PLA-014'],
+            ['name' => 'Tubo Falcon 50mL estéril', 'code' => 'PLA-015'],
+            ['name' => 'Tubo eppendorf 1.5mL', 'code' => 'PLA-016'],
+            ['name' => 'Tubo eppendorf 2mL', 'code' => 'PLA-017'],
+            ['name' => 'Tubo cryogénico 1mL', 'code' => 'PLA-018'],
+            ['name' => 'Tubo cryogénico 2mL', 'code' => 'PLA-019'],
+            ['name' => 'Tubo cryogénico 5mL', 'code' => 'PLA-020'],
+            ['name' => 'Guantes latex medianos', 'code' => 'PLA-021'],
+            ['name' => 'Guantes latex grandes', 'code' => 'PLA-022'],
+            ['name' => 'Guantes nitrilo medianos', 'code' => 'PLA-023'],
+            ['name' => 'Guantes nitrilo grandes', 'code' => 'PLA-024'],
+            ['name' => 'Mascarilla three layers', 'code' => 'PLA-025'],
+            ['name' => 'Gorra descartable', 'code' => 'PLA-026'],
+            ['name' => 'Bata laboratorio', 'code' => 'PLA-027'],
+            ['name' => 'Jeringa 1mL', 'code' => 'PLA-028'],
+            ['name' => 'Jeringa 3mL', 'code' => 'PLA-029'],
+            ['name' => 'Jeringa 5mL', 'code' => 'PLA-030'],
+            ['name' => 'Jeringa 10mL', 'code' => 'PLA-031'],
+            ['name' => 'Jeringa 20mL', 'code' => 'PLA-032'],
+            ['name' => 'Aguja 22G', 'code' => 'PLA-033'],
+            ['name' => 'Aguja 25G', 'code' => 'PLA-034'],
+            ['name' => 'Filtro jeringa 0.22μm', 'code' => 'PLA-035'],
+            ['name' => 'Filtro jeringa 0.45μm', 'code' => 'PLA-036'],
+
+            // Equipos
+            ['name' => 'Balanza analítica 220g/0.1mg', 'code' => 'EQP-001'],
+            ['name' => 'Balanza precisión 3kg/0.01g', 'code' => 'EQP-002'],
+            ['name' => 'Centrífuga de mesa 24x1.5mL', 'code' => 'EQP-003'],
+            ['name' => 'Centrífuga refrigerada 6x50mL', 'code' => 'EQP-004'],
+            ['name' => 'Agitador vórtex', 'code' => 'EQP-005'],
+            ['name' => 'Agitador magnético con calefacción', 'code' => 'EQP-006'],
+            ['name' => 'Baño María 10L', 'code' => 'EQP-007'],
+            ['name' => 'Baño María ultrasónico 6L', 'code' => 'EQP-008'],
+            ['name' => 'Termociclador (PCR)', 'code' => 'EQP-009'],
+            ['name' => 'Transiluminador UV', 'code' => 'EQP-010'],
+            ['name' => 'Sistema de electroforesis vertical', 'code' => 'EQP-011'],
+            ['name' => 'Fuente de poder electrophoresis', 'code' => 'EQP-012'],
+            ['name' => 'Espectrofotómetro UV-Vis', 'code' => 'EQP-013'],
+            ['name' => 'Fluorómetro', 'code' => 'EQP-014'],
+            ['name' => 'Lector de placas ELISA', 'code' => 'EQP-015'],
+            ['name' => 'Cabina de flujo laminar clase II', 'code' => 'EQP-016'],
+            ['name' => 'Incubadora CO2 240L', 'code' => 'EQP-017'],
+            ['name' => 'Microscopio óptico', 'code' => 'EQP-018'],
+            ['name' => 'Microscopio fluorescencia', 'code' => 'EQP-019'],
+            ['name' => 'Congelador -20°C 400L', 'code' => 'EQP-020'],
+            ['name' => 'Congelador -80°C 700L', 'code' => 'EQP-021'],
+            ['name' => 'Refrigerador laboratorio 400L', 'code' => 'EQP-022'],
+            ['name' => 'Agitador de bandejas', 'code' => 'EQP-023'],
+            ['name' => 'Horno de cultivo 150L', 'code' => 'EQP-024'],
+            ['name' => 'pH-metro de mesa', 'code' => 'EQP-025'],
+            ['name' => 'pH-metro portátil', 'code' => 'EQP-026'],
+            ['name' => 'Conductímetro', 'code' => 'EQP-027'],
+            ['name' => 'Oxímetro', 'code' => 'EQP-028'],
+            ['name' => 'Bomba de vacío', 'code' => 'EQP-029'],
+            ['name' => 'Destilador de agua', 'code' => 'EQP-030'],
+
+            // Kits de Diagnóstico
+            ['name' => 'Kit ELISA COVID-19 IgG/IgM', 'code' => 'KIT-001'],
+            ['name' => 'Kit PCR SARS-CoV-2', 'code' => 'KIT-002'],
+            ['name' => 'Kit extracción RNA viral', 'code' => 'KIT-003'],
+            ['name' => 'Kit extracción DNA genómico', 'code' => 'KIT-004'],
+            ['name' => 'Kit Western Blot', 'code' => 'KIT-005'],
+            ['name' => 'Kit Bradford protein assay', 'code' => 'KIT-006'],
+            ['name' => 'Kit MTT cell viability', 'code' => 'KIT-007'],
+            ['name' => 'Kit apoptosis Annexin V/PI', 'code' => 'KIT-008'],
+            ['name' => 'Kit ELISA cytokines', 'code' => 'KIT-009'],
+            ['name' => 'Kit PCR multiplex', 'code' => 'KIT-010'],
+            ['name' => 'Kit secuencia DNA', 'code' => 'KIT-011'],
+            ['name' => 'Kit clonación molecular', 'code' => 'KIT-012'],
+            ['name' => 'Kit transformación bacteriana', 'code' => 'KIT-013'],
+            ['name' => 'Kit purificación plásmido', 'code' => 'KIT-014'],
+            ['name' => 'Kit gel extracción DNA', 'code' => 'KIT-015'],
+        ];
+
+        foreach ($productos as $index => $producto) {
+            Product::create([
+                'name' => $producto['name'],
+                'code' => $producto['code'],
+                'description' => 'Producto de laboratorio para investigación',
+                'category_id' => $categories->random()->id,
+                'brand_id' => $brands->random()->id,
+                'unit_id' => $units->random()->id,
+                'location_id' => $locations->random()->id,
+                'stock' => rand(0, 500),
+                'min_stock' => rand(5, 20),
+                'cost' => rand(100, 5000) / 100,
+                'price' => rand(150, 7500) / 100,
+                'is_active' => true,
+                'user_id' => $userId,
+            ]);
+        }
     }
 }

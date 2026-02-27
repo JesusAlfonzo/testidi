@@ -24,7 +24,7 @@ class RequestForQuotationController extends Controller
     {
         $rfqs = RequestForQuotation::with(['creator', 'items.product'])
             ->latest()
-            ->paginate(10);
+            ->get();
 
         return view('admin.rfq.index', compact('rfqs'));
     }

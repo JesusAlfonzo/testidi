@@ -27,7 +27,7 @@ class PurchaseOrdersController extends Controller
     {
         $orders = PurchaseOrder::with(['supplier', 'creator'])
             ->latest()
-            ->paginate(10);
+            ->get();
 
         return view('admin.purchaseOrders.index', compact('orders'));
     }

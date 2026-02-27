@@ -17,7 +17,7 @@ class SupplierController extends Controller
 
     public function index()
     {
-        $suppliers = Supplier::with('user')->paginate(10);
+        $suppliers = Supplier::with('user')->get();
         return view('admin.suppliers.index', compact('suppliers'));
     }
 
