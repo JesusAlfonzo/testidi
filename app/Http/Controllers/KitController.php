@@ -8,14 +8,9 @@ use Illuminate\Http\Request;
 
 class KitController extends Controller
 {
-
     public function __construct()
     {
-        // Protege el controlador con los nuevos permisos
-        $this->middleware('can:kits_ver')->only(['index', 'show']);
-        $this->middleware('can:kits_crear')->only(['create', 'store']);
-        $this->middleware('can:kits_editar')->only(['edit', 'update']);
-        $this->middleware('can:kits_eliminar')->only('destroy');
+        $this->authorizeResource(Kit::class, 'kit');
     }
 
     /**

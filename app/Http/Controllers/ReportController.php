@@ -7,7 +7,8 @@ use App\Models\Product;
 use App\Models\StockIn;
 use App\Models\Category;
 use App\Models\Location;
-use App\Models\User; // 🔑 AGREGADO: Necesario para cargar los solicitantes
+use App\Models\User;
+use App\Services\KardexService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -15,8 +16,11 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class ReportController extends Controller
 {
-    public function __construct()
+    protected KardexService $kardexService;
+
+    public function __construct(KardexService $kardexService)
     {
+        $this->kardexService = $kardexService;
         $this->middleware('can:reportes_ver')->only(['stockReport', 'requestsReport']);
         $this->middleware('can:reportes_kardex')->only('kardexReport');
     }
@@ -219,112 +223,15 @@ class ReportController extends Controller
     // 3. KARDEX (HISTORIAL POR PRODUCTO)
     // =========================================================================
 
-    private function getKardexData(Product $product)
-    {
-        // A. Entradas
-        $entradas = StockIn::where('product_id', $product->id)
-            ->with(['supplier', 'user'])->get()
-            ->map(function ($entrada) {
-                return [
-                    'date'      => $entrada->entry_date ?? $entrada->created_at,
-                    'type'      => 'ENTRADA',
-                    'quantity'  => $entrada->quantity,
-                    'unit_price' => $entrada->unit_cost,
-                    'reference' => 'ENT-' . $entrada->id,
-                    'user'      => $entrada->user->name ?? 'Sistema',
-                    'notes'     => 'Prov: ' . ($entrada->supplier->name ?? 'N/A'),
-                    'timestamp' => $entrada->created_at->timestamp,
-                ];
-            });
-
-        // B. Salidas (Solicitudes Aprobadas)
-        $salidas = SolicitudModel::where('status', 'Approved')
-            ->with(['approver', 'items.kit.components'])->get()
-            ->flatMap(function ($solicitud) use ($product) {
-                $movimientos = [];
-                foreach ($solicitud->items as $item) {
-                    // B1. Salida Directa
-                    if ($item->item_type === 'product' && $item->product_id === $product->id) {
-                        $movimientos[] = [
-                            'date'      => $solicitud->processed_at,
-                            'type'      => 'SALIDA',
-                            'quantity'  => $item->quantity_requested * -1,
-                            'unit_price' => $item->unit_price_at_request,
-                            'reference' => 'REQ-' . $solicitud->id,
-                            'user'      => $solicitud->approver->name ?? 'Sistema',
-                            'notes'     => 'Justif: ' . Str::limit($solicitud->justification, 50),
-                            'timestamp' => $solicitud->processed_at->timestamp,
-                        ];
-                    }
-                    // B2. Salida por Kit
-                    if ($item->item_type === 'kit' && $item->kit) {
-                        $componente = $item->kit->components->firstWhere('id', $product->id);
-                        if ($componente) {
-                            $total = $item->quantity_requested * $componente->pivot->quantity_required;
-                            $movimientos[] = [
-                                'date'      => $solicitud->processed_at,
-                                'type'      => 'SALIDA (KIT)',
-                                'quantity'  => $total * -1,
-                                'unit_price' => $componente->cost,
-                                'reference' => 'REQ-' . $solicitud->id,
-                                'user'      => $solicitud->approver->name ?? 'Sistema',
-                                'notes'     => "Kit: {$item->kit->name}",
-                                'timestamp' => $solicitud->processed_at->timestamp,
-                            ];
-                        }
-                    }
-                }
-                return $movimientos;
-            });
-
-        // C. Fusión y Saldos
-        $movimientos = $entradas->concat($salidas)->sortBy('timestamp')->values();
-
-        $saldoAcumulado = $product->initial_stock ?? 0;
-        $kardex = [];
-
-        if ($movimientos->isNotEmpty()) {
-            $saldoAcumulado = $product->stock - $movimientos->sum('quantity');
-            $kardex[] = [
-                'date' => $movimientos->first()['date']->copy()->subSecond(),
-                'type' => 'INICIO',
-                'quantity' => 0,
-                'unit_price' => 0,
-                'reference' => 'SALDO INICIAL',
-                'user' => 'Sistema',
-                'notes' => 'Saldo calculado antes de movimientos',
-                'balance' => $saldoAcumulado,
-            ];
-            foreach ($movimientos as $movimiento) {
-                $saldoAcumulado += $movimiento['quantity'];
-                $movimiento['balance'] = $saldoAcumulado;
-                $kardex[] = $movimiento;
-            }
-        } else {
-            $kardex[] = [
-                'date' => now(),
-                'type' => 'INICIO',
-                'quantity' => $product->stock,
-                'unit_price' => 0,
-                'reference' => 'STOCK ACTUAL',
-                'user' => 'Sistema',
-                'notes' => 'Stock actual reportado',
-                'balance' => $product->stock,
-            ];
-        }
-
-        return view('admin.reports.kardex', compact('product', 'kardex'));
-    }
-
     public function kardexReport(Product $product)
     {
-        $kardex = $this->getKardexData($product);
+        $kardex = $this->kardexService->generateKardex($product);
         return view('admin.reports.kardex', compact('product', 'kardex'));
     }
 
     public function exportKardexExcel(Product $product)
     {
-        $kardex = $this->getKardexData($product);
+        $kardex = $this->kardexService->generateKardex($product);
         $fileName = 'kardex_' . Str::slug($product->name) . '_' . date('Y-m-d') . '.csv';
 
         $headers = [
@@ -358,7 +265,7 @@ class ReportController extends Controller
 
     public function exportKardexPdf(Product $product)
     {
-        $kardex = $this->getKardexData($product);
+        $kardex = $this->kardexService->generateKardex($product);
         $pdf = Pdf::loadView('admin.reports.pdf.kardex', compact('product', 'kardex'));
         return $pdf->stream('kardex_' . Str::slug($product->name) . '.pdf');
     }

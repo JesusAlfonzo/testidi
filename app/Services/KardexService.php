@@ -14,12 +14,14 @@ class KardexService
      * Genera el reporte de movimientos (Kardex) para un producto específico.
      *
      * @param Product $product
+     * @param float|null $initialStock Saldo inicial override (si es null usa $product->stock)
      * @return array
      */
-    public function generateKardex(Product $product)
+    public function generateKardex(Product $product, ?float $initialStock = null)
     {
+        $initialBalance = $initialStock ?? $product->stock;
+
         // 1. OBTENER ENTRADAS (STOCK-IN)
-        // Buscamos todas las entradas registradas para este producto
         $entradas = StockIn::where('product_id', $product->id)
             ->with(['supplier', 'user'])
             ->get()
@@ -37,10 +39,7 @@ class KardexService
             });
 
         // 2. OBTENER SALIDAS (SOLICITUDES APROBADAS)
-        // Aquí viene la magia: debemos encontrar salidas directas DEL PRODUCTO
-        // O salidas de KITS que contengan este producto.
-
-        $salidas = InventoryRequest::with(['requester', 'approver', 'items.kit.components'])
+        $salidas = InventoryRequest::with(['requester', 'approver', 'items.kit'])
             ->where('status', 'Approved')
             ->get()
             ->flatMap(function ($solicitud) use ($product) {
@@ -52,34 +51,31 @@ class KardexService
                         $movimientosDeSolicitud[] = [
                             'date'      => $solicitud->processed_at ?? $solicitud->updated_at,
                             'type'      => 'SALIDA',
-                            'quantity'  => $item->quantity_requested * -1, // Negativo para restar
+                            'quantity'  => $item->quantity_requested * -1,
                             'unit_price' => $item->unit_price_at_request,
                             'reference' => 'REQ-' . $solicitud->id,
                             'user'      => $solicitud->approver->name ?? 'Sistema',
                             'notes'     => 'Solicitud Directa. ' . Str::limit($solicitud->justification, 30),
-                            'timestamp' => $solicitud->processed_at->timestamp ?? 0,
+                            'timestamp' => $solicitud->processed_at?->timestamp ?? 0,
                         ];
                     }
 
                     // CASO B: El ítem es un KIT que contiene el producto
                     if ($item->item_type === 'kit' && $item->kit) {
-                        // Buscamos si nuestro producto está dentro de los componentes de este kit
                         $componente = $item->kit->components->firstWhere('id', $product->id);
 
                         if ($componente) {
-                            // Calculamos cuánto se consumió realmente:
-                            // Cantidad Kits Solicitados * Cantidad del Componente por Kit
                             $consumoReal = $item->quantity_requested * $componente->pivot->quantity_required;
 
                             $movimientosDeSolicitud[] = [
                                 'date'      => $solicitud->processed_at ?? $solicitud->updated_at,
                                 'type'      => 'SALIDA (KIT)',
-                                'quantity'  => $consumoReal * -1, // Negativo
-                                'unit_price' => $componente->cost, // Usamos el costo del componente
+                                'quantity'  => $consumoReal * -1,
+                                'unit_price' => $componente->cost,
                                 'reference' => 'REQ-' . $solicitud->id,
                                 'user'      => $solicitud->approver->name ?? 'Sistema',
                                 'notes'     => "Parte del Kit: {$item->kit->name}. " . Str::limit($solicitud->justification, 20),
-                                'timestamp' => $solicitud->processed_at->timestamp ?? 0,
+                                'timestamp' => $solicitud->processed_at?->timestamp ?? 0,
                             ];
                         }
                     }
@@ -91,25 +87,33 @@ class KardexService
         // 3. FUSIONAR, ORDENAR Y CALCULAR SALDOS
         $movimientos = $entradas->concat($salidas)->sortBy('timestamp')->values();
 
-        $saldoAcumulado = 0;
-        $kardex = [];
-
-        // Si no hay movimientos, mostramos el estado inicial
         if ($movimientos->isEmpty()) {
-             $kardex[] = [
-                 'date' => now(),
-                 'type' => 'INICIO',
-                 'quantity' => 0,
-                 'unit_price' => 0,
-                 'reference' => '---',
-                 'user' => 'Sistema',
-                 'notes' => 'Sin movimientos registrados',
-                 'balance' => $product->stock,
-             ];
-             return $kardex;
+            return [[
+                'date' => now(),
+                'type' => 'INICIO',
+                'quantity' => 0,
+                'unit_price' => 0,
+                'reference' => '---',
+                'user' => 'Sistema',
+                'notes' => 'Sin movimientos registrados',
+                'balance' => $initialBalance,
+            ]];
         }
 
-        // Calcular línea por línea
+        $saldoInicial = $initialBalance - $movimientos->sum('quantity');
+        $kardex = [[
+            'date' => $movimientos->first()['date']->copy()->subSecond(),
+            'type' => 'INICIO',
+            'quantity' => 0,
+            'unit_price' => 0,
+            'reference' => 'SALDO INICIAL',
+            'user' => 'Sistema',
+            'notes' => 'Saldo calculado antes de movimientos',
+            'balance' => $saldoInicial,
+        ]];
+
+        $saldoAcumulado = $saldoInicial;
+
         foreach ($movimientos as $movimiento) {
             $saldoAcumulado += $movimiento['quantity'];
             $movimiento['balance'] = $saldoAcumulado;

@@ -25,11 +25,13 @@ class Product extends Model
         'stock',
         'min_stock',
         'is_active',
+        'created_on_the_fly',
         'user_id',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
+        'created_on_the_fly' => 'boolean',
     ];
 
     // Relaciones con los módulos maestros

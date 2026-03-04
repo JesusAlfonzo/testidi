@@ -14,12 +14,9 @@ class QuotationController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('permission:cotizaciones_ver')->only('index', 'show');
-        $this->middleware('permission:cotizaciones_crear')->only('create', 'store');
-        $this->middleware('permission:cotizaciones_editar')->only('edit', 'update');
-        $this->middleware('permission:cotizaciones_eliminar')->only('destroy');
-        $this->middleware('permission:cotizaciones_aprobar')->only('select', 'approve');
-        $this->middleware('permission:cotizaciones_rechazar')->only('reject');
+        $this->authorizeResource(PurchaseQuote::class, 'purchaseQuote');
+        $this->middleware('can:cotizaciones_aprobar')->only(['select', 'approve']);
+        $this->middleware('can:cotizaciones_rechazar')->only('reject');
     }
 
     public function index(Request $request)

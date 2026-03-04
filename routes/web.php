@@ -52,6 +52,8 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
 
     // MÓDULO INVENTARIO
     Route::resource('products', ProductController::class);
+    Route::post('products/quick-store', [ProductController::class, 'quickStore'])->name('products.quick-store');
+    Route::get('products/search', [ProductController::class, 'search'])->name('products.search');
 
     // MÓDULO KITS
     Route::resource('kits', KitController::class);

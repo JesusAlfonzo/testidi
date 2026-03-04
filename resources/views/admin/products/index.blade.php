@@ -87,6 +87,16 @@
                             </select>
                         </div>
                     </div>
+                    <div class="col-md-2">
+                        <div class="form-group">
+                            <label>Origen</label>
+                            <select name="created_on_the_fly" class="form-control">
+                                <option value="">Todos</option>
+                                <option value="yes" {{ request('created_on_the_fly') == 'yes' ? 'selected' : '' }}>Creado sobre la marcha</option>
+                                <option value="no" {{ request('created_on_the_fly') == 'no' ? 'selected' : '' }}>Registrado normalmente</option>
+                            </select>
+                        </div>
+                    </div>
                     <div class="col-md-2 d-flex align-items-end">
                         <div class="form-group w-100">
                             <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-search"></i> Buscar</button>
@@ -119,6 +129,7 @@
                                     <th style="width: 10%">Ubicación</th>
                                     <th>Costo/Precio</th>
                                     <th style="width: 10%">Estado</th>
+                                    <th style="width: 8%">Origen</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -169,6 +180,15 @@
                                             <span class="badge badge-{{ $product->is_active ? 'info' : 'secondary' }}">
                                                 {{ $product->is_active ? 'Activo' : 'Inactivo' }}
                                             </span>
+                                        </td>
+                                        <td>
+                                            @if($product->created_on_the_fly)
+                                                <span class="badge badge-warning" title="Creado desde Cotización/RFQ/OC">
+                                                    <i class="fas fa-bolt"></i> Rápido
+                                                </span>
+                                            @else
+                                                <span class="badge badge-secondary">Normal</span>
+                                            @endif
                                         </td>
                                     </tr>
                                 @empty
@@ -231,7 +251,7 @@
                     { "responsivePriority": 3, "targets": 1 }, // Stock (Visible si cabe)
                     
                     // Ocultar el resto inmediatamente en móvil (se verán al expandir)
-                    { "responsivePriority": 100, "targets": [3, 4, 5, 6, 7] } 
+                    { "responsivePriority": 100, "targets": [3, 4, 5, 6, 7, 8] } 
                 ]
             });
             

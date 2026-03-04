@@ -2,23 +2,25 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\StockUpdated;
 use App\Models\StockIn;
 use App\Models\Product;
 use App\Models\Supplier;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use App\Http\Requests\StoreStockInRequest;
+use App\Services\CacheService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 
 class StockInController extends Controller
 {
-    public function __construct()
+    protected CacheService $cacheService;
+
+    public function __construct(CacheService $cacheService)
     {
-        $this->middleware('permission:entradas_ver')->only('index');
-        $this->middleware('permission:entradas_crear')->only('create', 'store');
-        $this->middleware('permission:entradas_editar')->only('edit', 'update');
-        $this->middleware('permission:entradas_eliminar')->only('destroy');
+        $this->cacheService = $cacheService;
+        $this->authorizeResource(StockIn::class, 'stockIn');
     }
 
     public function index(Request $request)
@@ -98,6 +100,17 @@ class StockInController extends Controller
 
             DB::commit();
 
+            event(new StockUpdated(
+                product: $product,
+                quantity: $validatedData['quantity'],
+                type: 'in',
+                referenceId: $stockIn->id,
+                referenceType: StockIn::class,
+                notes: $validatedData['reason'] ?? null
+            ));
+
+            $this->cacheService->invalidateProductStock($validatedData['product_id']);
+
             return redirect()->route('admin.stock-in.index')
                 ->with('success', 'Entrada de stock registrada correctamente.');
 
@@ -142,6 +155,18 @@ class StockInController extends Controller
             $stockIn->delete();
 
             DB::commit();
+
+            event(new StockUpdated(
+                product: $product,
+                quantity: $stockIn->quantity,
+                type: 'in',
+                referenceId: $stockIn->id,
+                referenceType: StockIn::class,
+                notes: 'Eliminación de entrada de stock'
+            ));
+
+            $this->cacheService->invalidateProductStock($stockIn->product_id);
+
             return redirect()->route('admin.stock-in.index')
                 ->with('success', 'Entrada de stock eliminada y stock del producto corregido.');
 

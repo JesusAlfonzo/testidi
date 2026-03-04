@@ -13,11 +13,8 @@ class RequestForQuotationController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('permission:rfq_ver')->only(['index', 'show']);
-        $this->middleware('permission:rfq_crear')->only(['create', 'store']);
-        $this->middleware('permission:rfq_editar')->only(['edit', 'update']);
-        $this->middleware('permission:rfq_eliminar')->only(['destroy']);
-        $this->middleware('permission:rfq_enviar')->only(['markAsSent', 'markAsClosed', 'cancel']);
+        $this->authorizeResource(RequestForQuotation::class, 'rfq');
+        $this->middleware('can:rfq_enviar')->only(['markAsSent', 'markAsClosed', 'cancel']);
     }
 
     public function index()

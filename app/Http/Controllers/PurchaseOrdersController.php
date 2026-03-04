@@ -15,12 +15,9 @@ class PurchaseOrdersController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('permission:ordenes_compra_ver')->only(['index', 'show']);
-        $this->middleware('permission:ordenes_compra_crear')->only(['create', 'store']);
-        $this->middleware('permission:ordenes_compra_editar')->only(['edit', 'update']);
-        $this->middleware('permission:ordenes_compra_eliminar')->only(['destroy']);
-        $this->middleware('permission:ordenes_compra_aprobar')->only(['issue', 'complete']);
-        $this->middleware('permission:ordenes_compra_anular')->only(['cancel']);
+        $this->authorizeResource(PurchaseOrder::class, 'purchaseOrder');
+        $this->middleware('can:ordenes_compra_aprobar')->only(['issue', 'complete']);
+        $this->middleware('can:ordenes_compra_anular')->only(['cancel']);
     }
 
     public function index()

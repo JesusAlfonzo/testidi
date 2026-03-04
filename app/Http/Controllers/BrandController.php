@@ -3,17 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Models\Brand;
-use Illuminate\Http\Request;
 use App\Http\Requests\StoreUpdateBrandRequest;
+use App\Services\CacheService;
 
 class BrandController extends Controller
 {
-    public function __construct()
+    protected CacheService $cacheService;
+
+    public function __construct(CacheService $cacheService)
     {
-        $this->middleware('permission:marcas_ver')->only('index');
-        $this->middleware('permission:marcas_crear')->only('create', 'store');
-        $this->middleware('permission:marcas_editar')->only('edit', 'update');
-        $this->middleware('permission:marcas_eliminar')->only('destroy');
+        $this->cacheService = $cacheService;
+        $this->authorizeResource(Brand::class, 'brand');
     }
 
     public function index()
@@ -29,11 +29,11 @@ class BrandController extends Controller
 
     public function store(StoreUpdateBrandRequest $request)
     {
-        // ESTANDARIZACIÓN: Creación directa
         Brand::create($request->validated() + ['user_id' => auth()->id()]);
+        $this->cacheService->invalidateBrands();
 
         return redirect()->route('admin.brands.index')
-                         ->with('success', '✅ Marca registrada con éxito.');
+                         ->with('success', 'Marca registrada con éxito.');
     }
 
     public function edit(Brand $brand)
@@ -43,18 +43,19 @@ class BrandController extends Controller
 
     public function update(StoreUpdateBrandRequest $request, Brand $brand)
     {
-        // ESTANDARIZACIÓN: Actualización directa
         $brand->update($request->validated());
+        $this->cacheService->invalidateBrands();
 
         return redirect()->route('admin.brands.index')
-                         ->with('success', '✅ Marca actualizada con éxito.');
+                         ->with('success', 'Marca actualizada con éxito.');
     }
 
     public function destroy(Brand $brand)
     {
-        // Se recomienda aplicar restricción si la marca está asociada a un producto.
         $brand->delete();
+        $this->cacheService->invalidateBrands();
+        
         return redirect()->route('admin.brands.index')
-                         ->with('success', '✅ Marca eliminada con éxito.');
+                         ->with('success', 'Marca eliminada con éxito.');
     }
 }

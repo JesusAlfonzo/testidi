@@ -2,23 +2,27 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\InventoryRequest as RequestModel; // 🔑 Alias para el Modelo de Solicitud renombrado
+use App\Events\StockUpdated;
+use App\Models\InventoryRequest as RequestModel;
 use App\Models\Product;
 use App\Models\Kit;
 use App\Models\RequestItem;
-use App\Models\User; // Necesario para el filtro de solicitantes en index
-use App\Http\Requests\StoreRequestRequest; // Clase de validación
+use App\Models\User;
+use App\Http\Requests\StoreRequestRequest;
+use App\Services\CacheService;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Http\Request as HttpRequest; // Alias para la clase base de Request de Laravel
+use Illuminate\Http\Request as HttpRequest;
 use Carbon\Carbon;
 
 class RequestController extends Controller
 {
-    public function __construct()
+    protected CacheService $cacheService;
+
+    public function __construct(CacheService $cacheService)
     {
-        $this->middleware('permission:solicitudes_ver')->only('index', 'show');
-        $this->middleware('permission:solicitudes_crear')->only('create', 'store');
-        $this->middleware('permission:solicitudes_aprobar')->only('process');
+        $this->cacheService = $cacheService;
+        $this->authorizeResource(RequestModel::class, 'inventoryRequest');
+        $this->middleware('can:solicitudes_aprobar')->only('process');
     }
 
     public function index(HttpRequest $request)
@@ -185,6 +189,15 @@ class RequestController extends Controller
                         $product->stock -= $item->quantity_requested;
                         $product->save();
 
+                        event(new StockUpdated(
+                            product: $product,
+                            quantity: $item->quantity_requested,
+                            type: 'out',
+                            referenceId: $request->id,
+                            referenceType: RequestModel::class,
+                            notes: 'Solicitud de salida approved'
+                        ));
+
                     } elseif ($item->item_type === 'kit') {
                         // --- Lógica para KIT (Descontar componentes) ---
                         $kit = $item->kit;
@@ -204,6 +217,15 @@ class RequestController extends Controller
                             
                             $prodComponent->stock -= $totalConsumption;
                             $prodComponent->save();
+
+                            event(new StockUpdated(
+                                product: $prodComponent,
+                                quantity: $totalConsumption,
+                                type: 'out',
+                                referenceId: $request->id,
+                                referenceType: RequestModel::class,
+                                notes: "Salida por Kit: {$kit->name}"
+                            ));
                         }
                     }
                 }

@@ -3,17 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Models\Location;
-use Illuminate\Http\Request;
 use App\Http\Requests\StoreUpdateLocationRequest;
+use App\Services\CacheService;
 
 class LocationController extends Controller
 {
-    public function __construct()
+    protected CacheService $cacheService;
+
+    public function __construct(CacheService $cacheService)
     {
-        $this->middleware('permission:ubicaciones_ver')->only('index');
-        $this->middleware('permission:ubicaciones_crear')->only('create', 'store');
-        $this->middleware('permission:ubicaciones_editar')->only('edit', 'update');
-        $this->middleware('permission:ubicaciones_eliminar')->only('destroy');
+        $this->cacheService = $cacheService;
+        $this->authorizeResource(Location::class, 'location');
     }
 
     public function index()
@@ -29,11 +29,11 @@ class LocationController extends Controller
 
     public function store(StoreUpdateLocationRequest $request)
     {
-        // ESTANDARIZACIÓN: Creación directa
         Location::create($request->validated() + ['user_id' => auth()->id()]);
+        $this->cacheService->invalidateLocations();
 
         return redirect()->route('admin.locations.index')
-                         ->with('success', '✅ Ubicación creada con éxito.');
+                         ->with('success', 'Ubicación creada con éxito.');
     }
 
     public function edit(Location $location)
@@ -43,18 +43,19 @@ class LocationController extends Controller
 
     public function update(StoreUpdateLocationRequest $request, Location $location)
     {
-        // ESTANDARIZACIÓN: Actualización directa
         $location->update($request->validated());
+        $this->cacheService->invalidateLocations();
 
         return redirect()->route('admin.locations.index')
-                         ->with('success', '✅ Ubicación actualizada con éxito.');
+                         ->with('success', 'Ubicación actualizada con éxito.');
     }
 
     public function destroy(Location $location)
     {
-        // Se recomienda aplicar restricción si la ubicación está asociada a un producto.
         $location->delete();
+        $this->cacheService->invalidateLocations();
+        
         return redirect()->route('admin.locations.index')
-                         ->with('success', '✅ Ubicación eliminada con éxito.');
+                         ->with('success', 'Ubicación eliminada con éxito.');
     }
 }

@@ -4,15 +4,16 @@ namespace App\Http\Controllers;
 
 use App\Models\Supplier;
 use App\Http\Requests\StoreUpdateSupplierRequest;
+use App\Services\CacheService;
 
 class SupplierController extends Controller
 {
-    public function __construct()
+    protected CacheService $cacheService;
+
+    public function __construct(CacheService $cacheService)
     {
-        $this->middleware('permission:proveedores_ver')->only('index');
-        $this->middleware('permission:proveedores_crear')->only('create', 'store');
-        $this->middleware('permission:proveedores_editar')->only('edit', 'update');
-        $this->middleware('permission:proveedores_eliminar')->only('destroy');
+        $this->cacheService = $cacheService;
+        $this->authorizeResource(Supplier::class, 'supplier');
     }
 
     public function index()
@@ -28,11 +29,11 @@ class SupplierController extends Controller
 
     public function store(StoreUpdateSupplierRequest $request)
     {
-        // ESTANDARIZACIÓN: Creación directa
         Supplier::create($request->validated() + ['user_id' => auth()->id()]);
+        $this->cacheService->invalidateSuppliers();
 
         return redirect()->route('admin.suppliers.index')
-                         ->with('success', '✅ Proveedor registrado con éxito.');
+                         ->with('success', 'Proveedor registrado con éxito.');
     }
 
     public function edit(Supplier $supplier)
@@ -42,18 +43,19 @@ class SupplierController extends Controller
 
     public function update(StoreUpdateSupplierRequest $request, Supplier $supplier)
     {
-        // ESTANDARIZACIÓN: Actualización directa
         $supplier->update($request->validated());
+        $this->cacheService->invalidateSuppliers();
 
         return redirect()->route('admin.suppliers.index')
-                         ->with('success', '✅ Proveedor actualizado con éxito.');
+                         ->with('success', 'Proveedor actualizado con éxito.');
     }
 
     public function destroy(Supplier $supplier)
     {
-        // NOTA: Se recomienda aplicar restricción si el proveedor está asociado a un producto.
         $supplier->delete();
+        $this->cacheService->invalidateSuppliers();
+        
         return redirect()->route('admin.suppliers.index')
-                         ->with('success', '✅ Proveedor eliminado con éxito.');
+                         ->with('success', 'Proveedor eliminado con éxito.');
     }
 }

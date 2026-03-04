@@ -3,17 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Models\Unit;
-use Illuminate\Http\Request;
 use App\Http\Requests\StoreUpdateUnitRequest;
+use App\Services\CacheService;
 
 class UnitController extends Controller
 {
-    public function __construct()
+    protected CacheService $cacheService;
+
+    public function __construct(CacheService $cacheService)
     {
-        $this->middleware('permission:unidades_ver')->only('index');
-        $this->middleware('permission:unidades_crear')->only('create', 'store');
-        $this->middleware('permission:unidades_editar')->only('edit', 'update');
-        $this->middleware('permission:unidades_eliminar')->only('destroy');
+        $this->cacheService = $cacheService;
+        $this->authorizeResource(Unit::class, 'unit');
     }
 
     public function index()
@@ -29,11 +29,11 @@ class UnitController extends Controller
 
     public function store(StoreUpdateUnitRequest $request)
     {
-        // ESTANDARIZACIÓN: Creación directa sin variable intermedia
         Unit::create($request->validated() + ['user_id' => auth()->id()]);
+        $this->cacheService->invalidateUnits();
 
         return redirect()->route('admin.units.index')
-                         ->with('success', '✅ Unidad de medida creada con éxito.');
+                         ->with('success', 'Unidad de medida creada con éxito.');
     }
 
     public function edit(Unit $unit)
@@ -43,18 +43,19 @@ class UnitController extends Controller
 
     public function update(StoreUpdateUnitRequest $request, Unit $unit)
     {
-        // ESTANDARIZACIÓN: Actualización directa
         $unit->update($request->validated());
+        $this->cacheService->invalidateUnits();
 
         return redirect()->route('admin.units.index')
-                         ->with('success', '✅ Unidad de medida actualizada con éxito.');
+                         ->with('success', 'Unidad de medida actualizada con éxito.');
     }
 
     public function destroy(Unit $unit)
     {
-        // NOTA: Se recomienda aplicar restricción si la unidad está asociada a un producto.
         $unit->delete();
+        $this->cacheService->invalidateUnits();
+        
         return redirect()->route('admin.units.index')
-                         ->with('success', '✅ Unidad de medida eliminada con éxito.');
+                         ->with('success', 'Unidad de medida eliminada con éxito.');
     }
 }
