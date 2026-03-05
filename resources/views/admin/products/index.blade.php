@@ -2,10 +2,9 @@
 
 @section('title', 'Inventario | Productos')
 
-{{-- Plugins necesarios --}}
-@section('plugins.Datatables', true) 
-@section('plugins.DatatablesPlugins', true) 
-@section('plugins.Responsive', true) 
+@section('plugins.Datatables', true)
+@section('plugins.DatatablesPlugins', true)
+@section('plugins.Responsive', true)
 @section('plugins.Select2', true)
 
 @section('content_header')
@@ -19,23 +18,9 @@
     </div>
 @stop
 
-@section('css')
-    <style>
-        /* Ajustes para el botón de expansión en móvil */
-        table.dataTable.dtr-inline.collapsed > tbody > tr > td:first-child:before, 
-        table.dataTable.dtr-inline.collapsed > tbody > tr > th:first-child:before { 
-            left: 4px; 
-        }
-        /* Quitar padding extra en PC para alinear con el header */
-        .table.dataTable.dtr-inline.collapsed > tbody > tr > td:first-child { 
-            padding-left: 10px !important; 
-        }
-    </style>
-@stop
-
 @section('content')
     
-    {{-- 🔎 FILTROS AVANZADOS --}}
+    {{-- FILTROS AVANZADOS --}}
     <div class="card card-outline card-primary collapsed-card">
         <div class="card-header">
             <h3 class="card-title"><i class="fas fa-filter"></i> Filtros Avanzados</h3>
@@ -44,7 +29,7 @@
             </div>
         </div>
         <div class="card-body">
-            <form method="GET" action="{{ route('admin.products.index') }}">
+            <form id="filterForm" method="GET" action="{{ route('admin.products.index') }}">
                 <div class="row">
                     <div class="col-md-3">
                         <div class="form-group">
@@ -97,11 +82,6 @@
                             </select>
                         </div>
                     </div>
-                    <div class="col-md-2 d-flex align-items-end">
-                        <div class="form-group w-100">
-                            <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-search"></i> Buscar</button>
-                        </div>
-                    </div>
                 </div>
             </form>
         </div>
@@ -114,86 +94,21 @@
             <div class="card card-outline card-info">
                 <div class="card-body p-4">
                     <div class="table-responsive">
-                        {{-- 🔑 ID 'productsTable', clases 'display nowrap' y width 100% --}}
                         <table id="productsTable" class="table table-striped table-bordered display nowrap" style="width:100%">
                             <thead>
                                 <tr>
-                                    {{-- Prioridades Altas (Visibles en Móvil) --}}
-                                    <th style="width: 25%">Nombre</th>
-                                    <th style="width: 15%">Stock</th>
-                                    <th style="width: 15%">Acciones</th> 
-
-                                    {{-- Prioridades Bajas (Ocultas en Móvil) --}}
-                                    <th style="width: 10%">Código</th>
-                                    <th style="width: 15%">Categoría</th>
-                                    <th style="width: 10%">Ubicación</th>
+                                    <th>Nombre</th>
+                                    <th>Stock</th>
+                                    <th>Acciones</th> 
+                                    <th>Código</th>
+                                    <th>Categoría</th>
+                                    <th>Ubicación</th>
                                     <th>Costo/Precio</th>
-                                    <th style="width: 10%">Estado</th>
-                                    <th style="width: 8%">Origen</th>
+                                    <th>Estado</th>
+                                    <th>Origen</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @forelse ($products as $product)
-                                    <tr>
-                                        <td><strong>{{ $product->name }}</strong></td>
-                                        
-                                        {{-- Stock con lógica de color --}}
-                                        <td data-order="{{ $product->stock ?? 0 }}">
-                                            <span class="badge {{ $product->stock <= $product->min_stock ? 'badge-danger' : 'badge-success' }}">
-                                                {{ $product->stock }} {{ $product->unit->abbreviation ?? 'unid' }}
-                                            </span>
-                                        </td>
-
-                                        {{-- Acciones Agrupadas --}}
-                                        <td>
-                                            <div class="btn-group btn-group-sm" role="group">
-                                                @can('productos_editar')
-                                                    <a href="{{ route('admin.products.edit', $product) }}" class="btn btn-default text-primary" title="Editar">
-                                                        <i class="fas fa-edit"></i>
-                                                    </a>
-                                                @endcan
-                                                @can('kardex_ver')
-                                                    <a href="{{ route('admin.reports.kardex', $product->id) }}" class="btn btn-default text-info" title="Ver Kardex">
-                                                        <i class="fas fa-history"></i>
-                                                    </a>
-                                                @endcan
-                                                @can('productos_eliminar')
-                                                    <form action="{{ route('admin.products.destroy', $product) }}" method="POST" style="display:inline-block;">
-                                                        @csrf @method('DELETE')
-                                                        <button type="submit" class="btn btn-default text-danger" title="Eliminar" onclick="return confirm('¿Seguro de eliminar este producto? Se recomienda solo si no tiene movimientos históricos.')">
-                                                            <i class="fas fa-trash"></i>
-                                                        </button>
-                                                    </form>
-                                                @endcan
-                                            </div>
-                                        </td>
-
-                                        {{-- Columnas Secundarias --}}
-                                        <td><strong>{{ $product->code ?? 'N/A' }}</strong></td>
-                                        <td><span class="badge badge-secondary">{{ $product->category->name ?? 'N/A' }}</span></td>
-                                        <td>{{ $product->location->name ?? 'N/A' }}</td>
-                                        <td>
-                                            <small class="d-block text-muted">C: ${{ number_format($product->cost, 2) }}</small> 
-                                            P: <strong>${{ number_format($product->price, 2) }}</strong>
-                                        </td>
-                                        <td>
-                                            <span class="badge badge-{{ $product->is_active ? 'info' : 'secondary' }}">
-                                                {{ $product->is_active ? 'Activo' : 'Inactivo' }}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            @if($product->created_on_the_fly)
-                                                <span class="badge badge-warning" title="Creado desde Cotización/RFQ/OC">
-                                                    <i class="fas fa-bolt"></i> Rápido
-                                                </span>
-                                            @else
-                                                <span class="badge badge-secondary">Normal</span>
-                                            @endif
-                                        </td>
-                                    </tr>
-                                @empty
-                                    {{-- El mensaje de vacío lo maneja Datatables, pero dejamos esto por estructura --}}
-                                @endforelse
                             </tbody>
                         </table>
                     </div>
@@ -206,21 +121,74 @@
 @section('js')
     <script>
         $(document).ready(function() {
-            // Inicializar Select2 para los filtros
             $('.select2').select2({ theme: 'bootstrap4' });
 
-            // Inicializar DataTables
-            const productsTable = $('#productsTable').DataTable({
+            var table = $('#productsTable').DataTable({
                 "responsive": true, 
+                "processing": true,
+                "serverSide": true,
                 "paging": true, 
                 "lengthChange": true, 
                 "searching": true, 
                 "ordering": true, 
                 "info": true, 
                 "autoWidth": false,
-                "order": [[ 0, "asc" ]], // Ordenar por Nombre (índice 0) ascendente
+                "order": [[ 0, "asc" ]],
+                "pageLength": 15,
+                "lengthMenu": [[15, 25, 50, 100], [15, 25, 50, 100]],
 
-                // 🔑 TRADUCCIÓN NATIVA (Sin CDN externo)
+                "ajax": {
+                    "url": "{{ route('admin.products.index') }}",
+                    "type": "GET",
+                    "data": function(d) {
+                        d.category_id = $('select[name="category_id"]').val();
+                        d.location_id = $('select[name="location_id"]').val();
+                        d.status = $('select[name="status"]').val();
+                        d.stock_status = $('select[name="stock_status"]').val();
+                        d.created_on_the_fly = $('select[name="created_on_the_fly"]').val();
+                    }
+                },
+
+                "columns": [
+                    { "data": "name", "name": "name" },
+                    { 
+                        "data": "stock", 
+                        "name": "stock",
+                        "render": function(data, type, row) {
+                            return '<span class="badge ' + row.stock_class + '">' + data + ' ' + row.unit + '</span>';
+                        }
+                    },
+                    { "data": "actions", "name": "actions", "orderable": false, "searchable": false },
+                    { "data": "code", "name": "code" },
+                    { "data": "category", "name": "category" },
+                    { "data": "location", "name": "location" },
+                    { 
+                        "data": "cost", 
+                        "name": "cost",
+                        "render": function(data, type, row) {
+                            return '<small class="d-block text-muted">C: $' + data + '</small>P: <strong>$' + row.price + '</strong>';
+                        }
+                    },
+                    { 
+                        "data": "is_active", 
+                        "name": "is_active",
+                        "render": function(data) {
+                            return data 
+                                ? '<span class="badge badge-info">Activo</span>' 
+                                : '<span class="badge badge-secondary">Inactivo</span>';
+                        }
+                    },
+                    { 
+                        "data": "created_on_the_fly", 
+                        "name": "created_on_the_fly",
+                        "render": function(data) {
+                            return data 
+                                ? '<span class="badge badge-warning" title="Creado desde Cotización/RFQ/OC"><i class="fas fa-bolt"></i> Rápido</span>' 
+                                : '<span class="badge badge-secondary">Normal</span>';
+                        }
+                    }
+                ],
+
                 "language": {
                     "decimal": "",
                     "emptyTable": "No hay información disponible",
@@ -243,21 +211,21 @@
                 },
 
                 "columnDefs": [
-                    { "orderable": false, "targets": [2, 6] }, // No ordenar Acciones ni Costos complejos
-                    
-                    // 🔑 PRIORIDADES PARA MÓVIL:
-                    { "responsivePriority": 1, "targets": 0 }, // Nombre (Siempre visible)
-                    { "responsivePriority": 2, "targets": 2 }, // Acciones (Siempre visible)
-                    { "responsivePriority": 3, "targets": 1 }, // Stock (Visible si cabe)
-                    
-                    // Ocultar el resto inmediatamente en móvil (se verán al expandir)
-                    { "responsivePriority": 100, "targets": [3, 4, 5, 6, 7, 8] } 
+                    { "orderable": false, "targets": [2, 6] },
+                    { "responsivePriority": 1, "targets": 0 },
+                    { "responsivePriority": 2, "targets": 2 },
+                    { "responsivePriority": 3, "targets": 1 },
+                    { "responsivePriority": 100, "targets": [3, 4, 5, 6, 7, 8] }
                 ]
             });
+
+            // Aplicar filtros cuando cambien los selects
+            $('#filterForm select').on('change', function() {
+                table.draw();
+            });
             
-            // Ajuste de renderizado para AdminLTE
             setTimeout(function() { 
-                productsTable.columns.adjust().responsive.recalc(); 
+                table.columns.adjust().responsive.recalc(); 
             }, 500);
         });
     </script>

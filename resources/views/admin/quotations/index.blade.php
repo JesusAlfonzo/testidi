@@ -26,7 +26,7 @@
                     <h3 class="card-title">Filtros</h3>
                 </div>
                 <div class="card-body">
-                    <form method="GET" class="row">
+                    <form id="filterForm" class="row">
                         <div class="col-md-3">
                             <select name="status" class="form-control">
                                 <option value="">Todos los estados</option>
@@ -52,51 +52,12 @@
                                     <th>Código</th>
                                     <th>Proveedor</th>
                                     <th>RFQ</th>
-                                    <th>Estado</th>
                                     <th>Total</th>
+                                    <th>Estado</th>
                                     <th>Fecha</th>
-                                    <th>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @forelse ($quotations as $quotation)
-                                    <tr>
-                                        <td><strong>{{ $quotation->code }}</strong></td>
-                                        <td>
-                                            @if($quotation->hasRegisteredSupplier())
-                                                <span class="badge badge-success"><i class="fas fa-check"></i></span>
-                                            @else
-                                                <span class="badge badge-warning" title="Temporal"><i class="fas fa-clock"></i></span>
-                                            @endif
-                                            {{ $quotation->getSupplierDisplayName() }}
-                                        </td>
-                                        <td>
-                                            @if($quotation->rfq)
-                                                <a href="{{ route('admin.rfq.show', $quotation->rfq) }}">{{ $quotation->rfq->code }}</a>
-                                            @else
-                                                -
-                                            @endif
-                                        </td>
-                                        <td>{!! $quotation->status_badge !!}</td>
-                                        <td>${{ number_format($quotation->total, 2) }}</td>
-                                        <td>{{ $quotation->date_issued->format('d/m/Y') }}</td>
-                                        <td>
-                                            <div class="btn-group btn-group-sm" role="group">
-                                                <a href="{{ route('admin.quotations.show', $quotation) }}" class="btn btn-default text-info" title="Ver">
-                                                    <i class="fas fa-eye"></i>
-                                                </a>
-                                                @if($quotation->isEditable())
-                                                    @can('cotizaciones_editar')
-                                                        <a href="{{ route('admin.quotations.edit', $quotation) }}" class="btn btn-default text-primary" title="Editar">
-                                                            <i class="fas fa-edit"></i>
-                                                        </a>
-                                                    @endcan
-                                                @endif
-                                            </div>
-                                        </td>
-                                    </tr>
-                                @empty
-                                @endforelse
                             </tbody>
                         </table>
                     </div>
@@ -109,8 +70,10 @@
 @section('js')
     <script>
         $(document).ready(function() {
-            $('#quotationsTable').DataTable({
+            var table = $('#quotationsTable').DataTable({
                 "responsive": true,
+                "processing": true,
+                "serverSide": true,
                 "paging": true,
                 "lengthChange": true,
                 "searching": true,
@@ -118,6 +81,26 @@
                 "info": true,
                 "autoWidth": false,
                 "order": [[ 5, "desc" ]],
+                "pageLength": 15,
+                "lengthMenu": [[15, 25, 50, 100], [15, 25, 50, 100]],
+
+                "ajax": {
+                    "url": "{{ route('admin.quotations.index') }}",
+                    "type": "GET",
+                    "data": function(d) {
+                        d.status = $('select[name="status"]').val();
+                    }
+                },
+
+                "columns": [
+                    { "data": "code", "name": "code" },
+                    { "data": "supplier", "name": "supplier_id" },
+                    { "data": "rfq", "name": "rfq_id" },
+                    { "data": "total", "name": "total" },
+                    { "data": "status", "name": "status" },
+                    { "data": "date", "name": "date_issued" }
+                ],
+
                 "language": {
                     "emptyTable": "No hay cotizaciones registradas",
                     "info": "Mostrando _START_ a _END_ de _TOTAL_ registros",
@@ -133,9 +116,15 @@
                         "previous": "Anterior"
                     }
                 },
+
                 "columnDefs": [
-                    { "orderable": false, "targets": [6] }
+                    { "orderable": false, "targets": [2, 3] }
                 ]
+            });
+
+            $('#filterForm').on('submit', function(e) {
+                e.preventDefault();
+                table.draw();
             });
         });
     </script>

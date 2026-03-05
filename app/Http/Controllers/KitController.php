@@ -16,10 +16,20 @@ class KitController extends Controller
     /**
      * Muestra el listado de Kits.
      */
-    public function index()
+    public function index(\Illuminate\Http\Request $request)
     {
-        $kits = Kit::orderBy('name')->get();
-        return view('admin.kits.index', compact('kits'));
+        $perPage = $request->get('per_page', 15);
+        if (!in_array($perPage, [15, 25, 50, 100])) {
+            $perPage = 15;
+        }
+
+        if ($request->get('view_all') === 'true') {
+            $kits = Kit::orderBy('name')->paginate(Kit::count())->appends($request->except('page'));
+        } else {
+            $kits = Kit::orderBy('name')->paginate($perPage);
+        }
+        
+        return view('admin.kits.index', compact('kits', 'perPage'));
     }
 
     /**

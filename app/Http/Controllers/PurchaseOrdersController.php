@@ -20,13 +20,83 @@ class PurchaseOrdersController extends Controller
         $this->middleware('can:ordenes_compra_anular')->only(['cancel']);
     }
 
-    public function index()
+    public function index(\Illuminate\Http\Request $request)
     {
-        $orders = PurchaseOrder::with(['supplier', 'creator'])
-            ->latest()
-            ->get();
+        if ($request->ajax()) {
+            return $this->indexDataTables($request);
+        }
 
-        return view('admin.purchaseOrders.index', compact('orders'));
+        $perPage = $request->get('per_page', 15);
+        if (!in_array($perPage, [15, 25, 50, 100])) {
+            $perPage = 15;
+        }
+
+        if ($request->get('view_all') === 'true') {
+            $orders = PurchaseOrder::with(['supplier', 'creator'])
+                ->latest()
+                ->paginate(PurchaseOrder::count())
+                ->appends($request->except('page'));
+        } else {
+            $orders = PurchaseOrder::with(['supplier', 'creator'])
+                ->latest()
+                ->paginate($perPage);
+        }
+
+        return view('admin.purchaseOrders.index', compact('orders', 'perPage'));
+    }
+
+    protected function indexDataTables(\Illuminate\Http\Request $request)
+    {
+        $query = PurchaseOrder::with(['supplier']);
+
+        $start = $request->input('start', 0);
+        $length = $request->input('length', 15);
+        $search = $request->input('search.value', '');
+        $orderColumn = $request->input('order.0.column', 5);
+        $orderDir = $request->input('order.0.dir', 'desc');
+
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->whereRaw('LOWER(code) LIKE ?', [strtolower("%{$search}%")])
+                  ->orWhereHas('supplier', function($sq) use ($search) {
+                      $sq->whereRaw('LOWER(name) LIKE ?', [strtolower("%{$search}%")]);
+                  });
+            });
+        }
+
+        $totalRecords = PurchaseOrder::count();
+        $totalFiltered = $query->count();
+
+        $columns = ['code', 'supplier_id', 'total', 'status', 'date_issued', 'created_at'];
+        if (isset($columns[$orderColumn])) {
+            $query->orderBy($columns[$orderColumn], $orderDir);
+        }
+
+        $orders = $query->offset($start)->limit($length)->get();
+
+        $data = $orders->map(function ($item) {
+            $statusClass = match($item->status) {
+                'draft' => 'secondary',
+                'issued' => 'info',
+                'completed' => 'success',
+                'cancelled' => 'danger',
+                default => 'secondary'
+            };
+            return [
+                'code' => $item->code,
+                'supplier' => $item->supplier->name ?? 'N/A',
+                'total' => $item->currency . ' ' . number_format($item->total, 2),
+                'status' => '<span class="badge badge-' . $statusClass . '">' . ucfirst($item->status) . '</span>',
+                'date' => $item->date_issued->format('d/m/Y'),
+            ];
+        });
+
+        return response()->json([
+            'draw' => intval($request->input('draw')),
+            'recordsTotal' => $totalRecords,
+            'recordsFiltered' => $totalFiltered,
+            'data' => $data
+        ]);
     }
 
     public function create(Request $request)

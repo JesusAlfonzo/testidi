@@ -21,6 +21,15 @@ class QuotationController extends Controller
 
     public function index(Request $request)
     {
+        if ($request->ajax()) {
+            return $this->indexDataTables($request);
+        }
+
+        $perPage = $request->get('per_page', 15);
+        if (!in_array($perPage, [15, 25, 50, 100])) {
+            $perPage = 15;
+        }
+
         $query = PurchaseQuote::with(['supplier', 'user', 'rfq']);
 
         if ($request->filled('rfq_id')) {
@@ -31,9 +40,77 @@ class QuotationController extends Controller
             $query->where('status', $request->status);
         }
 
-        $quotations = $query->latest()->get();
+        if ($request->get('view_all') === 'true') {
+            $quotations = $query->latest()->paginate($query->count())->appends($request->except('page'));
+        } else {
+            $quotations = $query->latest()->paginate($perPage)->appends($request->except('per_page'));
+        }
 
-        return view('admin.quotations.index', compact('quotations'));
+        return view('admin.quotations.index', compact('quotations', 'perPage'));
+    }
+
+    protected function indexDataTables(Request $request)
+    {
+        $query = PurchaseQuote::with(['supplier', 'rfq']);
+
+        if ($request->filled('rfq_id')) {
+            $query->where('rfq_id', $request->rfq_id);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $start = $request->input('start', 0);
+        $length = $request->input('length', 15);
+        $search = $request->input('search.value', '');
+        $orderColumn = $request->input('order.0.column', 4);
+        $orderDir = $request->input('order.0.dir', 'desc');
+
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->whereRaw('LOWER(code) LIKE ?', [strtolower("%{$search}%")])
+                  ->orWhereHas('supplier', function($sq) use ($search) {
+                      $sq->whereRaw('LOWER(name) LIKE ?', [strtolower("%{$search}%")]);
+                  });
+            });
+        }
+
+        $totalRecords = PurchaseQuote::count();
+        $totalFiltered = $query->count();
+
+        $columns = ['code', 'supplier_id', 'total', 'status', 'date_issued'];
+        if (isset($columns[$orderColumn])) {
+            $query->orderBy($columns[$orderColumn], $orderDir);
+        }
+
+        $quotations = $query->offset($start)->limit($length)->get();
+
+        $data = $quotations->map(function ($item) {
+            $statusClass = match($item->status) {
+                'pending' => 'warning',
+                'selected' => 'info',
+                'approved' => 'success',
+                'rejected' => 'danger',
+                'converted' => 'primary',
+                default => 'secondary'
+            };
+            return [
+                'code' => $item->code,
+                'supplier' => $item->supplier->name ?? 'N/A',
+                'rfq' => $item->rfq->code ?? '-',
+                'total' => $item->currency . ' ' . number_format($item->total, 2),
+                'status' => '<span class="badge badge-' . $statusClass . '">' . ucfirst($item->status) . '</span>',
+                'date' => $item->date_issued->format('d/m/Y'),
+            ];
+        });
+
+        return response()->json([
+            'draw' => intval($request->input('draw')),
+            'recordsTotal' => $totalRecords,
+            'recordsFiltered' => $totalFiltered,
+            'data' => $data
+        ]);
     }
 
     public function create(Request $request)

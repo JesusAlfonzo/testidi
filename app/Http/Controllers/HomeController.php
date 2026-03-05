@@ -126,42 +126,22 @@ class HomeController extends Controller
             $lineChartData[] = $record ? $record->count : 0;
         }
 
-        // 2. Gráfico de Cotizaciones (últimos 30 días)
-        $quoteStats = [
-            'pending' => PurchaseQuote::where('status', 'pending')->count(),
-            'selected' => PurchaseQuote::where('status', 'selected')->count(),
-            'approved' => PurchaseQuote::where('status', 'approved')->count(),
-            'rejected' => PurchaseQuote::where('status', 'rejected')->count(),
-            'converted' => PurchaseQuote::where('status', 'converted')->count(),
-        ];
-
-        // 3. Gráfico de Órdenes de Compra
-        $orderStats = [
-            'draft' => PurchaseOrder::where('status', 'draft')->count(),
-            'issued' => PurchaseOrder::where('status', 'issued')->count(),
-            'received' => PurchaseOrder::where('status', 'received')->count(),
-            'cancelled' => PurchaseOrder::where('status', 'cancelled')->count(),
-        ];
-
-        // 4. RFQ stats
-        $rfqStats = [
-            'draft' => RequestForQuotation::where('status', 'draft')->count(),
-            'sent' => RequestForQuotation::where('status', 'sent')->count(),
-            'partial' => RequestForQuotation::where('status', 'partial')->count(),
-            'completed' => RequestForQuotation::where('status', 'completed')->count(),
-            'cancelled' => RequestForQuotation::where('status', 'cancelled')->count(),
-        ];
-
-        // 5. Estadísticas de Inventario
-        $inventoryStats = [
-            'products' => Product::count(),
-            'categories' => Category::count(),
-            'brands' => Brand::count(),
-            'units' => Unit::count(),
-            'locations' => Location::count(),
-            'suppliers' => Supplier::count(),
-        ];
-
+        // 2-5. OPTIMIZADO: Una sola consulta por modelo con CASE
+        $quoteStats = PurchaseQuote::select('status', DB::raw('count(*) as count'))
+            ->groupBy('status')
+            ->pluck('count', 'status')
+            ->toArray();
+        
+        $orderStats = PurchaseOrder::select('status', DB::raw('count(*) as count'))
+            ->groupBy('status')
+            ->pluck('count', 'status')
+            ->toArray();
+        
+        $rfqStats = RequestForQuotation::select('status', DB::raw('count(*) as count'))
+            ->groupBy('status')
+            ->pluck('count', 'status')
+            ->toArray();
+        
         // 6. Actividad reciente del sistema (últimos 10)
         $recentActivity = Activity::with('causer')
             ->orderBy('created_at', 'desc')
@@ -176,17 +156,41 @@ class HomeController extends Controller
             'pendingRequests' => InventoryRequest::where('status', 'Pending')->count(),
             'approvedRequestsToday' => InventoryRequest::where('status', 'Approved')->whereDate('processed_at', Carbon::today())->count(),
             
-            // Stats Inventario
-            'inventoryStats' => $inventoryStats,
+            // Stats Inventario (consultas simples, necesarias)
+            'inventoryStats' => [
+                'products' => Product::count(),
+                'categories' => Category::count(),
+                'brands' => Brand::count(),
+                'units' => Unit::count(),
+                'locations' => Location::count(),
+                'suppliers' => Supplier::count(),
+            ],
             
             // Stats Cotizaciones
-            'quoteStats' => $quoteStats,
+            'quoteStats' => [
+                'pending' => $quoteStats['pending'] ?? 0,
+                'selected' => $quoteStats['selected'] ?? 0,
+                'approved' => $quoteStats['approved'] ?? 0,
+                'rejected' => $quoteStats['rejected'] ?? 0,
+                'converted' => $quoteStats['converted'] ?? 0,
+            ],
             
             // Stats Órdenes de Compra
-            'orderStats' => $orderStats,
+            'orderStats' => [
+                'draft' => $orderStats['draft'] ?? 0,
+                'issued' => $orderStats['issued'] ?? 0,
+                'received' => $orderStats['received'] ?? 0,
+                'cancelled' => $orderStats['cancelled'] ?? 0,
+            ],
             
             // Stats RFQs
-            'rfqStats' => $rfqStats,
+            'rfqStats' => [
+                'draft' => $rfqStats['draft'] ?? 0,
+                'sent' => $rfqStats['sent'] ?? 0,
+                'partial' => $rfqStats['partial'] ?? 0,
+                'completed' => $rfqStats['completed'] ?? 0,
+                'cancelled' => $rfqStats['cancelled'] ?? 0,
+            ],
             
             // Datos Gráfico Donut Solicitudes
             'chartApproved' => InventoryRequest::where('status', 'Approved')->count(),

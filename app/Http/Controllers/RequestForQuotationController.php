@@ -17,13 +17,25 @@ class RequestForQuotationController extends Controller
         $this->middleware('can:rfq_enviar')->only(['markAsSent', 'markAsClosed', 'cancel']);
     }
 
-    public function index()
+    public function index(\Illuminate\Http\Request $request)
     {
-        $rfqs = RequestForQuotation::with(['creator', 'items.product'])
-            ->latest()
-            ->get();
+        $perPage = $request->get('per_page', 15);
+        if (!in_array($perPage, [15, 25, 50, 100])) {
+            $perPage = 15;
+        }
 
-        return view('admin.rfq.index', compact('rfqs'));
+        if ($request->get('view_all') === 'true') {
+            $rfqs = RequestForQuotation::with(['creator', 'items.product'])
+                ->latest()
+                ->paginate(RequestForQuotation::count())
+                ->appends($request->except('page'));
+        } else {
+            $rfqs = RequestForQuotation::with(['creator', 'items.product'])
+                ->latest()
+                ->paginate($perPage);
+        }
+
+        return view('admin.rfq.index', compact('rfqs', 'perPage'));
     }
 
     public function create()

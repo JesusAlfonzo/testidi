@@ -25,8 +25,17 @@ class StockInController extends Controller
 
     public function index(Request $request)
     {
+        if ($request->ajax()) {
+            return $this->indexDataTables($request);
+        }
+
         $suppliers = Supplier::orderBy('name')->pluck('name', 'id');
         $products = Product::orderBy('name')->pluck('name', 'id');
+
+        $perPage = $request->get('per_page', 15);
+        if (!in_array($perPage, [15, 25, 50, 100])) {
+            $perPage = 15;
+        }
 
         $query = StockIn::with(['product', 'supplier', 'user', 'purchaseOrder'])->orderBy('entry_date', 'desc');
 
@@ -43,9 +52,82 @@ class StockInController extends Controller
             $query->where('product_id', $request->product_id);
         }
 
-        $stockIns = $query->get();
+        if ($request->get('view_all') === 'true') {
+            $stockIns = $query->paginate($query->count())->appends($request->except('page'));
+        } else {
+            $stockIns = $query->paginate($perPage)->appends($request->except('per_page'));
+        }
 
-        return view('admin.stock-in.index', compact('stockIns', 'suppliers', 'products'));
+        return view('admin.stock-in.index', compact('stockIns', 'suppliers', 'products', 'perPage'));
+    }
+
+    protected function indexDataTables(Request $request)
+    {
+        $query = StockIn::with(['product', 'supplier', 'user', 'purchaseOrder']);
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('entry_date', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('entry_date', '<=', $request->date_to);
+        }
+        if ($request->filled('supplier_id')) {
+            $query->where('supplier_id', $request->supplier_id);
+        }
+        if ($request->filled('product_id')) {
+            $query->where('product_id', $request->product_id);
+        }
+
+        $start = $request->input('start', 0);
+        $length = $request->input('length', 15);
+        $search = $request->input('search.value', '');
+        $orderColumn = $request->input('order.0.column', 0);
+        $orderDir = $request->input('order.0.dir', 'desc');
+
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->whereRaw('LOWER(observations) LIKE ?', [strtolower("%{$search}%")])
+                  ->orWhereHas('product', function($pq) use ($search) {
+                      $pq->whereRaw('LOWER(name) LIKE ?', [strtolower("%{$search}%")]);
+                  })
+                  ->orWhereHas('supplier', function($sq) use ($search) {
+                      $sq->whereRaw('LOWER(name) LIKE ?', [strtolower("%{$search}%")]);
+                  });
+            });
+        }
+
+        $totalRecords = StockIn::count();
+        $totalFiltered = $query->count();
+
+        $columns = ['entry_date', 'quantity', 'product_id', 'supplier_id', 'unit_cost', 'created_at'];
+        if (isset($columns[$orderColumn])) {
+            $query->orderBy($columns[$orderColumn], $orderDir);
+        }
+
+        $stockIns = $query->offset($start)->limit($length)->get();
+
+        $data = $stockIns->map(function ($item) {
+            $doc = $item->document_type ?? '';
+            if ($item->document_number) {
+                $doc .= ' <span class="badge badge-light">' . $item->document_number . '</span>';
+            }
+            return [
+                'date' => $item->entry_date->format('d/m/Y'),
+                'product' => ($item->product->name ?? 'N/A') . '<br><small class="text-muted">' . ($item->product->code ?? '') . '</small>',
+                'quantity' => '<span class="badge badge-success">+' . $item->quantity . ' ' . ($item->product->unit->abbreviation ?? '') . '</span>',
+                'unit_cost' => '$' . number_format($item->unit_cost, 2),
+                'total' => '$' . number_format($item->quantity * $item->unit_cost, 2),
+                'supplier' => $item->supplier->name ?? 'Ajuste / N/A',
+                'document' => $doc,
+            ];
+        });
+
+        return response()->json([
+            'draw' => intval($request->input('draw')),
+            'recordsTotal' => $totalRecords,
+            'recordsFiltered' => $totalFiltered,
+            'data' => $data
+        ]);
     }
 
     public function create(Request $request)

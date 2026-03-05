@@ -16,10 +16,20 @@ class SupplierController extends Controller
         $this->authorizeResource(Supplier::class, 'supplier');
     }
 
-    public function index()
+    public function index(\Illuminate\Http\Request $request)
     {
-        $suppliers = Supplier::with('user')->get();
-        return view('admin.suppliers.index', compact('suppliers'));
+        $perPage = $request->get('per_page', 15);
+        if (!in_array($perPage, [15, 25, 50, 100])) {
+            $perPage = 15;
+        }
+
+        if ($request->get('view_all') === 'true') {
+            $suppliers = Supplier::with('user')->paginate(Supplier::count())->appends($request->except('page'));
+        } else {
+            $suppliers = Supplier::with('user')->paginate($perPage);
+        }
+        
+        return view('admin.suppliers.index', compact('suppliers', 'perPage'));
     }
 
     public function create()

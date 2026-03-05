@@ -12,6 +12,7 @@ use App\Http\Requests\StoreRequestRequest;
 use App\Services\CacheService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request as HttpRequest;
+use Illuminate\Support\Str;
 use Carbon\Carbon;
 
 class RequestController extends Controller
@@ -27,8 +28,18 @@ class RequestController extends Controller
 
     public function index(HttpRequest $request)
     {
+        if ($request->ajax()) {
+            return $this->indexDataTables($request);
+        }
+
         // 1. Cargar lista de usuarios para el filtro
         $requesters = User::pluck('name', 'id');
+
+        // Determinar cantidad por página
+        $perPage = $request->get('per_page', 15);
+        if (!in_array($perPage, [15, 25, 50, 100])) {
+            $perPage = 15;
+        }
 
         // 2. Iniciar consulta base
         $query = RequestModel::with(['requester', 'approver', 'items.product'])
@@ -54,10 +65,88 @@ class RequestController extends Controller
             $query->where('requester_id', $request->requester_id);
         }
 
-        // 5. Obtener resultados
-        $requests = $query->get();
+        // 5. Obtener resultados con paginación
+        if ($request->get('view_all') === 'true') {
+            $requests = $query->paginate($query->count())->appends($request->except('page'));
+        } else {
+            $requests = $query->paginate($perPage)->appends($request->except('per_page'));
+        }
 
-        return view('admin.requests.index', compact('requests', 'requesters'));
+        return view('admin.requests.index', compact('requests', 'requesters', 'perPage'));
+    }
+
+    protected function indexDataTables(HttpRequest $request)
+    {
+        $user = auth()->user();
+        
+        $query = RequestModel::with(['requester', 'approver']);
+
+        if (!$user->can('solicitudes_aprobar')) {
+            $query->where('requester_id', $user->id);
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('requested_at', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('requested_at', '<=', $request->date_to);
+        }
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+        if ($request->filled('requester_id')) {
+            $query->where('requester_id', $request->requester_id);
+        }
+
+        $start = $request->input('start', 0);
+        $length = $request->input('length', 15);
+        $search = $request->input('search.value', '');
+        $orderColumn = $request->input('order.0.column', 0);
+        $orderDir = $request->input('order.0.dir', 'desc');
+
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->whereRaw('LOWER(justification) LIKE ?', [strtolower("%{$search}%")])
+                  ->orWhereHas('requester', function($rq) use ($search) {
+                      $rq->whereRaw('LOWER(name) LIKE ?', [strtolower("%{$search}%")]);
+                  });
+            });
+        }
+
+        $totalRecords = RequestModel::count();
+        $totalFiltered = $query->count();
+
+        $columns = ['requested_at', 'status', 'requester_id', 'processed_at'];
+        if (isset($columns[$orderColumn])) {
+            $query->orderBy($columns[$orderColumn], $orderDir);
+        }
+
+        $requests = $query->offset($start)->limit($length)->get();
+
+        $data = $requests->map(function ($item) {
+            $statusClass = match($item->status) {
+                'Pending' => 'warning',
+                'Approved' => 'success',
+                'Rejected' => 'danger',
+                default => 'secondary'
+            };
+            return [
+                'id' => 'REQ-' . $item->id,
+                'date' => $item->requested_at->format('d/m/Y H:i'),
+                'requester' => $item->requester->name ?? 'N/A',
+                'justification' => Str::limit($item->justification, 50),
+                'status' => '<span class="badge badge-' . $statusClass . '">' . $item->status . '</span>',
+                'approver' => $item->approver->name ?? '-',
+                'processed' => $item->processed_at ? $item->processed_at->format('d/m/Y') : '-',
+            ];
+        });
+
+        return response()->json([
+            'draw' => intval($request->input('draw')),
+            'recordsTotal' => $totalRecords,
+            'recordsFiltered' => $totalFiltered,
+            'data' => $data
+        ]);
     }
 
     public function create()

@@ -16,10 +16,20 @@ class LocationController extends Controller
         $this->authorizeResource(Location::class, 'location');
     }
 
-    public function index()
+    public function index(\Illuminate\Http\Request $request)
     {
-        $locations = Location::with('user')->get();
-        return view('admin.locations.index', compact('locations'));
+        $perPage = $request->get('per_page', 15);
+        if (!in_array($perPage, [15, 25, 50, 100])) {
+            $perPage = 15;
+        }
+
+        if ($request->get('view_all') === 'true') {
+            $locations = Location::with('user')->paginate(Location::count())->appends($request->except('page'));
+        } else {
+            $locations = Location::with('user')->paginate($perPage);
+        }
+        
+        return view('admin.locations.index', compact('locations', 'perPage'));
     }
 
     public function create()

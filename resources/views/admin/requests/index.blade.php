@@ -2,10 +2,9 @@
 
 @section('title', 'Inventario | Solicitudes de Salida')
 
-{{-- Plugins necesarios --}}
-@section('plugins.Datatables', true) 
-@section('plugins.DatatablesPlugins', true) 
-@section('plugins.Responsive', true) 
+@section('plugins.Datatables', true)
+@section('plugins.DatatablesPlugins', true)
+@section('plugins.Responsive', true)
 @section('plugins.Select2', true)
 
 @section('content_header')
@@ -19,18 +18,9 @@
     </div>
 @stop
 
-@section('css')
-    <style>
-        /* Ajustes para DataTables Responsive */
-        table.dataTable.dtr-inline.collapsed > tbody > tr > td:first-child:before, 
-        table.dataTable.dtr-inline.collapsed > tbody > tr > th:first-child:before { left: 4px; }
-        .table.dataTable.dtr-inline.collapsed > tbody > tr > td:first-child { padding-left: 10px !important; }
-    </style>
-@stop
-
 @section('content')
     
-    {{-- 🔎 FILTROS --}}
+    {{-- FILTROS --}}
     <div class="card card-outline card-info collapsed-card">
         <div class="card-header">
             <h3 class="card-title"><i class="fas fa-filter"></i> Filtros de Búsqueda</h3>
@@ -39,7 +29,7 @@
             </div>
         </div>
         <div class="card-body">
-            <form method="GET" action="{{ route('admin.requests.index') }}">
+            <form id="filterForm">
                 <div class="row">
                     <div class="col-md-3">
                         <div class="form-group">
@@ -67,7 +57,6 @@
                     <div class="col-md-3">
                         <div class="form-group">
                             <label>Solicitante</label>
-                            {{-- Asumiendo que pasas $requesters desde el controlador --}}
                             <select name="requester_id" class="form-control select2">
                                 <option value="">Todos</option>
                                 @foreach($requesters as $id => $name)
@@ -92,47 +81,16 @@
                         <table id="requestsTable" class="table table-striped table-bordered display nowrap" style="width:100%">
                             <thead>
                                 <tr>
-                                    <th style="width: 10%">ID</th>
-                                    <th style="width: 20%">Solicitante</th>
-                                    <th style="width: 10%">Estado</th>
-                                    <th style="width: 10%">Acciones</th>
+                                    <th>ID</th>
+                                    <th>Solicitante</th>
                                     <th>Justificación</th>
+                                    <th>Estado</th>
                                     <th>Fecha Solicitud</th>
                                     <th>Aprobador</th>
+                                    <th>Fecha Procesado</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @forelse ($requests as $request)
-                                    <tr>
-                                        <td>REQ-{{ $request->id }}</td>
-                                        <td>{{ $request->requester->name ?? 'N/A' }}</td>
-                                        <td>
-                                            <span class="badge badge-{{ $request->status_badge_class }}">
-                                                {{ $request->status_label }}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div class="btn-group btn-group-sm">
-                                                <a href="{{ route('admin.requests.show', $request) }}" class="btn btn-default text-info" title="Ver Detalle">
-                                                    <i class="fas fa-eye"></i>
-                                                </a>
-                                                {{-- Botón de acción rápida si está pendiente --}}
-                                                @if ($request->status === 'Pending' && auth()->user()->can('solicitudes_aprobar'))
-                                                    <a href="{{ route('admin.requests.show', $request) }}" class="btn btn-default text-warning" title="Revisar y Aprobar/Rechazar">
-                                                        <i class="fas fa-check-circle"></i>
-                                                    </a>
-                                                @endif
-                                            </div>
-                                        </td>
-                                        <td>{{ Str::limit($request->justification, 50) }}</td>
-                                        <td data-order="{{ optional($request->requested_at)->timestamp }}">
-                                            {{ optional($request->requested_at)->format('d/m/Y H:i') }}
-                                        </td>
-                                        <td>{{ $request->approver->name ?? '---' }}</td>
-                                    </tr>
-                                @empty
-                                    {{-- DataTables manejará la tabla vacía --}}
-                                @endforelse
                             </tbody>
                         </table>
                     </div>
@@ -145,21 +103,43 @@
 @section('js')
     <script>
         $(document).ready(function() {
-            // Inicializar Select2 para filtros
             $('.select2').select2({ theme: 'bootstrap4' });
 
-            // Inicializar DataTables
-            const requestsTable = $('#requestsTable').DataTable({
+            var table = $('#requestsTable').DataTable({
                 "responsive": true, 
+                "processing": true,
+                "serverSide": true,
                 "paging": true,
                 "lengthChange": true,
                 "searching": true,
                 "ordering": true,
                 "info": true,
                 "autoWidth": false,
-                "order": [[ 5, "desc" ]], 
-                
-                // 🔑 SOLUCIÓN: Traducción incrustada directamente (Funciona en cualquier versión)
+                "order": [[ 4, "desc" ]],
+                "pageLength": 15,
+                "lengthMenu": [[15, 25, 50, 100], [15, 25, 50, 100]],
+
+                "ajax": {
+                    "url": "{{ route('admin.requests.index') }}",
+                    "type": "GET",
+                    "data": function(d) {
+                        d.date_from = $('input[name="date_from"]').val();
+                        d.date_to = $('input[name="date_to"]').val();
+                        d.status = $('select[name="status"]').val();
+                        d.requester_id = $('select[name="requester_id"]').val();
+                    }
+                },
+
+                "columns": [
+                    { "data": "id", "name": "id" },
+                    { "data": "requester", "name": "requester_id" },
+                    { "data": "justification", "name": "justification" },
+                    { "data": "status", "name": "status" },
+                    { "data": "date", "name": "requested_at" },
+                    { "data": "approver", "name": "approver_id" },
+                    { "data": "processed", "name": "processed_at" }
+                ],
+
                 "language": {
                     "decimal": "",
                     "emptyTable": "No hay información disponible",
@@ -182,19 +162,18 @@
                 },
 
                 "columnDefs": [
-                    { "orderable": false, "targets": [3] }, // Acciones no ordenables
-                    { "type": "date", "targets": 5 },       // Tipo fecha
-                    // Prioridades Responsive
-                    { "responsivePriority": 1, "targets": 0 }, // ID
-                    { "responsivePriority": 2, "targets": 2 }, // Estado
-                    { "responsivePriority": 3, "targets": 3 }, // Acciones
-                    { "responsivePriority": 4, "targets": 1 }, // Solicitante
-                    { "responsivePriority": 100, "targets": [4, 5, 6] } // Ocultar primero
+                    { "orderable": false, "targets": [2] }
                 ]
             });
+
+            $('#filterForm').on('submit', function(e) {
+                e.preventDefault();
+                table.draw();
+            });
             
-            // Ajuste para AdminLTE
-            setTimeout(function() { requestsTable.columns.adjust().responsive.recalc(); }, 500);
+            setTimeout(function() { 
+                table.columns.adjust().responsive.recalc(); 
+            }, 500);
         });
     </script>
 @endsection

@@ -62,11 +62,18 @@ class ActivityLogController extends Controller
         }
 
         // 4. Obtener resultados paginados
-        // Usamos paginate para no sobrecargar la memoria, DataTables funcionará en modo cliente con esta página
-        // O si prefieres ver muchos, puedes aumentar a 100 o 200.
-        $activities = $query->get();
+        $perPage = $request->get('per_page', 15);
+        if (!in_array($perPage, [15, 25, 50, 100])) {
+            $perPage = 15;
+        }
 
-        return view('admin.audit.index', compact('activities', 'users', 'subjects'));
+        if ($request->get('view_all') === 'true') {
+            $activities = $query->paginate($query->count())->appends($request->except('page'));
+        } else {
+            $activities = $query->paginate($perPage)->appends($request->except('per_page'));
+        }
+
+        return view('admin.audit.index', compact('activities', 'users', 'subjects', 'perPage'));
     }
 
     public function show($id)

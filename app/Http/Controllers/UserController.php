@@ -24,16 +24,26 @@ class UserController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(\Illuminate\Http\Request $request)
     {
+        $perPage = $request->get('per_page', 15);
+        if (!in_array($perPage, [15, 25, 50, 100])) {
+            $perPage = 15;
+        }
+
         // Obtiene todos los usuarios paginados, excluyendo al Super-Admin (por seguridad)
-        $users = User::with('roles')
+        $query = User::with('roles')
             ->whereDoesntHave('roles', function ($query) {
                 $query->where('name', 'Super-Admin');
-            })
-            ->get();
+            });
 
-        return view('admin.users.index', compact('users'));
+        if ($request->get('view_all') === 'true') {
+            $users = $query->paginate($query->count())->appends($request->except('page'));
+        } else {
+            $users = $query->paginate($perPage);
+        }
+
+        return view('admin.users.index', compact('users', 'perPage'));
     }
 
     /**

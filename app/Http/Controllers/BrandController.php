@@ -16,10 +16,20 @@ class BrandController extends Controller
         $this->authorizeResource(Brand::class, 'brand');
     }
 
-    public function index()
+    public function index(\Illuminate\Http\Request $request)
     {
-        $brands = Brand::with('user')->get();
-        return view('admin.brands.index', compact('brands'));
+        $perPage = $request->get('per_page', 15);
+        if (!in_array($perPage, [15, 25, 50, 100])) {
+            $perPage = 15;
+        }
+
+        if ($request->get('view_all') === 'true') {
+            $brands = Brand::with('user')->paginate(Brand::count())->appends($request->except('page'));
+        } else {
+            $brands = Brand::with('user')->paginate($perPage);
+        }
+        
+        return view('admin.brands.index', compact('brands', 'perPage'));
     }
 
     public function create()

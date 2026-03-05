@@ -23,14 +23,22 @@ class ProductController extends Controller
 
     public function index(Request $request)
     {
+        // Si es petición AJAX de DataTables, devolver JSON
+        if ($request->ajax()) {
+            return $this->indexDataTables($request);
+        }
+
         $categories = $this->cacheService->categories();
         $locations = $this->cacheService->locations();
         $brands = $this->cacheService->brands();
 
-        // Consulta base
+        $perPage = $request->get('per_page', 15);
+        if (!in_array($perPage, [15, 25, 50, 100])) {
+            $perPage = 15;
+        }
+
         $query = Product::with(['category', 'unit', 'location', 'brand']);
 
-        // --- APLICAR FILTROS ---
         if ($request->filled('category_id')) $query->where('category_id', $request->category_id);
         if ($request->filled('location_id')) $query->where('location_id', $request->location_id);
         if ($request->filled('brand_id')) $query->where('brand_id', $request->brand_id);
@@ -49,10 +57,87 @@ class ProductController extends Controller
             }
         }
 
-        // Usamos get() para que DataTables maneje la paginación en cliente
-        $products = $query->get();
+        if ($request->get('view_all') === 'true') {
+            $products = $query->paginate($query->count())->appends($request->except('page'));
+        } else {
+            $products = $query->paginate($perPage)->appends($request->except('per_page'));
+        }
 
-        return view('admin.products.index', compact('products', 'categories', 'locations', 'brands'));
+        return view('admin.products.index', compact('products', 'categories', 'locations', 'brands', 'perPage'));
+    }
+
+    protected function indexDataTables(Request $request)
+    {
+        $query = Product::with(['category', 'unit', 'location', 'brand']);
+
+        if ($request->filled('category_id')) $query->where('category_id', $request->category_id);
+        if ($request->filled('location_id')) $query->where('location_id', $request->location_id);
+        if ($request->filled('brand_id')) $query->where('brand_id', $request->brand_id);
+        if ($request->filled('status')) {
+            if ($request->status === 'active') $query->where('is_active', true);
+            elseif ($request->status === 'inactive') $query->where('is_active', false);
+        }
+        if ($request->filled('stock_status')) {
+            if ($request->stock_status === 'low') $query->whereColumn('stock', '<=', 'min_stock');
+        }
+        if ($request->filled('created_on_the_fly')) {
+            if ($request->created_on_the_fly === 'yes') $query->where('created_on_the_fly', true);
+            elseif ($request->created_on_the_fly === 'no') $query->where('created_on_the_fly', false);
+        }
+
+        // DataTables parameters
+        $start = $request->input('start', 0);
+        $length = $request->input('length', 15);
+        $search = $request->input('search.value', '');
+        $orderColumn = $request->input('order.0.column', 0);
+        $orderDir = $request->input('order.0.dir', 'asc');
+
+        // Búsqueda global (case-insensitive)
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->whereRaw('LOWER(name) LIKE ?', [strtolower("%{$search}%")])
+                  ->orWhereRaw('LOWER(code) LIKE ?', [strtolower("%{$search}%")]);
+            });
+        }
+
+        // Total records (sin filtros)
+        $totalRecords = Product::count();
+
+        // Total filtered
+        $totalFiltered = $query->count();
+
+        // Ordenamiento
+        $columns = ['name', 'stock', 'code', 'category_id', 'location_id', 'is_active', 'created_on_the_fly'];
+        if (isset($columns[$orderColumn])) {
+            $query->orderBy($columns[$orderColumn], $orderDir);
+        }
+
+        // Paginación
+        $products = $query->offset($start)->limit($length)->get();
+
+        $data = $products->map(function ($product) {
+            return [
+                'name' => $product->name,
+                'stock' => $product->stock,
+                'stock_class' => $product->stock <= $product->min_stock ? 'badge-danger' : 'badge-success',
+                'unit' => $product->unit->abbreviation ?? 'unid',
+                'actions' => view('admin.products.partials.actions', ['product' => $product])->render(),
+                'code' => $product->code ?? 'N/A',
+                'category' => $product->category->name ?? 'N/A',
+                'location' => $product->location->name ?? 'N/A',
+                'cost' => number_format($product->cost, 2),
+                'price' => number_format($product->price, 2),
+                'is_active' => $product->is_active,
+                'created_on_the_fly' => $product->created_on_the_fly,
+            ];
+        });
+
+        return response()->json([
+            'draw' => intval($request->input('draw')),
+            'recordsTotal' => $totalRecords,
+            'recordsFiltered' => $totalFiltered,
+            'data' => $data
+        ]);
     }
 
     // ... (resto de métodos create, store, edit, update, destroy se mantienen IGUAL) ...

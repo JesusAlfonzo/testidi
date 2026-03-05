@@ -29,42 +29,12 @@
                                 <tr>
                                     <th>Código</th>
                                     <th>Proveedor</th>
-                                    <th>Estado</th>
                                     <th>Total</th>
+                                    <th>Estado</th>
                                     <th>Fecha</th>
-                                    <th>Entrega</th>
-                                    <th>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @forelse ($orders as $order)
-                                    <tr>
-                                        <td><strong>{{ $order->code }}</strong></td>
-                                        <td>{{ $order->supplier->name }}</td>
-                                        <td>{!! $order->status_badge !!}</td>
-                                        <td>${{ number_format($order->total, 2) }}</td>
-                                        <td>{{ $order->date_issued?->format('d/m/Y') ?? '-' }}</td>
-                                        <td>{{ $order->delivery_date?->format('d/m/Y') ?? '-' }}</td>
-                                        <td>
-                                            <div class="btn-group btn-group-sm" role="group">
-                                                <a href="{{ route('admin.purchaseOrders.show', $order) }}" class="btn btn-default text-info" title="Ver">
-                                                    <i class="fas fa-eye"></i>
-                                                </a>
-                                                <a href="{{ route('admin.purchaseOrders.pdf', $order) }}" class="btn btn-default text-secondary" title="PDF" target="_blank">
-                                                    <i class="fas fa-file-pdf"></i>
-                                                </a>
-                                                @if($order->isEditable())
-                                                    @can('ordenes_compra_editar')
-                                                        <a href="{{ route('admin.purchaseOrders.edit', $order) }}" class="btn btn-default text-primary" title="Editar">
-                                                            <i class="fas fa-edit"></i>
-                                                        </a>
-                                                    @endcan
-                                                @endif
-                                            </div>
-                                        </td>
-                                    </tr>
-                                @empty
-                                @endforelse
                             </tbody>
                         </table>
                     </div>
@@ -77,8 +47,10 @@
 @section('js')
     <script>
         $(document).ready(function() {
-            $('#ordersTable').DataTable({
+            var table = $('#ordersTable').DataTable({
                 "responsive": true,
+                "processing": true,
+                "serverSide": true,
                 "paging": true,
                 "lengthChange": true,
                 "searching": true,
@@ -86,6 +58,22 @@
                 "info": true,
                 "autoWidth": false,
                 "order": [[ 4, "desc" ]],
+                "pageLength": 15,
+                "lengthMenu": [[15, 25, 50, 100], [15, 25, 50, 100]],
+
+                "ajax": {
+                    "url": "{{ route('admin.purchaseOrders.index') }}",
+                    "type": "GET"
+                },
+
+                "columns": [
+                    { "data": "code", "name": "code" },
+                    { "data": "supplier", "name": "supplier_id" },
+                    { "data": "total", "name": "total" },
+                    { "data": "status", "name": "status" },
+                    { "data": "date", "name": "date_issued" }
+                ],
+
                 "language": {
                     "emptyTable": "No hay ordenes de compra registradas",
                     "info": "Mostrando _START_ a _END_ de _TOTAL_ registros",
@@ -101,8 +89,9 @@
                         "previous": "Anterior"
                     }
                 },
+
                 "columnDefs": [
-                    { "orderable": false, "targets": [6] }
+                    { "orderable": false, "targets": [2] }
                 ]
             });
         });

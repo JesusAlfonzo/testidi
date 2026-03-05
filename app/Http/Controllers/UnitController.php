@@ -16,10 +16,20 @@ class UnitController extends Controller
         $this->authorizeResource(Unit::class, 'unit');
     }
 
-    public function index()
+    public function index(\Illuminate\Http\Request $request)
     {
-        $units = Unit::with('user')->get();
-        return view('admin.units.index', compact('units'));
+        $perPage = $request->get('per_page', 15);
+        if (!in_array($perPage, [15, 25, 50, 100])) {
+            $perPage = 15;
+        }
+
+        if ($request->get('view_all') === 'true') {
+            $units = Unit::with('user')->paginate(Unit::count())->appends($request->except('page'));
+        } else {
+            $units = Unit::with('user')->paginate($perPage);
+        }
+        
+        return view('admin.units.index', compact('units', 'perPage'));
     }
 
     public function create()

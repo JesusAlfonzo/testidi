@@ -16,10 +16,20 @@ class CategoryController extends Controller
         $this->authorizeResource(Category::class, 'category');
     }
 
-    public function index()
+    public function index(\Illuminate\Http\Request $request)
     {
-        $categories = Category::with('user')->get();
-        return view('admin.categories.index', compact('categories'));
+        $perPage = $request->get('per_page', 15);
+        if (!in_array($perPage, [15, 25, 50, 100])) {
+            $perPage = 15;
+        }
+
+        if ($request->get('view_all') === 'true') {
+            $categories = Category::with('user')->paginate(Category::count())->appends($request->except('page'));
+        } else {
+            $categories = Category::with('user')->paginate($perPage);
+        }
+        
+        return view('admin.categories.index', compact('categories', 'perPage'));
     }
 
     public function create()
