@@ -14,7 +14,10 @@ class QuotationController extends Controller
 {
     public function __construct()
     {
-        $this->authorizeResource(PurchaseQuote::class, 'purchaseQuote');
+        $this->middleware('can:cotizaciones_ver')->only(['index', 'show']);
+        $this->middleware('can:cotizaciones_crear')->only(['create', 'store']);
+        $this->middleware('can:cotizaciones_editar')->only(['edit', 'update']);
+        $this->middleware('can:cotizaciones_eliminar')->only(['destroy']);
         $this->middleware('can:cotizaciones_aprobar')->only(['select', 'approve']);
         $this->middleware('can:cotizaciones_rechazar')->only('reject');
     }
@@ -57,6 +60,10 @@ class QuotationController extends Controller
             $query->where('rfq_id', $request->rfq_id);
         }
 
+        if ($request->filled('supplier_id')) {
+            $query->where('supplier_id', $request->supplier_id);
+        }
+
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
@@ -87,6 +94,14 @@ class QuotationController extends Controller
         $quotations = $query->offset($start)->limit($length)->get();
 
         $data = $quotations->map(function ($item) {
+            $statusLabel = match($item->status) {
+                'pending' => 'Pendiente',
+                'selected' => 'Seleccionada',
+                'approved' => 'Aprobada',
+                'rejected' => 'Rechazada',
+                'converted' => 'Convertida',
+                default => ucfirst($item->status)
+            };
             $statusClass = match($item->status) {
                 'pending' => 'warning',
                 'selected' => 'info',
@@ -100,8 +115,9 @@ class QuotationController extends Controller
                 'supplier' => $item->supplier->name ?? 'N/A',
                 'rfq' => $item->rfq->code ?? '-',
                 'total' => $item->currency . ' ' . number_format($item->total, 2),
-                'status' => '<span class="badge badge-' . $statusClass . '">' . ucfirst($item->status) . '</span>',
+                'status' => '<span class="badge badge-' . $statusClass . '">' . $statusLabel . '</span>',
                 'date' => $item->date_issued->format('d/m/Y'),
+                'actions' => view('admin.quotations.partials.actions', ['quotation' => $item])->render(),
             ];
         });
 
@@ -217,7 +233,7 @@ class QuotationController extends Controller
 
             DB::commit();
 
-            return redirect()->route('admin.quotations.show', $quote)
+            return redirect()->route('admin.quotations.show', ['quotation' => $quote->id])
                 ->with('success', 'Cotización registrada exitosamente.');
 
         } catch (\Exception $e) {

@@ -28,6 +28,26 @@
                 <div class="card-body">
                     <form id="filterForm" class="row">
                         <div class="col-md-3">
+                            <select name="rfq_id" class="form-control">
+                                <option value="">Todas las RFQ</option>
+                                @foreach(\App\Models\RequestForQuotation::orderBy('code')->get() as $rfq)
+                                    <option value="{{ $rfq->id }}" {{ request('rfq_id') == $rfq->id ? 'selected' : '' }}>
+                                        {{ $rfq->code }} - {{ $rfq->title }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <select name="supplier_id" class="form-control">
+                                <option value="">Todos los proveedores</option>
+                                @foreach(\App\Models\Supplier::orderBy('name')->get() as $supplier)
+                                    <option value="{{ $supplier->id }}" {{ request('supplier_id') == $supplier->id ? 'selected' : '' }}>
+                                        {{ $supplier->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-2">
                             <select name="status" class="form-control">
                                 <option value="">Todos los estados</option>
                                 <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pendiente</option>
@@ -38,6 +58,7 @@
                         </div>
                         <div class="col-md-2">
                             <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> Filtrar</button>
+                            <button type="button" class="btn btn-secondary" id="clearFilters"><i class="fas fa-eraser"></i> Limpiar</button>
                         </div>
                     </form>
                 </div>
@@ -55,6 +76,7 @@
                                     <th>Total</th>
                                     <th>Estado</th>
                                     <th>Fecha</th>
+                                    <th>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -88,6 +110,8 @@
                     "url": "{{ route('admin.quotations.index') }}",
                     "type": "GET",
                     "data": function(d) {
+                        d.rfq_id = $('select[name="rfq_id"]').val();
+                        d.supplier_id = $('select[name="supplier_id"]').val();
                         d.status = $('select[name="status"]').val();
                     }
                 },
@@ -98,7 +122,8 @@
                     { "data": "rfq", "name": "rfq_id" },
                     { "data": "total", "name": "total" },
                     { "data": "status", "name": "status" },
-                    { "data": "date", "name": "date_issued" }
+                    { "data": "date", "name": "date_issued" },
+                    { "data": "actions", "name": "actions", "orderable": false, "searchable": false }
                 ],
 
                 "language": {
@@ -124,6 +149,11 @@
 
             $('#filterForm').on('submit', function(e) {
                 e.preventDefault();
+                table.draw();
+            });
+
+            $('#clearFilters').on('click', function() {
+                $('#filterForm')[0].reset();
                 table.draw();
             });
         });

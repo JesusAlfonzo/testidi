@@ -67,6 +67,8 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::post('rfq/{rfq}/cancel', [RequestForQuotationController::class, 'cancel'])->name('rfq.cancel');
 
     // MÓDULO ORDENES DE COMPRAS
+    Route::get('purchaseOrders/search-suppliers', [PurchaseOrdersController::class, 'searchSuppliers'])->name('purchaseOrders.searchSuppliers');
+    Route::get('purchaseOrders/search-products', [PurchaseOrdersController::class, 'searchProducts'])->name('purchaseOrders.searchProducts');
     Route::resource('purchaseOrders', PurchaseOrdersController::class);
     Route::get('purchaseOrders/{purchaseOrder}/pdf', [PurchaseOrdersController::class, 'pdf'])->name('purchaseOrders.pdf');
     Route::post('purchaseOrders/{purchaseOrder}/issue', [PurchaseOrdersController::class, 'issue'])->name('purchaseOrders.issue');

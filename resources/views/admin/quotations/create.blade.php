@@ -3,6 +3,7 @@
 @section('title', 'Registrar Cotización de Proveedor')
 
 @section('plugins.Select2', true)
+@section('plugins.Sweetalert2', true)
 
 @section('content_header')
     <h1><i class="fas fa-file-alt"></i> Registrar Cotización de Proveedor</h1>
@@ -16,29 +17,35 @@
         $brands = \App\Models\Brand::orderBy('name')->get();
     @endphp
     
-    <div class="row">
-        <div class="col-12">
-            @include('admin.partials.session-messages')
-
-            <div class="card card-primary">
-                <div class="card-header">
-                    <h3 class="card-title">Datos de la Cotización</h3>
-                </div>
-
-                <form action="{{ route('admin.quotations.store') }}" method="POST" id="quotationForm">
-                    @csrf
+    <form action="{{ route('admin.quotations.store') }}" method="POST" id="quotationForm">
+        @csrf
+        
+        <!-- Sección: Información General -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card" style="border-left: 4px solid #6c757d;">
+                    <div class="card-header" style="background: linear-gradient(135deg, #6c757d 0%, #8a939d 100%);">
+                        <h3 class="card-title text-white">
+                            <i class="fas fa-info-circle"></i> Información General
+                        </h3>
+                    </div>
                     <div class="card-body">
                         <div class="row">
-                            <div class="col-12 col-md-4">
-                                <div class="form-group">
-                                    <label for="code">Código</label>
-                                    <input type="text" name="code" class="form-control" value="{{ $code }}" readonly>
+                            <div class="col-12 col-md-3">
+                                <div class="form-group mb-2">
+                                    <label for="code" class="mb-1">Código</label>
+                                    <div class="input-group input-group-sm">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text bg-secondary text-white"><i class="fas fa-hashtag"></i></span>
+                                        </div>
+                                        <input type="text" name="code" class="form-control" value="{{ $code }}" readonly>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="col-12 col-md-4">
-                                <div class="form-group">
-                                    <label for="rfq_id">RFQ Relacionada (Opcional)</label>
-                                    <select name="rfq_id" id="rfq_id" class="form-control select2">
+                            <div class="col-12 col-md-5">
+                                <div class="form-group mb-2">
+                                    <label for="rfq_id" class="mb-1">RFQ Relacionada</label>
+                                    <select name="rfq_id" id="rfq_id" class="form-control form-control-sm select2" data-placeholder="Seleccione RFQ" style="width: 100%;">
                                         <option value="">Ninguna</option>
                                         @foreach($rfqs as $rfq)
                                             <option value="{{ $rfq->id }}" {{ ($selectedRfq->id ?? null) == $rfq->id ? 'selected' : '' }}>
@@ -49,38 +56,58 @@
                                 </div>
                             </div>
                             <div class="col-12 col-md-4">
-                                <div class="form-group">
-                                    <label for="supplier_reference">Ref. Proveedor</label>
-                                    <input type="text" name="supplier_reference" class="form-control" value="{{ old('supplier_reference') }}" placeholder="Número de cotización del proveedor">
+                                <div class="form-group mb-2">
+                                    <label for="supplier_reference" class="mb-1">Ref. Proveedor</label>
+                                    <div class="input-group input-group-sm">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text bg-secondary text-white"><i class="fas fa-tag"></i></span>
+                                        </div>
+                                        <input type="text" name="supplier_reference" class="form-control" value="{{ old('supplier_reference') }}" placeholder="Número de cotización del proveedor">
+                                    </div>
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-                        <h4><i class="fas fa-building"></i> Datos del Proveedor</h4>
-                        <hr>
-
+        <!-- Sección: Datos del Proveedor -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card" style="border-left: 4px solid #f59e0b;">
+                    <div class="card-header" style="background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);">
+                        <h3 class="card-title text-white">
+                            <i class="fas fa-building"></i> Datos del Proveedor
+                        </h3>
+                    </div>
+                    <div class="card-body">
                         <div class="row mb-3">
                             <div class="col-12">
-                                <div class="btn-group" role="group">
+                                <div class="btn-group w-100" role="group">
                                     <input type="radio" class="btn-check" name="supplier_type" id="supplierRegistered" value="registered" {{ old('supplier_type') != 'temp' ? 'checked' : '' }}>
-                                    <label class="btn btn-outline-primary" for="supplierRegistered">Proveedor Registrado</label>
+                                    <label class="btn btn-outline-dark" for="supplierRegistered">
+                                        <i class="fas fa-building"></i> Proveedor Registrado
+                                    </label>
 
                                     <input type="radio" class="btn-check" name="supplier_type" id="supplierTemp" value="temp" {{ old('supplier_type') == 'temp' ? 'checked' : '' }}>
-                                    <label class="btn btn-outline-warning" for="supplierTemp">Proveedor Temporal</label>
+                                    <label class="btn btn-outline-warning" for="supplierTemp">
+                                        <i class="fas fa-user-plus"></i> Proveedor Temporal
+                                    </label>
                                 </div>
                             </div>
                         </div>
 
                         <div id="registeredSupplierBlock" class="{{ old('supplier_type') == 'temp' ? 'd-none' : '' }}">
                             <div class="row">
-                                <div class="col-12 col-md-6">
+                                <div class="col-12">
                                     <div class="form-group">
-                                        <label for="supplier_id">Proveedor (*)</label>
-                                        <select name="supplier_id" id="supplier_id" class="form-control select2">
+                                        <label for="supplier_id">Seleccionar Proveedor (*)</label>
+                                        <select name="supplier_id" id="supplier_id" class="form-control select2" data-placeholder="Buscar proveedor...">
                                             <option value="">Seleccione...</option>
                                             @foreach($suppliers as $supplier)
                                                 <option value="{{ $supplier->id }}" {{ old('supplier_id') == $supplier->id ? 'selected' : '' }}>
-                                                    {{ $supplier->name }}
+                                                    {{ $supplier->name }} | {{ $supplier->email }} | {{ $supplier->phone ?? 'Sin teléfono' }}
                                                 </option>
                                             @endforeach
                                         </select>
@@ -90,85 +117,157 @@
                         </div>
 
                         <div id="tempSupplierBlock" class="{{ old('supplier_type') != 'temp' ? 'd-none' : '' }}">
-                            <div class="alert alert-info">
+                            <div class="alert alert-warning mb-3">
                                 <i class="fas fa-info-circle"></i> Use esta opción si el proveedor aún no está registrado. Podrá registrarlo después.
                             </div>
                             <div class="row">
                                 <div class="col-12 col-md-4">
                                     <div class="form-group">
-                                        <label for="supplier_name_temp">Nombre del Proveedor (*)</label>
-                                        <input type="text" name="supplier_name_temp" class="form-control" value="{{ old('supplier_name_temp') }}">
+                                        <label for="supplier_name_temp">Nombre (*)</label>
+                                        <div class="input-group">
+                                            <div class="input-group-prepend">
+                                                <span class="input-group-text"><i class="fas fa-user"></i></span>
+                                            </div>
+                                            <input type="text" name="supplier_name_temp" class="form-control" value="{{ old('supplier_name_temp') }}">
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="col-12 col-md-4">
                                     <div class="form-group">
                                         <label for="supplier_email_temp">Email</label>
-                                        <input type="email" name="supplier_email_temp" class="form-control" value="{{ old('supplier_email_temp') }}">
+                                        <div class="input-group">
+                                            <div class="input-group-prepend">
+                                                <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                                            </div>
+                                            <input type="email" name="supplier_email_temp" class="form-control" value="{{ old('supplier_email_temp') }}">
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="col-12 col-md-4">
                                     <div class="form-group">
                                         <label for="supplier_phone_temp">Teléfono</label>
-                                        <input type="text" name="supplier_phone_temp" class="form-control" value="{{ old('supplier_phone_temp') }}">
+                                        <div class="input-group">
+                                            <div class="input-group-prepend">
+                                                <span class="input-group-text"><i class="fas fa-phone"></i></span>
+                                            </div>
+                                            <input type="text" name="supplier_phone_temp" class="form-control" value="{{ old('supplier_phone_temp') }}">
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-                        <h4 class="mt-4"><i class="fas fa-calendar"></i> Fechas</h4>
-                        <hr>
-
+        <!-- Sección: Fechas y Moneda -->
+        <div class="row">
+            <div class="col-12 col-md-8">
+                <div class="card" style="border-left: 4px solid #3b82f6;">
+                    <div class="card-header" style="background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);">
+                        <h3 class="card-title text-white">
+                            <i class="fas fa-calendar-alt"></i> Fechas
+                        </h3>
+                    </div>
+                    <div class="card-body">
                         <div class="row">
                             <div class="col-12 col-md-4">
-                                <div class="form-group">
-                                    <label for="date_issued">Fecha de Emisión (*)</label>
-                                    <input type="date" name="date_issued" class="form-control" value="{{ old('date_issued', date('Y-m-d')) }}" required>
+                                <div class="form-group mb-2">
+                                    <label for="date_issued" class="mb-1">Fecha de Emisión (*)</label>
+                                    <div class="input-group input-group-sm">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text bg-info text-white"><i class="fas fa-calendar"></i></span>
+                                        </div>
+                                        <input type="date" name="date_issued" class="form-control" value="{{ old('date_issued', date('Y-m-d')) }}" required>
+                                    </div>
                                 </div>
                             </div>
                             <div class="col-12 col-md-4">
-                                <div class="form-group">
-                                    <label for="valid_until">Válido Hasta</label>
-                                    <input type="date" name="valid_until" class="form-control" value="{{ old('valid_until') }}">
+                                <div class="form-group mb-2">
+                                    <label for="valid_until" class="mb-1">Válido Hasta</label>
+                                    <div class="input-group input-group-sm">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text bg-info text-white"><i class="fas fa-calendar-check"></i></span>
+                                        </div>
+                                        <input type="date" name="valid_until" class="form-control" value="{{ old('valid_until') }}">
+                                    </div>
                                 </div>
                             </div>
                             <div class="col-12 col-md-4">
-                                <div class="form-group">
-                                    <label for="delivery_date">Fecha Entrega Ofertada</label>
-                                    <input type="date" name="delivery_date" class="form-control" value="{{ old('delivery_date') }}">
+                                <div class="form-group mb-2">
+                                    <label for="delivery_date" class="mb-1">Fecha Entrega Ofertada</label>
+                                    <div class="input-group input-group-sm">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text bg-info text-white"><i class="fas fa-truck"></i></span>
+                                        </div>
+                                        <input type="date" name="delivery_date" class="form-control" value="{{ old('delivery_date') }}">
+                                    </div>
                                 </div>
                             </div>
                         </div>
-
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-4">
+                <div class="card" style="border-left: 4px solid #10b981;">
+                    <div class="card-header" style="background: linear-gradient(135deg, #10b981 0%, #34d399 100%);">
+                        <h3 class="card-title text-white">
+                            <i class="fas fa-coins"></i> Moneda
+                        </h3>
+                    </div>
+                    <div class="card-body">
                         <div class="row">
-                            <div class="col-12 col-md-6">
+                            <div class="col-12">
                                 <div class="form-group">
                                     <label for="currency">Moneda</label>
-                                    <select name="currency" class="form-control" style="width: 100%">
-                                        <option value="USD" {{ old('currency') == 'USD' ? 'selected' : '' }}>USD - Dólar</option>
-                                        <option value="VES" {{ old('currency') == 'VES' ? 'selected' : '' }}>VES - Bolívar</option>
-                                        <option value="EUR" {{ old('currency') == 'EUR' ? 'selected' : '' }}>EUR - Euro</option>
+                                    <select name="currency" class="form-control select2">
+                                        <option value="USD" {{ old('currency') == 'USD' ? 'selected' : '' }}>💵 USD - Dólar</option>
+                                        <option value="VES" {{ old('currency') == 'VES' ? 'selected' : '' }}>🇻🇪 VES - Bolívar</option>
+                                        <option value="EUR" {{ old('currency') == 'EUR' ? 'selected' : '' }}>💶 EUR - Euro</option>
                                     </select>
                                 </div>
                             </div>
-                            <div class="col-12 col-md-6">
+                            <div class="col-12">
                                 <div class="form-group">
                                     <label for="exchange_rate">Tasa de Cambio</label>
-                                    <input type="number" step="0.0001" name="exchange_rate" class="form-control" value="{{ old('exchange_rate', 1) }}">
+                                    <div class="input-group">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text"><i class="fas fa-exchange-alt"></i></span>
+                                        </div>
+                                        <input type="number" step="0.0001" name="exchange_rate" class="form-control" value="{{ old('exchange_rate', 1) }}">
+                                    </div>
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-                        <h4 class="mt-4"><i class="fas fa-boxes"></i> Items de la Cotización</h4>
-                        <hr>
-
+        <!-- Sección: Items -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card" style="border-left: 4px solid #ef4444;">
+                    <div class="card-header" style="background: linear-gradient(135deg, #ef4444 0%, #f87171 100%);">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h3 class="card-title text-white">
+                                <i class="fas fa-boxes"></i> Items de la Cotización
+                            </h3>
+                            <button type="button" id="addItem" class="btn btn-sm btn-light text-danger">
+                                <i class="fas fa-plus"></i> Agregar Item
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
                         <div class="table-responsive">
-                            <table class="table table-bordered" id="itemsTable">
-                                <thead class="thead-light">
+                            <table class="table table-bordered table-striped mb-0" id="itemsTable">
+                                <thead class="bg-light">
                                     <tr>
-                                        <th style="width: 40%">Producto (*)</th>
-                                        <th style="width: 15%">Cantidad (*)</th>
-                                        <th style="width: 20%">Costo Unit. (*)</th>
-                                        <th style="width: 20%">Total</th>
+                                        <th style="width: 35%">Producto</th>
+                                        <th style="width: 15%">Cantidad</th>
+                                        <th style="width: 18%">Costo Unit.</th>
+                                        <th style="width: 17%">Total</th>
                                         <th style="width: 5%"></th>
                                     </tr>
                                 </thead>
@@ -177,20 +276,13 @@
                                         @foreach($selectedRfq->items as $index => $item)
                                             <tr>
                                                 <td>
-                                                    <div class="input-group">
-                                                        <select name="items[{{ $index }}][product_id]" class="form-control select2-product" required>
-                                                            @foreach($products as $product)
-                                                                <option value="{{ $product->id }}" {{ $item->product_id == $product->id ? 'selected' : '' }}>
-                                                                    {{ $product->name }} ({{ $product->code ?? 'S/C' }})
-                                                                </option>
-                                                            @endforeach
-                                                        </select>
-                                                        <div class="input-group-append">
-                                                            <button type="button" class="btn btn-outline-primary btn-sm create-product-btn" title="Crear producto">
-                                                                <i class="fas fa-plus"></i>
-                                                            </button>
-                                                        </div>
-                                                    </div>
+                                                    <select name="items[{{ $index }}][product_id]" class="form-control select2-product" required>
+                                                        @foreach($products as $product)
+                                                            <option value="{{ $product->id }}" {{ $item->product_id == $product->id ? 'selected' : '' }}>
+                                                                {{ $product->name }} ({{ $product->code ?? 'S/C' }})
+                                                            </option>
+                                                        @endforeach
+                                                    </select>
                                                 </td>
                                                 <td>
                                                     <input type="number" name="items[{{ $index }}][quantity]" class="form-control item-qty" min="1" value="{{ $item->quantity }}" required>
@@ -198,11 +290,11 @@
                                                 <td>
                                                     <input type="number" step="0.01" name="items[{{ $index }}][unit_cost]" class="form-control item-cost" min="0" value="0" required>
                                                 </td>
-                                                <td>
-                                                    <span class="item-total">0.00</span>
+                                                <td class="text-right">
+                                                    <span class="item-total font-weight-bold">0.00</span>
                                                 </td>
-                                                <td class="text-center align-middle">
-                                                    <button type="button" class="btn btn-sm btn-danger remove-item" style="display:none;">
+                                                <td class="text-center">
+                                                    <button type="button" class="btn btn-sm btn-danger remove-item" {{ $selectedRfq->items->count() <= 1 ? 'style=display:none' : '' }}>
                                                         <i class="fas fa-times"></i>
                                                     </button>
                                                 </td>
@@ -211,21 +303,14 @@
                                     @else
                                         <tr>
                                             <td>
-                                                <div class="input-group">
-                                                    <select name="items[0][product_id]" class="form-control select2-product" required>
-                                                        <option value="">Seleccione...</option>
-                                                        @foreach($products as $product)
-                                                            <option value="{{ $product->id }}">
-                                                                {{ $product->name }} ({{ $product->code ?? 'S/C' }})
-                                                            </option>
-                                                        @endforeach
-                                                    </select>
-                                                    <div class="input-group-append">
-                                                        <button type="button" class="btn btn-outline-primary btn-sm create-product-btn" title="Crear producto">
-                                                            <i class="fas fa-plus"></i>
-                                                        </button>
-                                                    </div>
-                                                </div>
+                                                <select name="items[0][product_id]" class="form-control select2-product" required>
+                                                    <option value="">Seleccione...</option>
+                                                    @foreach($products as $product)
+                                                        <option value="{{ $product->id }}">
+                                                            {{ $product->name }} ({{ $product->code ?? 'S/C' }})
+                                                        </option>
+                                                    @endforeach
+                                                </select>
                                             </td>
                                             <td>
                                                 <input type="number" name="items[0][quantity]" class="form-control item-qty" min="1" value="1" required>
@@ -233,10 +318,10 @@
                                             <td>
                                                 <input type="number" step="0.01" name="items[0][unit_cost]" class="form-control item-cost" min="0" value="0" required>
                                             </td>
-                                            <td>
-                                                <span class="item-total">0.00</span>
+                                            <td class="text-right">
+                                                <span class="item-total font-weight-bold">0.00</span>
                                             </td>
-                                            <td class="text-center align-middle">
+                                            <td class="text-center">
                                                 <button type="button" class="btn btn-sm btn-danger remove-item" style="display:none;">
                                                     <i class="fas fa-times"></i>
                                                 </button>
@@ -244,34 +329,54 @@
                                         </tr>
                                     @endif
                                 </tbody>
-                                <tfoot>
+                                <tfoot class="bg-success-light">
                                     <tr>
-                                        <th colspan="3" class="text-right">Total General:</th>
-                                        <th id="grandTotal">$0.00</th>
+                                        <th colspan="3" class="text-right">TOTAL GENERAL:</th>
+                                        <th class="text-right"><span id="grandTotal" class="h5 text-success">$0.00</span></th>
                                         <th></th>
                                     </tr>
                                 </tfoot>
                             </table>
                         </div>
-
-                        <button type="button" id="addItem" class="btn btn-success btn-sm mt-2">
-                            <i class="fas fa-plus"></i> Agregar Item
-                        </button>
-
-                        <div class="form-group mt-4">
-                            <label for="notes">Notas</label>
-                            <textarea name="notes" id="notes" rows="2" class="form-control">{{ old('notes') }}</textarea>
-                        </div>
                     </div>
-
-                    <div class="card-footer">
-                        <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-save"></i> Registrar Cotización</button>
-                        <a href="{{ route('admin.quotations.index') }}" class="btn btn-secondary btn-lg ml-2">Cancelar</a>
-                    </div>
-                </form>
+                </div>
             </div>
         </div>
-    </div>
+
+        <!-- Sección: Notas -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card" style="border-left: 4px solid #9ca3af;">
+                    <div class="card-header" style="background: linear-gradient(135deg, #9ca3af 0%, #d1d5db 100%);">
+                        <h3 class="card-title text-white">
+                            <i class="fas fa-sticky-note"></i> Notas Adicionales
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group mb-0">
+                            <textarea name="notes" id="notes" rows="3" class="form-control" placeholder="Agregue notas o comentarios adicionales sobre esta cotización...">{{ old('notes') }}</textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Botones de Acción -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body d-flex justify-content-between">
+                        <a href="{{ route('admin.quotations.index') }}" class="btn btn-secondary btn-lg">
+                            <i class="fas fa-times"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-save"></i> Registrar Cotización
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
 
     <!-- Modal para crear producto -->
     <div class="modal fade" id="productModal" tabindex="-1" role="dialog" aria-labelledby="productModalLabel" aria-hidden="true">
@@ -389,6 +494,34 @@
     </div>
 @stop
 
+@section('css')
+    <style>
+        .select2-container--default .select2-selection--single {
+            height: 34px;
+            padding-top: 4px;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 34px;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            line-height: 24px;
+        }
+        .form-group-sm .select2-container--default .select2-selection--single {
+            height: 31px;
+            padding-top: 2px;
+        }
+        .form-group-sm .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 31px;
+        }
+        .bg-success-light {
+            background-color: #d4edda;
+        }
+        .item-total {
+            font-size: 1.1em;
+        }
+    </style>
+@endsection
+
 @section('js')
     <script>
         let itemIndex = {{ $selectedRfq ? $selectedRfq->items->count() : 1 }};
@@ -424,7 +557,8 @@
         function initSelect2() {
             $('.select2, .select2-product').select2({
                 theme: 'bootstrap4',
-                width: '100%'
+                width: '100%',
+                allowClear: true
             });
         }
 
@@ -433,47 +567,16 @@
             $('#itemsBody .remove-item').toggle(rows > 1);
         }
 
-        function addProductOption(product) {
-            const newOption = new Option(
-                `${product.name} (${product.code})`, 
-                product.id, 
-                false, 
-                false
-            );
-            return newOption;
-        }
-
-        function refreshProductSelects() {
-            $.get('{{ route("admin.products.search") }}', function(products) {
-                $('.select2-product').each(function() {
-                    const currentVal = $(this).val();
-                    $(this).empty();
-                    $(this).append('<option value="">Seleccione...</option>');
-                    products.forEach(function(product) {
-                        $(this).append(addProductOption(product));
-                    }, $(this));
-                    $(this).val(currentVal).trigger('change');
-                });
-            });
-        }
-
         $('#addItem').click(function() {
             const row = `
                 <tr>
                     <td>
-                        <div class="input-group">
-                            <select name="items[${itemIndex}][product_id]" class="form-control select2-product" required>
-                                <option value="">Seleccione...</option>
-                                @foreach($products as $product)
-                                    <option value="{{ $product->id }}">{{ $product->name }} ({{ $product->code ?? 'S/C' }})</option>
-                                @endforeach
-                            </select>
-                            <div class="input-group-append">
-                                <button type="button" class="btn btn-outline-primary btn-sm create-product-btn" title="Crear producto">
-                                    <i class="fas fa-plus"></i>
-                                </button>
-                            </div>
-                        </div>
+                        <select name="items[${itemIndex}][product_id]" class="form-control select2-product" required>
+                            <option value="">Seleccione...</option>
+                            @foreach($products as $product)
+                                <option value="{{ $product->id }}">{{ $product->name }} ({{ $product->code ?? 'S/C' }})</option>
+                            @endforeach
+                        </select>
                     </td>
                     <td>
                         <input type="number" name="items[${itemIndex}][quantity]" class="form-control item-qty" min="1" value="1" required>
@@ -481,8 +584,10 @@
                     <td>
                         <input type="number" step="0.01" name="items[${itemIndex}][unit_cost]" class="form-control item-cost" min="0" value="0" required>
                     </td>
-                    <td><span class="item-total">0.00</span></td>
-                    <td class="text-center align-middle">
+                    <td class="text-right">
+                        <span class="item-total font-weight-bold">0.00</span>
+                    </td>
+                    <td class="text-center">
                         <button type="button" class="btn btn-sm btn-danger remove-item">
                             <i class="fas fa-times"></i>
                         </button>
@@ -493,16 +598,7 @@
             itemIndex++;
             initSelect2();
             updateRemoveButtons();
-            attachProductButtonEvents();
         });
-
-        function attachProductButtonEvents() {
-            $('.create-product-btn').off('click').on('click', function(e) {
-                e.preventDefault();
-                currentProductSelect = $(this).closest('.input-group').find('.select2-product');
-                $('#productModal').modal('show');
-            });
-        }
 
         $(document).on('click', '.remove-item', function() {
             $(this).closest('tr').remove();
@@ -541,8 +637,6 @@
                         );
                         currentProductSelect.append(newOption).trigger('change');
                     }
-                    
-                    refreshProductSelects();
                     
                     Swal.fire({
                         icon: 'success',
@@ -593,7 +687,6 @@
             toggleSupplierBlocks();
             updateRemoveButtons();
             calculateTotals();
-            attachProductButtonEvents();
         });
     </script>
 @endsection

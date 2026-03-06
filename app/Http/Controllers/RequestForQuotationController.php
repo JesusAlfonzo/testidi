@@ -13,29 +13,101 @@ class RequestForQuotationController extends Controller
 {
     public function __construct()
     {
-        $this->authorizeResource(RequestForQuotation::class, 'rfq');
+        $this->middleware('can:rfq_ver')->only(['index']);
+        $this->middleware('can:rfq_crear')->only(['create', 'store']);
+        $this->middleware('can:rfq_editar')->only(['edit', 'update']);
+        $this->middleware('can:rfq_eliminar')->only(['destroy']);
         $this->middleware('can:rfq_enviar')->only(['markAsSent', 'markAsClosed', 'cancel']);
     }
 
     public function index(\Illuminate\Http\Request $request)
     {
+        if ($request->ajax()) {
+            return $this->indexDataTables($request);
+        }
+
         $perPage = $request->get('per_page', 15);
         if (!in_array($perPage, [15, 25, 50, 100])) {
             $perPage = 15;
         }
 
+        $query = RequestForQuotation::with(['creator', 'items.product']);
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
         if ($request->get('view_all') === 'true') {
-            $rfqs = RequestForQuotation::with(['creator', 'items.product'])
-                ->latest()
-                ->paginate(RequestForQuotation::count())
-                ->appends($request->except('page'));
+            $rfqs = $query->latest()->paginate(RequestForQuotation::count())->appends($request->except('page'));
         } else {
-            $rfqs = RequestForQuotation::with(['creator', 'items.product'])
-                ->latest()
-                ->paginate($perPage);
+            $rfqs = $query->latest()->paginate($perPage);
         }
 
         return view('admin.rfq.index', compact('rfqs', 'perPage'));
+    }
+
+    protected function indexDataTables(\Illuminate\Http\Request $request)
+    {
+        $query = RequestForQuotation::with(['creator', 'items']);
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $start = $request->input('start', 0);
+        $length = $request->input('length', 15);
+        $search = $request->input('search.value', '');
+        $orderColumn = $request->input('order.0.column', 0);
+        $orderDir = $request->input('order.0.dir', 'desc');
+
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->whereRaw('LOWER(code) LIKE ?', [strtolower("%{$search}%")])
+                  ->orWhereRaw('LOWER(title) LIKE ?', [strtolower("%{$search}%")]);
+            });
+        }
+
+        $totalRecords = RequestForQuotation::count();
+        $totalFiltered = $query->count();
+
+        $columns = ['code', 'title', 'status', 'date_required', 'created_at'];
+        if (isset($columns[$orderColumn])) {
+            $query->orderBy($columns[$orderColumn], $orderDir);
+        }
+
+        $rfqs = $query->offset($start)->limit($length)->get();
+
+        $data = $rfqs->map(function ($item) {
+            $statusLabel = match($item->status) {
+                'draft' => 'Borrador',
+                'sent' => 'Enviada',
+                'closed' => 'Cerrada',
+                'cancelled' => 'Cancelada',
+                default => ucfirst($item->status)
+            };
+            $statusClass = match($item->status) {
+                'draft' => 'secondary',
+                'sent' => 'info',
+                'closed' => 'success',
+                'cancelled' => 'danger',
+                default => 'secondary'
+            };
+            return [
+                'code' => $item->code,
+                'title' => $item->title,
+                'status' => '<span class="badge badge-' . $statusClass . '">' . $statusLabel . '</span>',
+                'date_required' => $item->date_required ? $item->date_required->format('d/m/Y') : '-',
+                'items_count' => '<span class="badge badge-info">' . $item->items->count() . '</span>',
+                'actions' => view('admin.rfq.partials.actions', ['rfq' => $item])->render(),
+            ];
+        });
+
+        return response()->json([
+            'draw' => intval($request->input('draw')),
+            'recordsTotal' => $totalRecords,
+            'recordsFiltered' => $totalFiltered,
+            'data' => $data
+        ]);
     }
 
     public function create()

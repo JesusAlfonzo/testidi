@@ -13,11 +13,64 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class PurchaseOrdersController extends Controller
 {
+    public function searchSuppliers(Request $request)
+    {
+        $search = $request->get('q', '');
+        
+        $suppliers = Supplier::where('is_active', true)
+            ->where(function($query) use ($search) {
+                $query->whereRaw('LOWER(name) LIKE ?', [strtolower("%{$search}%")])
+                      ->orWhereRaw('LOWER(email) LIKE ?', [strtolower("%{$search}%")])
+                      ->orWhereRaw('LOWER(ruc) LIKE ?', [strtolower("%{$search}%")]);
+            })
+            ->orderBy('name')
+            ->limit(20)
+            ->get()
+            ->map(function($supplier) {
+                return [
+                    'id' => $supplier->id,
+                    'text' => $supplier->name . ' | ' . ($supplier->email ?? 'Sin email'),
+                    'name' => $supplier->name,
+                    'email' => $supplier->email,
+                ];
+            });
+
+        return response()->json(['results' => $suppliers]);
+    }
+
+    public function searchProducts(Request $request)
+    {
+        $search = $request->get('q', '');
+        
+        $products = Product::where('is_active', true)
+            ->where(function($query) use ($search) {
+                $query->whereRaw('LOWER(name) LIKE ?', [strtolower("%{$search}%")])
+                      ->orWhereRaw('LOWER(code) LIKE ?', [strtolower("%{$search}%")]);
+            })
+            ->with(['category', 'unit'])
+            ->orderBy('name')
+            ->limit(20)
+            ->get()
+            ->map(function($product) {
+                return [
+                    'id' => $product->id,
+                    'text' => $product->name . ' (' . ($product->code ?? 'S/C') . ')',
+                    'name' => $product->name,
+                    'code' => $product->code,
+                    'unit' => $product->unit->abbreviation ?? 'und',
+                ];
+            });
+
+        return response()->json(['results' => $products]);
+    }
     public function __construct()
     {
-        $this->authorizeResource(PurchaseOrder::class, 'purchaseOrder');
+        $this->middleware('can:ordenes_compra_ver')->only(['index', 'show']);
+        $this->middleware('can:ordenes_compra_crear')->only(['create', 'store']);
+        $this->middleware('can:ordenes_compra_editar')->only(['edit', 'update']);
+        $this->middleware('can:ordenes_compra_eliminar')->only(['destroy']);
         $this->middleware('can:ordenes_compra_aprobar')->only(['issue', 'complete']);
-        $this->middleware('can:ordenes_compra_anular')->only(['cancel']);
+        $this->middleware('can:ordenes_compra_anular')->only('cancel');
     }
 
     public function index(\Illuminate\Http\Request $request)
@@ -49,6 +102,14 @@ class PurchaseOrdersController extends Controller
     {
         $query = PurchaseOrder::with(['supplier']);
 
+        if ($request->filled('supplier_id')) {
+            $query->where('supplier_id', $request->supplier_id);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
         $start = $request->input('start', 0);
         $length = $request->input('length', 15);
         $search = $request->input('search.value', '');
@@ -75,6 +136,13 @@ class PurchaseOrdersController extends Controller
         $orders = $query->offset($start)->limit($length)->get();
 
         $data = $orders->map(function ($item) {
+            $statusLabel = match($item->status) {
+                'draft' => 'Borrador',
+                'issued' => 'Emitida',
+                'completed' => 'Completada',
+                'cancelled' => 'Anulada',
+                default => ucfirst($item->status)
+            };
             $statusClass = match($item->status) {
                 'draft' => 'secondary',
                 'issued' => 'info',
@@ -86,8 +154,9 @@ class PurchaseOrdersController extends Controller
                 'code' => $item->code,
                 'supplier' => $item->supplier->name ?? 'N/A',
                 'total' => $item->currency . ' ' . number_format($item->total, 2),
-                'status' => '<span class="badge badge-' . $statusClass . '">' . ucfirst($item->status) . '</span>',
+                'status' => '<span class="badge badge-' . $statusClass . '">' . $statusLabel . '</span>',
                 'date' => $item->date_issued->format('d/m/Y'),
+                'actions' => view('admin.purchaseOrders.partials.actions', ['order' => $item])->render(),
             ];
         });
 

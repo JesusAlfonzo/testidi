@@ -3,6 +3,7 @@
 @section('title', 'Crear Orden de Compra')
 
 @section('plugins.Select2', true)
+@section('plugins.Sweetalert2', true)
 
 @section('content_header')
     <h1><i class="fas fa-shopping-cart"></i> Nueva Orden de Compra</h1>
@@ -15,95 +16,162 @@
         $locations = \App\Models\Location::orderBy('name')->get();
         $brands = \App\Models\Brand::orderBy('name')->get();
     @endphp
-    
-    <div class="row">
-        <div class="col-12">
-            @include('admin.partials.session-messages')
 
-            <div class="card card-primary">
-                <div class="card-header">
-                    <h3 class="card-title">Datos de la Orden</h3>
-                </div>
+    <form action="{{ route('admin.purchaseOrders.store') }}" method="POST" id="orderForm">
+        @csrf
 
-                <form action="{{ route('admin.purchaseOrders.store') }}" method="POST" id="orderForm">
-                    @csrf
+        <!-- Sección: Información General -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card" style="border-left: 4px solid #6c757d;">
+                    <div class="card-header" style="background: linear-gradient(135deg, #6c757d 0%, #8a939d 100%);">
+                        <h3 class="card-title text-white">
+                            <i class="fas fa-info-circle"></i> Información General
+                        </h3>
+                    </div>
                     <div class="card-body">
                         @if($quote)
-                            <div class="alert alert-success">
+                            <div class="alert alert-success mb-3">
                                 <i class="fas fa-link"></i> Generada desde cotización <strong>{{ $quote->code }}</strong>
                                 <input type="hidden" name="purchase_quote_id" value="{{ $quote->id }}">
                             </div>
                         @endif
 
                         <div class="row">
-                            <div class="col-12 col-md-4">
-                                <div class="form-group">
-                                    <label for="code">Código OC</label>
-                                    <input type="text" name="code" class="form-control" value="{{ $code }}" readonly>
+                            <div class="col-12 col-md-3">
+                                <div class="form-group mb-2">
+                                    <label for="code" class="mb-1">Código OC</label>
+                                    <div class="input-group input-group-sm">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text bg-secondary text-white"><i class="fas fa-hashtag"></i></span>
+                                        </div>
+                                        <input type="text" name="code" class="form-control" value="{{ $code }}" readonly>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="col-12 col-md-4">
-                                <div class="form-group">
-                                    <label for="supplier_id">Proveedor (*)</label>
-                                    <select name="supplier_id" id="supplier_id" class="form-control select2" required>
-                                        <option value="">Seleccione...</option>
-                                        @foreach($suppliers as $supplier)
-                                            <option value="{{ $supplier->id }}" {{ ($quote->supplier_id ?? null) == $supplier->id ? 'selected' : '' }}>
-                                                {{ $supplier->name }}
-                                            </option>
-                                        @endforeach
+                            <div class="col-12 col-md-5">
+                                <div class="form-group mb-2">
+                                    <label for="supplier_id" class="mb-1">Proveedor (*)</label>
+                                    <select name="supplier_id" id="supplier_id" class="form-control form-control-sm select2-ajax" data-placeholder="Buscar proveedor..." data-url="{{ route('admin.purchaseOrders.searchSuppliers') }}" required>
+                                        @if($quote && $quote->supplier)
+                                            <option value="{{ $quote->supplier->id }}" selected>{{ $quote->supplier->name }} | {{ $quote->supplier->email ?? 'Sin email' }}</option>
+                                        @endif
                                     </select>
                                 </div>
                             </div>
                             <div class="col-12 col-md-4">
-                                <div class="form-group">
-                                    <label for="date_issued">Fecha de Emisión (*)</label>
-                                    <input type="date" name="date_issued" class="form-control" value="{{ old('date_issued', date('Y-m-d')) }}" required>
+                                <div class="form-group mb-2">
+                                    <label for="date_issued" class="mb-1">Fecha de Emisión (*)</label>
+                                    <div class="input-group input-group-sm">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text bg-info text-white"><i class="fas fa-calendar"></i></span>
+                                        </div>
+                                        <input type="date" name="date_issued" class="form-control" value="{{ old('date_issued', date('Y-m-d')) }}" required>
+                                    </div>
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
+        <!-- Sección: Entrega y Moneda -->
+        <div class="row">
+            <div class="col-12 col-md-8">
+                <div class="card" style="border-left: 4px solid #3b82f6;">
+                    <div class="card-header" style="background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);">
+                        <h3 class="card-title text-white">
+                            <i class="fas fa-truck"></i> Entrega
+                        </h3>
+                    </div>
+                    <div class="card-body">
                         <div class="row">
-                            <div class="col-12 col-md-4">
-                                <div class="form-group">
-                                    <label for="delivery_date">Fecha de Entrega</label>
-                                    <input type="date" name="delivery_date" class="form-control" value="{{ old('delivery_date', $quote?->delivery_date?->format('Y-m-d')) }}">
+                            <div class="col-12 col-md-6">
+                                <div class="form-group mb-2">
+                                    <label for="delivery_date" class="mb-1">Fecha de Entrega</label>
+                                    <div class="input-group input-group-sm">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text bg-info text-white"><i class="fas fa-calendar-check"></i></span>
+                                        </div>
+                                        <input type="date" name="delivery_date" class="form-control" value="{{ old('delivery_date', $quote?->delivery_date?->format('Y-m-d')) }}">
+                                    </div>
                                 </div>
                             </div>
-                            <div class="col-12 col-md-4">
-                                <div class="form-group">
-                                    <label for="currency">Moneda</label>
-                                    <select name="currency" class="form-control">
-                                        <option value="USD" {{ old('currency', $quote?->currency) == 'USD' ? 'selected' : '' }}>USD - Dólar</option>
-                                        <option value="VES" {{ old('currency', $quote?->currency) == 'VES' ? 'selected' : '' }}>VES - Bolívar</option>
-                                        <option value="EUR" {{ old('currency', $quote?->currency) == 'EUR' ? 'selected' : '' }}>EUR - Euro</option>
+                            <div class="col-12 col-md-6">
+                                <div class="form-group mb-2">
+                                    <label for="delivery_address" class="mb-1">Dirección de Entrega</label>
+                                    <div class="input-group input-group-sm">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text bg-info text-white"><i class="fas fa-map-marker-alt"></i></span>
+                                        </div>
+                                        <input type="text" name="delivery_address" class="form-control" value="{{ old('delivery_address') }}" placeholder="Dirección donde recibir la mercancía">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-4">
+                <div class="card" style="border-left: 4px solid #10b981;">
+                    <div class="card-header" style="background: linear-gradient(135deg, #10b981 0%, #34d399 100%);">
+                        <h3 class="card-title text-white">
+                            <i class="fas fa-coins"></i> Moneda
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="form-group mb-2">
+                                    <label for="currency" class="mb-1">Moneda</label>
+                                    <select name="currency" class="form-control form-control-sm select2">
+                                        <option value="USD" {{ old('currency', $quote?->currency) == 'USD' ? 'selected' : '' }}>💵 USD - Dólar</option>
+                                        <option value="VES" {{ old('currency', $quote?->currency) == 'VES' ? 'selected' : '' }}>🇻🇪 VES - Bolívar</option>
+                                        <option value="EUR" {{ old('currency', $quote?->currency) == 'EUR' ? 'selected' : '' }}>💶 EUR - Euro</option>
                                     </select>
                                 </div>
                             </div>
-                            <div class="col-12 col-md-4">
-                                <div class="form-group">
-                                    <label for="exchange_rate">Tasa de Cambio</label>
-                                    <input type="number" step="0.0001" name="exchange_rate" class="form-control" value="{{ old('exchange_rate', $quote?->exchange_rate ?? 1) }}">
+                            <div class="col-12">
+                                <div class="form-group mb-0">
+                                    <label for="exchange_rate" class="mb-1">Tasa de Cambio</label>
+                                    <div class="input-group input-group-sm">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text bg-success text-white"><i class="fas fa-exchange-alt"></i></span>
+                                        </div>
+                                        <input type="number" step="0.0001" name="exchange_rate" class="form-control" value="{{ old('exchange_rate', $quote?->exchange_rate ?? 1) }}">
+                                    </div>
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-                        <div class="form-group">
-                            <label for="delivery_address">Dirección de Entrega</label>
-                            <input type="text" name="delivery_address" class="form-control" value="{{ old('delivery_address') }}" placeholder="Dirección donde recibir la mercancía">
+        <!-- Sección: Items -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card" style="border-left: 4px solid #ef4444;">
+                    <div class="card-header" style="background: linear-gradient(135deg, #ef4444 0%, #f87171 100%);">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h3 class="card-title text-white">
+                                <i class="fas fa-boxes"></i> Items de la Orden
+                            </h3>
+                            <button type="button" id="addItem" class="btn btn-sm btn-light text-danger">
+                                <i class="fas fa-plus"></i> Agregar Item
+                            </button>
                         </div>
-
-                        <h4 class="mt-4"><i class="fas fa-boxes"></i> Items de la Orden</h4>
-                        <hr>
-
+                    </div>
+                    <div class="card-body p-0">
                         <div class="table-responsive">
-                            <table class="table table-bordered" id="itemsTable">
-                                <thead class="thead-light">
+                            <table class="table table-bordered table-striped mb-0" id="itemsTable">
+                                <thead class="bg-light">
                                     <tr>
-                                        <th style="width: 40%">Producto (*)</th>
-                                        <th style="width: 15%">Cantidad (*)</th>
-                                        <th style="width: 20%">Costo Unit. (*)</th>
-                                        <th style="width: 20%">Total</th>
+                                        <th style="width: 35%">Producto</th>
+                                        <th style="width: 15%">Cantidad</th>
+                                        <th style="width: 18%">Costo Unit.</th>
+                                        <th style="width: 17%">Total</th>
                                         <th style="width: 5%"></th>
                                     </tr>
                                 </thead>
@@ -112,32 +180,21 @@
                                         @foreach($quote->items as $index => $item)
                                             <tr>
                                                 <td>
-                                                    <div class="input-group">
-                                                        <select name="items[{{ $index }}][product_id]" class="form-control select2-product" required>
-                                                            @foreach($products as $product)
-                                                                <option value="{{ $product->id }}" {{ $item->product_id == $product->id ? 'selected' : '' }}>
-                                                                    {{ $product->name }} ({{ $product->code ?? 'S/C' }})
-                                                                </option>
-                                                            @endforeach
-                                                        </select>
-                                                        <div class="input-group-append">
-                                                            <button type="button" class="btn btn-outline-primary btn-sm create-product-btn" title="Crear producto">
-                                                                <i class="fas fa-plus"></i>
-                                                            </button>
-                                                        </div>
-                                                    </div>
+                                                    <select name="items[{{ $index }}][product_id]" class="form-control form-control-sm select2-product-ajax" data-url="{{ route('admin.purchaseOrders.searchProducts') }}" required>
+                                                        <option value="{{ $item->product_id }}" selected>{{ $item->product->name }} ({{ $item->product->code ?? 'S/C' }})</option>
+                                                    </select>
                                                 </td>
                                                 <td>
-                                                    <input type="number" name="items[{{ $index }}][quantity]" class="form-control item-qty" min="1" value="{{ $item->quantity }}" required>
+                                                    <input type="number" name="items[{{ $index }}][quantity]" class="form-control form-control-sm item-qty" min="1" value="{{ $item->quantity }}" required>
                                                 </td>
                                                 <td>
-                                                    <input type="number" step="0.01" name="items[{{ $index }}][unit_cost]" class="form-control item-cost" min="0" value="{{ $item->unit_cost }}" required>
+                                                    <input type="number" step="0.01" name="items[{{ $index }}][unit_cost]" class="form-control form-control-sm item-cost" min="0" value="{{ $item->unit_cost }}" required>
                                                 </td>
-                                                <td>
-                                                    <span class="item-total">{{ number_format($item->quantity * $item->unit_cost, 2) }}</span>
+                                                <td class="text-right">
+                                                    <span class="item-total font-weight-bold">{{ number_format($item->quantity * $item->unit_cost, 2) }}</span>
                                                 </td>
-                                                <td class="text-center align-middle">
-                                                    <button type="button" class="btn btn-sm btn-danger remove-item" style="display:none;">
+                                                <td class="text-center">
+                                                    <button type="button" class="btn btn-sm btn-danger remove-item" {{ $quote->items->count() <= 1 ? 'style=display:none' : '' }}>
                                                         <i class="fas fa-times"></i>
                                                     </button>
                                                 </td>
@@ -146,28 +203,20 @@
                                     @else
                                         <tr>
                                             <td>
-                                                <div class="input-group">
-                                                    <select name="items[0][product_id]" class="form-control select2-product" required>
-                                                        <option value="">Seleccione...</option>
-                                                        @foreach($products as $product)
-                                                            <option value="{{ $product->id }}">{{ $product->name }} ({{ $product->code ?? 'S/C' }})</option>
-                                                        @endforeach
-                                                    </select>
-                                                    <div class="input-group-append">
-                                                        <button type="button" class="btn btn-outline-primary btn-sm create-product-btn" title="Crear producto">
-                                                            <i class="fas fa-plus"></i>
-                                                        </button>
-                                                    </div>
-                                                </div>
+                                                <select name="items[0][product_id]" class="form-control form-control-sm select2-product-ajax" data-url="{{ route('admin.purchaseOrders.searchProducts') }}" required>
+                                                    <option value="">Buscar producto...</option>
+                                                </select>
                                             </td>
                                             <td>
-                                                <input type="number" name="items[0][quantity]" class="form-control item-qty" min="1" value="1" required>
+                                                <input type="number" name="items[0][quantity]" class="form-control form-control-sm item-qty" min="1" value="1" required>
                                             </td>
                                             <td>
-                                                <input type="number" step="0.01" name="items[0][unit_cost]" class="form-control item-cost" min="0" value="0" required>
+                                                <input type="number" step="0.01" name="items[0][unit_cost]" class="form-control form-control-sm item-cost" min="0" value="0" required>
                                             </td>
-                                            <td><span class="item-total">0.00</span></td>
-                                            <td class="text-center align-middle">
+                                            <td class="text-right">
+                                                <span class="item-total font-weight-bold">0.00</span>
+                                            </td>
+                                            <td class="text-center">
                                                 <button type="button" class="btn btn-sm btn-danger remove-item" style="display:none;">
                                                     <i class="fas fa-times"></i>
                                                 </button>
@@ -175,47 +224,76 @@
                                         </tr>
                                     @endif
                                 </tbody>
-                                <tfoot>
+                                <tfoot class="bg-success-light">
                                     <tr>
-                                        <th colspan="3" class="text-right">Total General:</th>
-                                        <th id="grandTotal">${{ number_format($quote?->total ?? 0, 2) }}</th>
+                                        <th colspan="3" class="text-right">TOTAL GENERAL:</th>
+                                        <th class="text-right"><span id="grandTotal" class="h5 text-success">${{ number_format($quote?->total ?? 0, 2) }}</span></th>
                                         <th></th>
                                     </tr>
                                 </tfoot>
                             </table>
                         </div>
-
-                        <button type="button" id="addItem" class="btn btn-success btn-sm mt-2">
-                            <i class="fas fa-plus"></i> Agregar Item
-                        </button>
-
-                        <div class="form-group mt-4">
-                            <label for="terms">Términos y Condiciones</label>
-                            <textarea name="terms" id="terms" rows="3" class="form-control" placeholder="Condiciones de pago, garantías, etc.">{{ old('terms') }}</textarea>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="notes">Notas Internas</label>
-                            <textarea name="notes" id="notes" rows="2" class="form-control">{{ old('notes') }}</textarea>
-                        </div>
                     </div>
-
-                    <div class="card-footer">
-                        <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-save"></i> Guardar Orden</button>
-                        <a href="{{ route('admin.purchaseOrders.index') }}" class="btn btn-secondary btn-lg ml-2">Cancelar</a>
-                    </div>
-                </form>
+                </div>
             </div>
         </div>
-    </div>
+
+        <!-- Sección: Notas y Términos -->
+        <div class="row">
+            <div class="col-12 col-md-6">
+                <div class="card" style="border-left: 4px solid #9ca3af;">
+                    <div class="card-header" style="background: linear-gradient(135deg, #9ca3af 0%, #d1d5db 100%);">
+                        <h3 class="card-title text-white">
+                            <i class="fas fa-sticky-note"></i> Términos y Condiciones
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group mb-0">
+                            <textarea name="terms" id="terms" rows="3" class="form-control form-control-sm" placeholder="Condiciones de pago, garantías, etc.">{{ old('terms') }}</textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="card" style="border-left: 4px solid #9ca3af;">
+                    <div class="card-header" style="background: linear-gradient(135deg, #9ca3af 0%, #d1d5db 100%);">
+                        <h3 class="card-title text-white">
+                            <i class="fas fa-sticky-note"></i> Notas Internas
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group mb-0">
+                            <textarea name="notes" id="notes" rows="3" class="form-control form-control-sm">{{ old('notes') }}</textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Botones de Acción -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body d-flex justify-content-between">
+                        <a href="{{ route('admin.purchaseOrders.index') }}" class="btn btn-secondary btn-lg">
+                            <i class="fas fa-times"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-save"></i> Guardar Orden
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
 
     <!-- Modal para crear producto -->
     <div class="modal fade" id="productModal" tabindex="-1" role="dialog" aria-labelledby="productModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content">
-                <div class="modal-header bg-primary">
-                    <h5 class="modal-title" id="productModalLabel"><i class="fas fa-box"></i> Crear Nuevo Producto</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <div class="modal-header" style="background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);">
+                    <h5 class="modal-title text-white" id="productModalLabel"><i class="fas fa-box"></i> Crear Nuevo Producto</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
@@ -325,6 +403,21 @@
     </div>
 @stop
 
+@section('css')
+    <style>
+        .select2-container--default .select2-selection--single {
+            height: 34px;
+            padding-top: 4px;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 34px;
+        }
+        .bg-success-light {
+            background-color: #d4edda;
+        }
+    </style>
+@endsection
+
 @section('js')
     <script>
         let itemIndex = {{ $quote ? $quote->items->count() : 1 }};
@@ -343,7 +436,56 @@
         }
 
         function initSelect2() {
-            $('.select2, .select2-product').select2({ theme: 'bootstrap4', width: '100%' });
+            // Select2 normal (proveedores)
+            $('.select2').select2({
+                theme: 'bootstrap4',
+                width: '100%',
+                allowClear: true
+            });
+
+            // Select2 AJAX para proveedores
+            $('.select2-ajax').each(function() {
+                if (!$(this).hasClass('select2initialized')) {
+                    $(this).select2({
+                        theme: 'bootstrap4',
+                        width: '100%',
+                        allowClear: true,
+                        ajax: {
+                            url: $(this).data('url'),
+                            dataType: 'json',
+                            delay: 250,
+                            processResults: function(data) {
+                                return {
+                                    results: data.results
+                                };
+                            },
+                            cache: true
+                        }
+                    }).addClass('select2initialized');
+                }
+            });
+
+            // Select2 AJAX para productos
+            $('.select2-product-ajax').each(function() {
+                if (!$(this).hasClass('select2initialized')) {
+                    $(this).select2({
+                        theme: 'bootstrap4',
+                        width: '100%',
+                        allowClear: true,
+                        ajax: {
+                            url: $(this).data('url'),
+                            dataType: 'json',
+                            delay: 250,
+                            processResults: function(data) {
+                                return {
+                                    results: data.results
+                                };
+                            },
+                            cache: true
+                        }
+                    }).addClass('select2initialized');
+                }
+            });
         }
 
         function updateRemoveButtons() {
@@ -389,22 +531,15 @@
             const row = `
                 <tr>
                     <td>
-                        <div class="input-group">
-                            <select name="items[${itemIndex}][product_id]" class="form-control select2-product" required>
-                                <option value="">Seleccione...</option>
-                                ${productOptions}
-                            </select>
-                            <div class="input-group-append">
-                                <button type="button" class="btn btn-outline-primary btn-sm create-product-btn" title="Crear producto">
-                                    <i class="fas fa-plus"></i>
-                                </button>
-                            </div>
-                        </div>
+                        <select name="items[${itemIndex}][product_id]" class="form-control form-control-sm select2-product" required>
+                            <option value="">Seleccione...</option>
+                            ${productOptions}
+                        </select>
                     </td>
-                    <td><input type="number" name="items[${itemIndex}][quantity]" class="form-control item-qty" min="1" value="1" required></td>
-                    <td><input type="number" step="0.01" name="items[${itemIndex}][unit_cost]" class="form-control item-cost" min="0" value="0" required></td>
-                    <td><span class="item-total">0.00</span></td>
-                    <td class="text-center align-middle">
+                    <td><input type="number" name="items[${itemIndex}][quantity]" class="form-control form-control-sm item-qty" min="1" value="1" required></td>
+                    <td><input type="number" step="0.01" name="items[${itemIndex}][unit_cost]" class="form-control form-control-sm item-cost" min="0" value="0" required></td>
+                    <td class="text-right"><span class="item-total font-weight-bold">0.00</span></td>
+                    <td class="text-center">
                         <button type="button" class="btn btn-sm btn-danger remove-item"><i class="fas fa-times"></i></button>
                     </td>
                 </tr>
