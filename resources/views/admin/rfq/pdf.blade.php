@@ -5,52 +5,112 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RFQ {{ $rfq->code }}</title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
         body {
             font-family: 'Helvetica', 'Arial', sans-serif;
-            font-size: 12px;
-            margin: 0;
+            font-size: 11px;
             padding: 20px;
             color: #333;
         }
-        .header {
-            text-align: center;
-            border-bottom: 2px solid #333;
-            padding-bottom: 15px;
+        .header-container {
+            width: 100%;
             margin-bottom: 20px;
+            border-bottom: 2px solid #1a4a7a;
+            padding-bottom: 15px;
         }
-        .header h1 {
-            margin: 0;
-            font-size: 18px;
-            text-transform: uppercase;
+        .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
         }
-        .header h2 {
-            margin: 5px 0 0 0;
-            font-size: 14px;
+        .logo-section {
+            width: 180px;
+        }
+        .logo-section img {
+            width: 150px;
+            height: auto;
+        }
+        .company-info {
+            text-align: right;
+            flex: 1;
+            padding-left: 20px;
+        }
+        .company-name {
+            font-size: 16px;
+            font-weight: bold;
+            color: #1a4a7a;
+            margin-bottom: 3px;
+        }
+        .company-rif {
+            font-size: 11px;
             color: #666;
         }
-        .info-box {
+        .document-info {
+            margin-top: 15px;
+            text-align: right;
+        }
+        .document-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #1a4a7a;
+            margin-bottom: 5px;
+        }
+        .document-number {
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .document-date {
+            font-size: 11px;
+            color: #666;
+        }
+        .info-section {
+            display: flex;
+            gap: 30px;
             margin-bottom: 20px;
         }
-        .info-row {
-            display: flex;
-            margin-bottom: 5px;
+        .info-box {
+            flex: 1;
+            border: 1px solid #ddd;
+            padding: 12px;
+            background: #fafafa;
+        }
+        .info-box-title {
+            font-size: 10px;
+            text-transform: uppercase;
+            color: #1a4a7a;
+            font-weight: bold;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #1a4a7a;
+            padding-bottom: 5px;
+        }
+        .info-item {
+            margin-bottom: 4px;
+            line-height: 1.4;
         }
         .info-label {
             font-weight: bold;
-            width: 150px;
+            color: #555;
         }
-        .info-value {
-            flex: 1;
-        }
-        .title-box {
-            background: #f5f5f5;
-            padding: 10px;
+        .title-section {
+            background: #f0f5fa;
+            border: 1px solid #1a4a7a;
+            padding: 15px;
             margin-bottom: 20px;
-            border-left: 4px solid #333;
         }
-        .title-box h3 {
-            margin: 0 0 5px 0;
+        .title-main {
             font-size: 14px;
+            font-weight: bold;
+            color: #1a4a7a;
+            margin-bottom: 8px;
+        }
+        .title-description {
+            font-size: 11px;
+            line-height: 1.5;
+            white-space: pre-wrap;
         }
         table {
             width: 100%;
@@ -58,73 +118,119 @@
             margin-bottom: 20px;
         }
         th, td {
-            border: 1px solid #ddd;
+            border: 1px solid #333;
             padding: 8px;
             text-align: left;
         }
         th {
-            background: #f5f5f5;
+            background: #1a4a7a;
+            color: white;
             font-weight: bold;
+            font-size: 10px;
+            text-transform: uppercase;
         }
-        .text-center {
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .notes-section {
+            margin-bottom: 20px;
+        }
+        .notes-title {
+            font-size: 11px;
+            font-weight: bold;
+            color: #1a4a7a;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+        .notes-content {
+            border: 1px solid #ddd;
+            padding: 12px;
+            background: #fafafa;
+            font-size: 10px;
+            line-height: 1.5;
+        }
+        .contact-section {
+            background: #1a4a7a;
+            color: white;
+            padding: 15px;
+            margin-bottom: 20px;
             text-align: center;
         }
-        .text-right {
-            text-align: right;
+        .contact-title {
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        .contact-info {
+            font-size: 11px;
         }
         .footer {
             margin-top: 40px;
             padding-top: 15px;
             border-top: 1px solid #ddd;
-            font-size: 10px;
-            color: #666;
+            font-size: 9px;
+            color: #888;
+            text-align: center;
         }
-        .status-badge {
-            display: inline-block;
-            padding: 3px 10px;
-            border-radius: 3px;
-            font-size: 11px;
-        }
-        .status-draft { background: #f0f0f0; }
-        .status-sent { background: #d4edda; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>Solicitud de Cotización</h1>
-        <h2>{{ $rfq->code }}</h2>
-    </div>
-
-    <div class="info-box">
-        <div class="info-row">
-            <span class="info-label">Fecha de Emisión:</span>
-            <span class="info-value">{{ $rfq->created_at->format('d/m/Y') }}</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">Fecha Límite Respuesta:</span>
-            <span class="info-value">{{ $rfq->date_required?->format('d/m/Y') ?? 'No especificada' }}</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">Fecha Entrega Requerida:</span>
-            <span class="info-value">{{ $rfq->delivery_deadline?->format('d/m/Y') ?? 'No especificada' }}</span>
+    <div class="header-container">
+        <div class="header-row">
+            <div class="logo-section">
+                <img src="{{ public_path('images/logo-iac.png') }}" alt="Logo IAC">
+            </div>
+            <div class="company-info">
+                <div class="company-name">Inmunologia Asociacion Civil</div>
+                <div class="company-rif">RIF: J-30710739-1</div>
+                <div class="document-info">
+                    <div class="document-title">SOLICITUD DE COTIZACIÓN</div>
+                    <div class="document-number">N° {{ $rfq->code }}</div>
+                    <div class="document-date">Fecha: {{ $rfq->created_at->format('d/m/Y') }}</div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <div class="title-box">
-        <h3>{{ $rfq->title }}</h3>
+    <div class="title-section">
+        <div class="title-main">{{ $rfq->title }}</div>
         @if($rfq->description)
-            <p style="margin: 5px 0 0 0; white-space: pre-wrap;">{{ $rfq->description }}</p>
+            <div class="title-description">{{ $rfq->description }}</div>
         @endif
+    </div>
+
+    <div class="info-section">
+        <div class="info-box">
+            <div class="info-box-title">Fechas</div>
+            <div class="info-item"><span class="info-label">Fecha de Emisión:</span> {{ $rfq->created_at->format('d/m/Y') }}</div>
+            <div class="info-item"><span class="info-label">Fecha Límite:</span> {{ $rfq->date_required?->format('d/m/Y') ?? 'No especificada' }}</div>
+            <div class="info-item"><span class="info-label">Fecha Entrega:</span> {{ $rfq->delivery_deadline?->format('d/m/Y') ?? 'A convenir' }}</div>
+        </div>
+        <div class="info-box">
+            <div class="info-box-title">Información</div>
+<?php
+    $statusLabels = [
+        'draft' => 'Borrador',
+        'sent' => 'Enviada',
+        'closed' => 'Cerrada',
+        'cancelled' => 'Cancelada',
+    ];
+    $statusLabel = $statusLabels[$rfq->status] ?? ucfirst($rfq->status);
+?>
+            <div class="info-item"><span class="info-label">Estado:</span> {{ $statusLabel }}</div>
+            <div class="info-item"><span class="info-label">Solicitado por:</span> {{ $rfq->creator->name ?? 'Sistema' }}</div>
+            <div class="info-item"><span class="info-label">Total Items:</span> {{ $rfq->items->count() }}</div>
+        </div>
     </div>
 
     <table>
         <thead>
             <tr>
-                <th style="width: 5%">#</th>
-                <th style="width: 15%">Código</th>
-                <th style="width: 40%">Producto</th>
-                <th style="width: 20%">Cantidad</th>
-                <th style="width: 20%">Notas</th>
+                <th style="width: 5%; text-align: center;">#</th>
+                <th style="width: 12%;">Código</th>
+                <th style="width: 43%;">Descripción / Producto</th>
+                <th style="width: 10%; text-align: center;">Cant.</th>
+                <th style="width: 10%; text-align: center;">Und.</th>
+                <th style="width: 20%;">Notas</th>
             </tr>
         </thead>
         <tbody>
@@ -133,7 +239,8 @@
                     <td class="text-center">{{ $index + 1 }}</td>
                     <td>{{ $item->product->code ?? 'N/A' }}</td>
                     <td><strong>{{ $item->product->name }}</strong></td>
-                    <td class="text-center">{{ $item->quantity }} {{ $item->product->unit->abbreviation ?? 'und' }}</td>
+                    <td class="text-center">{{ $item->quantity }}</td>
+                    <td class="text-center">{{ $item->product->unit->abbreviation ?? 'und' }}</td>
                     <td>{{ $item->notes ?? '-' }}</td>
                 </tr>
             @endforeach
@@ -141,21 +248,19 @@
     </table>
 
     @if($rfq->notes)
-        <div style="background: #fff3cd; padding: 10px; border-left: 4px solid #ffc107; margin-bottom: 20px;">
-            <strong>Notas adicionales:</strong><br>
-            {{ $rfq->notes }}
+        <div class="notes-section">
+            <div class="notes-title">Notas Adicionales</div>
+            <div class="notes-content">{{ $rfq->notes }}</div>
         </div>
     @endif
 
-    <div style="margin-top: 30px;">
-        <p><strong>Para responder esta cotización, favor enviar propuesta a:</strong></p>
-        <p>Correo: [su-correo@empresa.com]<br>
-        Teléfono: [su-teléfono]</p>
+    <div class="contact-section">
+        <div class="contact-title">Para responder esta cotización, favor contactarnos</div>
+        <div class="contact-info">Inmunologia Asociacion Civil | RIF: J-30710739-1</div>
     </div>
 
     <div class="footer">
-        <p>Este documento fue generado el {{ now()->format('d/m/Y H:i') }}.</p>
-        <p>Sistema de Gestión de Inventario - RFQ {{ $rfq->code }}</p>
+        <p>Documento generado el {{ now()->format('d/m/Y') }} | Sistema de Gestión de Inventario - IAC</p>
     </div>
 </body>
 </html>

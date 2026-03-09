@@ -278,7 +278,7 @@
                         <a href="{{ route('admin.purchaseOrders.index') }}" class="btn btn-secondary btn-lg">
                             <i class="fas fa-times"></i> Cancelar
                         </a>
-                        <button type="submit" class="btn btn-primary btn-lg">
+                        <button type="button" class="btn btn-primary btn-lg" id="saveOrderBtn">
                             <i class="fas fa-save"></i> Guardar Orden
                         </button>
                     </div>
@@ -638,6 +638,20 @@
             updateRemoveButtons();
             calculateTotals();
             attachProductButtonEvents();
+
+            // Modal de confirmación para guardar orden
+            document.getElementById('saveOrderBtn').addEventListener('click', function() {
+                confirmAction({
+                    title: 'Crear Orden de Compra',
+                    message: '¿Está seguro de crear esta orden de compra?',
+                    alert: 'Verifique que todos los datos y productos sean correctos antes de continuar.',
+                    confirmBtnClass: 'btn-primary',
+                    onConfirm: function() {
+                        document.getElementById('orderForm').submit();
+                    }
+                });
+            });
         });
     </script>
+    @include('admin.partials.confirm-action')
 @endsection

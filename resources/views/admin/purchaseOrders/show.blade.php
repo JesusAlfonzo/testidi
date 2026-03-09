@@ -190,30 +190,49 @@
                 <div class="card-body">
                     @if($purchaseOrder->status === 'draft')
                         @can('ordenes_compra_aprobar')
-                            <form action="{{ route('admin.purchaseOrders.issue', $purchaseOrder) }}" method="POST" style="display:inline;">
-                                @csrf
-                                <button type="submit" class="btn btn-success btn-lg" onclick="return confirm('¿Emitir esta orden de compra?')">
-                                    <i class="fas fa-paper-plane"></i> Emitir Orden
-                                </button>
-                            </form>
+                            <button type="button" class="btn btn-success btn-lg" onclick="confirmAction({
+                                title: 'Emitir Orden de Compra',
+                                message: '¿Está seguro de EMITIR esta orden de compra?',
+                                alert: 'Una vez emitida, se considerará válida y se vinculará con el proveedor.',
+                                confirmBtnClass: 'btn-success',
+                                onConfirm: function() {
+                                    var form = document.createElement('form');
+                                    form.method = 'POST';
+                                    form.action = '{{ route('admin.purchaseOrders.issue', $purchaseOrder) }}';
+                                    var csrfToken = document.querySelector('meta[name=&quot;csrf-token&quot;]').getAttribute('content');
+                                    form.innerHTML = '<input type=&quot;hidden&quot; name=&quot;_token&quot; value=&quot;' + csrfToken + '&quot;>';
+                                    document.body.appendChild(form);
+                                    form.submit();
+                                }
+                            })">
+                                <i class="fas fa-paper-plane"></i> Emitir Orden
+                            </button>
                         @endcan
                         @can('ordenes_compra_eliminar')
-                            <form action="{{ route('admin.purchaseOrders.destroy', $purchaseOrder) }}" method="POST" style="display:inline;">
-                                @csrf @method('DELETE')
-                                <button type="submit" class="btn btn-danger" onclick="return confirm('¿Eliminar esta orden?')">
-                                    <i class="fas fa-trash"></i> Eliminar
-                                </button>
-                            </form>
+                            <button type="button" class="btn btn-danger" onclick="confirmDelete('{{ route('admin.purchaseOrders.destroy', $purchaseOrder) }}', 'Orden de Compra {{ $purchaseOrder->code }}')">
+                                <i class="fas fa-trash"></i> Eliminar
+                            </button>
                         @endcan
                     @elseif($purchaseOrder->status === 'issued')
                         @if($purchaseOrder->isFullyReceived())
                             @can('ordenes_compra_aprobar')
-                                <form action="{{ route('admin.purchaseOrders.complete', $purchaseOrder) }}" method="POST" style="display:inline;">
-                                    @csrf
-                                    <button type="submit" class="btn btn-success btn-lg" onclick="return confirm('¿Marcar como completada?')">
-                                        <i class="fas fa-check"></i> Completar Orden
-                                    </button>
-                                </form>
+                                <button type="button" class="btn btn-success btn-lg" onclick="confirmAction({
+                                    title: 'Completar Orden de Compra',
+                                    message: '¿Está seguro de COMPLETAR esta orden de compra?',
+                                    alert: 'Toda la mercancía ha sido recibida.',
+                                    confirmBtnClass: 'btn-success',
+                                    onConfirm: function() {
+                                        var form = document.createElement('form');
+                                        form.method = 'POST';
+                                        form.action = '{{ route('admin.purchaseOrders.complete', $purchaseOrder) }}';
+                                        var csrfToken = document.querySelector('meta[name=&quot;csrf-token&quot;]').getAttribute('content');
+                                        form.innerHTML = '<input type=&quot;hidden&quot; name=&quot;_token&quot; value=&quot;' + csrfToken + '&quot;>';
+                                        document.body.appendChild(form);
+                                        form.submit();
+                                    }
+                                })">
+                                    <i class="fas fa-check"></i> Completar Orden
+                                </button>
                             @endcan
                         @else
                             <div class="alert alert-info">
@@ -221,12 +240,23 @@
                             </div>
                         @endif
                         @can('ordenes_compra_anular')
-                            <form action="{{ route('admin.purchaseOrders.cancel', $purchaseOrder) }}" method="POST" style="display:inline;">
-                                @csrf
-                                <button type="submit" class="btn btn-danger" onclick="return confirm('¿Cancelar esta orden?')">
-                                    <i class="fas fa-times"></i> Cancelar
-                                </button>
-                            </form>
+                            <button type="button" class="btn btn-danger" onclick="confirmAction({
+                                title: 'Cancelar Orden de Compra',
+                                message: '¿Está seguro de CANCELAR esta orden de compra?',
+                                alert: 'Esta acción no se puede deshacer.',
+                                confirmBtnClass: 'btn-danger',
+                                onConfirm: function() {
+                                    var form = document.createElement('form');
+                                    form.method = 'POST';
+                                    form.action = '{{ route('admin.purchaseOrders.cancel', $purchaseOrder) }}';
+                                    var csrfToken = document.querySelector('meta[name=&quot;csrf-token&quot;]').getAttribute('content');
+                                    form.innerHTML = '<input type=&quot;hidden&quot; name=&quot;_token&quot; value=&quot;' + csrfToken + '&quot;>';
+                                    document.body.appendChild(form);
+                                    form.submit();
+                                }
+                            })">
+                                <i class="fas fa-times"></i> Cancelar
+                            </button>
                         @endcan
                     @elseif($purchaseOrder->status === 'completed')
                         <div class="alert alert-success">
@@ -249,4 +279,7 @@
             </a>
         </div>
     </div>
+
+    @include('admin.partials.delete-confirm')
+    @include('admin.partials.confirm-action')
 @stop

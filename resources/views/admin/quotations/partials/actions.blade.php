@@ -12,12 +12,9 @@
             </a>
         @endcan
         @can('cotizaciones_eliminar')
-            <form action="{{ route('admin.quotations.destroy', $quotation) }}" method="POST" style="display:inline-block;">
-                @csrf @method('DELETE')
-                <button type="submit" class="btn btn-default text-danger" title="Eliminar" onclick="return confirm('¿Eliminar esta cotización?')">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </form>
+            <button type="button" class="btn btn-default text-danger" title="Eliminar" onclick="confirmDelete('{{ route('admin.quotations.destroy', $quotation) }}', 'Cotización {{ $quotation->code }}')">
+                <i class="fas fa-trash"></i>
+            </button>
         @endcan
     @endif
 </div>

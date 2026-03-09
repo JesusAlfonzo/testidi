@@ -12,12 +12,9 @@
             </a>
         @endcan
         @can('rfq_eliminar')
-            <form action="{{ route('admin.rfq.destroy', $rfq) }}" method="POST" style="display:inline-block;">
-                @csrf @method('DELETE')
-                <button type="submit" class="btn btn-default text-danger" title="Eliminar" onclick="return confirm('¿Eliminar esta RFQ?')">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </form>
+            <button type="button" class="btn btn-default text-danger" title="Eliminar" onclick="confirmDelete('{{ route('admin.rfq.destroy', $rfq) }}', 'RFQ {{ $rfq->code }}')">
+                <i class="fas fa-trash"></i>
+            </button>
         @endcan
     @endif
 </div>

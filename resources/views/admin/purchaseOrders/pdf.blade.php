@@ -5,55 +5,95 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Orden de Compra {{ $purchaseOrder->code }}</title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
         body {
             font-family: 'Helvetica', 'Arial', sans-serif;
-            font-size: 12px;
-            margin: 0;
+            font-size: 11px;
             padding: 20px;
             color: #333;
         }
-        .header {
-            text-align: center;
-            border-bottom: 2px solid #333;
-            padding-bottom: 15px;
+        .header-container {
+            width: 100%;
             margin-bottom: 20px;
+            border-bottom: 2px solid #1a4a7a;
+            padding-bottom: 15px;
         }
-        .header h1 {
-            margin: 0;
-            font-size: 20px;
-            text-transform: uppercase;
+        .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
         }
-        .header h2 {
-            margin: 5px 0 0 0;
-            font-size: 14px;
+        .logo-section {
+            width: 180px;
+        }
+        .logo-section img {
+            width: 150px;
+            height: auto;
+        }
+        .company-info {
+            text-align: right;
+            flex: 1;
+            padding-left: 20px;
+        }
+        .company-name {
+            font-size: 16px;
+            font-weight: bold;
+            color: #1a4a7a;
+            margin-bottom: 3px;
+        }
+        .company-rif {
+            font-size: 11px;
             color: #666;
         }
-        .two-columns {
-            display: flex;
-            gap: 40px;
-            margin-bottom: 20px;
+        .document-info {
+            margin-top: 15px;
+            text-align: right;
         }
-        .column {
-            flex: 1;
+        .document-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #1a4a7a;
+            margin-bottom: 5px;
+        }
+        .document-number {
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .document-date {
+            font-size: 11px;
+            color: #666;
+        }
+        .info-section {
+            display: flex;
+            gap: 30px;
+            margin-bottom: 20px;
         }
         .info-box {
+            flex: 1;
             border: 1px solid #ddd;
-            padding: 10px;
-            background: #f9f9f9;
+            padding: 12px;
+            background: #fafafa;
         }
-        .info-box h4 {
-            margin: 0 0 10px 0;
-            font-size: 12px;
+        .info-box-title {
+            font-size: 10px;
             text-transform: uppercase;
-            color: #666;
+            color: #1a4a7a;
+            font-weight: bold;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #1a4a7a;
+            padding-bottom: 5px;
         }
-        .info-row {
-            margin-bottom: 5px;
+        .info-item {
+            margin-bottom: 4px;
+            line-height: 1.4;
         }
         .info-label {
             font-weight: bold;
-            display: inline-block;
-            width: 100px;
+            color: #555;
         }
         table {
             width: 100%;
@@ -61,91 +101,151 @@
             margin-bottom: 20px;
         }
         th, td {
-            border: 1px solid #ddd;
+            border: 1px solid #333;
             padding: 8px;
             text-align: left;
         }
         th {
-            background: #f5f5f5;
+            background: #1a4a7a;
+            color: white;
             font-weight: bold;
+            font-size: 10px;
+            text-transform: uppercase;
         }
         .text-center { text-align: center; }
         .text-right { text-align: right; }
+        .totals-section {
+            width: 300px;
+            margin-left: auto;
+            margin-bottom: 20px;
+        }
+        .totals-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .totals-table td {
+            border: 1px solid #ddd;
+            padding: 6px 10px;
+        }
+        .totals-label {
+            font-weight: bold;
+            text-align: right;
+            background: #f5f5f5;
+        }
+        .totals-value {
+            text-align: right;
+        }
+        .grand-total {
+            background: #1a4a7a !important;
+            color: white !important;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .terms-section {
+            margin-bottom: 20px;
+        }
+        .terms-title {
+            font-size: 11px;
+            font-weight: bold;
+            color: #1a4a7a;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+        .terms-content {
+            border: 1px solid #ddd;
+            padding: 12px;
+            background: #fafafa;
+            font-size: 10px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+        }
         .footer {
             margin-top: 40px;
             padding-top: 15px;
             border-top: 1px solid #ddd;
+            font-size: 9px;
+            color: #888;
+            text-align: center;
+        }
+        .signature-section {
+            margin-top: 40px;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 40px;
+        }
+        .signature-box {
+            text-align: center;
+            width: 200px;
+        }
+        .signature-line {
+            border-top: 1px solid #333;
+            margin-top: 40px;
+            padding-top: 5px;
             font-size: 10px;
-            color: #666;
-        }
-        .terms {
-            background: #f9f9f9;
-            padding: 15px;
-            border: 1px solid #ddd;
-            margin-bottom: 20px;
-        }
-        .terms h4 {
-            margin: 0 0 10px 0;
         }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>Orden de Compra</h1>
-        <h2>{{ $purchaseOrder->code }}</h2>
-    </div>
-
-    <div class="two-columns">
-        <div class="column">
-            <div class="info-box">
-                <h4>Proveedor</h4>
-                <p><strong>{{ $purchaseOrder->supplier->name }}</strong></p>
-                @if($purchaseOrder->supplier->tax_id)
-                    <p>RIF/NIT: {{ $purchaseOrder->supplier->tax_id }}</p>
-                @endif
-                @if($purchaseOrder->supplier->contact_person)
-                    <p>Contacto: {{ $purchaseOrder->supplier->contact_person }}</p>
-                @endif
-                @if($purchaseOrder->supplier->phone)
-                    <p>Tel: {{ $purchaseOrder->supplier->phone }}</p>
-                @endif
-                @if($purchaseOrder->supplier->email)
-                    <p>Email: {{ $purchaseOrder->supplier->email }}</p>
-                @endif
+    <div class="header-container">
+        <div class="header-row">
+            <div class="logo-section">
+                <img src="{{ public_path('images/logo-iac.png') }}" alt="Logo IAC">
+            </div>
+            <div class="company-info">
+                <div class="company-name">Inmunologia Asociacion Civil</div>
+                <div class="company-rif">RIF: J-30710739-1</div>
+                <div class="document-info">
+                    <div class="document-title">ORDEN DE COMPRA</div>
+                    <div class="document-number">N° {{ $purchaseOrder->code }}</div>
+                    <div class="document-date">Fecha: {{ $purchaseOrder->date_issued->format('d/m/Y') }}</div>
+                </div>
             </div>
         </div>
-        <div class="column">
-            <div class="info-box">
-                <h4>Información</h4>
-                <div class="info-row">
-                    <span class="info-label">Fecha:</span>
-                    <span>{{ $purchaseOrder->date_issued->format('d/m/Y') }}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Entrega:</span>
-                    <span>{{ $purchaseOrder->delivery_date?->format('d/m/Y') ?? 'A convenir' }}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Dirección:</span>
-                    <span>{{ $purchaseOrder->delivery_address ?? 'A confirmar' }}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Moneda:</span>
-                    <span>{{ $purchaseOrder->currency }}</span>
-                </div>
-            </div>
+    </div>
+
+    <div class="info-section">
+        <div class="info-box">
+            <div class="info-box-title">Datos del Proveedor</div>
+            <div class="info-item"><span class="info-label">Nombre:</span> {{ $purchaseOrder->supplier->name }}</div>
+            @if($purchaseOrder->supplier->tax_id)
+                <div class="info-item"><span class="info-label">RIF:</span> {{ $purchaseOrder->supplier->tax_id }}</div>
+            @endif
+            @if($purchaseOrder->supplier->contact_person)
+                <div class="info-item"><span class="info-label">Contacto:</span> {{ $purchaseOrder->supplier->contact_person }}</div>
+            @endif
+            @if($purchaseOrder->supplier->phone)
+                <div class="info-item"><span class="info-label">Teléfono:</span> {{ $purchaseOrder->supplier->phone }}</div>
+            @endif
+            @if($purchaseOrder->supplier->email)
+                <div class="info-item"><span class="info-label">Email:</span> {{ $purchaseOrder->supplier->email }}</div>
+            @endif
+            @if($purchaseOrder->supplier->address)
+                <div class="info-item"><span class="info-label">Dirección:</span> {{ $purchaseOrder->supplier->address }}</div>
+            @endif
+        </div>
+        <div class="info-box">
+            <div class="info-box-title">Información de la Orden</div>
+            <div class="info-item"><span class="info-label">Fecha de Emisión:</span> {{ $purchaseOrder->date_issued->format('d/m/Y') }}</div>
+            <div class="info-item"><span class="info-label">Fecha de Entrega:</span> {{ $purchaseOrder->delivery_date?->format('d/m/Y') ?? 'A convenir' }}</div>
+            <div class="info-item"><span class="info-label">Lugar de Entrega:</span> {{ $purchaseOrder->delivery_address ?? 'Por definir' }}</div>
+            <div class="info-item"><span class="info-label">Moneda:</span> {{ $purchaseOrder->currency }}</div>
+            <div class="info-item"><span class="info-label">Tipo de Cambio:</span> {{ number_format($purchaseOrder->exchange_rate, 4) }}</div>
+            @if($purchaseOrder->creator)
+                <div class="info-item"><span class="info-label">Elaborado por:</span> {{ $purchaseOrder->creator->name }}</div>
+            @endif
         </div>
     </div>
 
     <table>
         <thead>
             <tr>
-                <th style="width: 5%">#</th>
-                <th style="width: 10%">Código</th>
-                <th style="width: 40%">Descripción</th>
-                <th style="width: 15%">Cantidad</th>
-                <th style="width: 15%">Costo Unit.</th>
-                <th style="width: 15%">Total</th>
+                <th style="width: 5%; text-align: center;">#</th>
+                <th style="width: 12%;">Código</th>
+                <th style="width: 38%;">Descripción / Producto</th>
+                <th style="width: 10%; text-align: center;">Cant.</th>
+                <th style="width: 15%; text-align: right;">Costo Unit.</th>
+                <th style="width: 10%; text-align: center;">Und.</th>
+                <th style="width: 10%; text-align: right;">Total</th>
             </tr>
         </thead>
         <tbody>
@@ -155,33 +255,58 @@
                     <td>{{ $item->product_code ?? '-' }}</td>
                     <td>{{ $item->product_name }}</td>
                     <td class="text-center">{{ $item->quantity }}</td>
-                    <td class="text-right">${{ number_format($item->unit_cost, 2) }}</td>
-                    <td class="text-right">${{ number_format($item->total_cost, 2) }}</td>
+                    <td class="text-right">{{ $purchaseOrder->currency }} {{ number_format($item->unit_cost, 2) }}</td>
+                    <td class="text-center">{{ $item->product->unit->abbreviation ?? 'und' }}</td>
+                    <td class="text-right">{{ $purchaseOrder->currency }} {{ number_format($item->total_cost, 2) }}</td>
                 </tr>
             @endforeach
         </tbody>
-        <tfoot>
-            <tr>
-                <td colspan="5" class="text-right"><strong>Subtotal:</strong></td>
-                <td class="text-right"><strong>${{ number_format($purchaseOrder->subtotal, 2) }}</strong></td>
-            </tr>
-            <tr>
-                <td colspan="5" class="text-right"><strong>TOTAL ({{ $purchaseOrder->currency }}):</strong></td>
-                <td class="text-right"><strong style="font-size: 14px;">${{ number_format($purchaseOrder->total, 2) }}</strong></td>
-            </tr>
-        </tfoot>
     </table>
 
+    <div class="totals-section">
+        <table class="totals-table">
+            <tr>
+                <td class="totals-label">Subtotal:</td>
+                <td class="totals-value">{{ $purchaseOrder->currency }} {{ number_format($purchaseOrder->subtotal, 2) }}</td>
+            </tr>
+            @if($purchaseOrder->tax_amount > 0)
+            <tr>
+                <td class="totals-label">Impuesto ({{ $purchaseOrder->tax_rate ?? 0 }}%):</td>
+                <td class="totals-value">{{ $purchaseOrder->currency }} {{ number_format($purchaseOrder->tax_amount, 2) }}</td>
+            </tr>
+            @endif
+            <tr class="grand-total">
+                <td class="totals-label" style="background: #1a4a7a; color: white;">TOTAL {{ $purchaseOrder->currency }}:</td>
+                <td class="totals-value" style="background: #1a4a7a; color: white;">{{ $purchaseOrder->currency }} {{ number_format($purchaseOrder->total, 2) }}</td>
+            </tr>
+        </table>
+    </div>
+
     @if($purchaseOrder->terms)
-        <div class="terms">
-            <h4>Términos y Condiciones</h4>
-            <div style="white-space: pre-wrap;">{{ $purchaseOrder->terms }}</div>
+        <div class="terms-section">
+            <div class="terms-title">Términos y Condiciones</div>
+            <div class="terms-content">{{ $purchaseOrder->terms }}</div>
         </div>
     @endif
 
+    @if($purchaseOrder->notes)
+        <div class="terms-section">
+            <div class="terms-title">Observaciones</div>
+            <div class="terms-content">{{ $purchaseOrder->notes }}</div>
+        </div>
+    @endif
+
+    <div class="signature-section">
+        <div class="signature-box">
+            <div class="signature-line">Firma y Sello del Proveedor</div>
+        </div>
+        <div class="signature-box">
+            <div class="signature-line">Firma y Sello del Autorizador</div>
+        </div>
+    </div>
+
     <div class="footer">
-        <p>Este documento fue generado el {{ now()->format('d/m/Y H:i') }}</p>
-        <p>Orden de Compra {{ $purchaseOrder->code }} - Sistema de Gestión de Inventario</p>
+        <p>Documento generado el {{ now()->format('d/m/Y') }} | Sistema de Gestión de Inventario - IAC</p>
     </div>
 </body>
 </html>

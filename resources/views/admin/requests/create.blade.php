@@ -70,7 +70,7 @@
                         </button>
                     </div>
                     <div class="card-footer">
-                        <button type="submit" class="btn btn-success">
+                        <button type="button" class="btn btn-success" id="saveRequestBtn">
                             <i class="fas fa-save"></i> Guardar Solicitud
                         </button>
                         <a href="{{ route('admin.requests.index') }}" class="btn btn-default float-right">Cancelar</a>
@@ -162,6 +162,20 @@
         if (itemIndex === 0) {
             addItemRow();
         }
+
+        // Modal de confirmación para guardar solicitud
+        document.getElementById('saveRequestBtn').addEventListener('click', function() {
+            confirmAction({
+                title: 'Crear Solicitud',
+                message: '¿Está seguro de enviar esta solicitud de inventario?',
+                alert: 'Su solicitud será enviada para aprobación. Verifique los productos y cantidades.',
+                confirmBtnClass: 'btn-success',
+                onConfirm: function() {
+                    document.getElementById('requestForm').submit();
+                }
+            });
+        });
     });
 </script>
+@include('admin.partials.confirm-action')
 @endsection

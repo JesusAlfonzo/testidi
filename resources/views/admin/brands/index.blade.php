@@ -76,12 +76,9 @@
                                                 @endcan
 
                                                 @can('marcas_eliminar')
-                                                    <form action="{{ route('admin.brands.destroy', $brand) }}" method="POST" style="display:inline-block;">
-                                                        @csrf @method('DELETE')
-                                                        <button type="submit" class="btn btn-default text-danger" onclick="return confirm('¿Estás seguro de que deseas eliminar esta marca?')" title="Eliminar">
-                                                            <i class="fas fa-trash"></i>
-                                                        </button>
-                                                    </form>
+                                                    <button type="button" class="btn btn-default text-danger" onclick="confirmDelete('{{ route('admin.brands.destroy', $brand) }}', '{{ $brand->name }}')" title="Eliminar">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
                                                 @endcan
                                             </div>
                                         </td>
@@ -167,4 +164,5 @@
             setTimeout(function() { brandsTable.columns.adjust().responsive.recalc(); }, 500);
         });
     </script>
+    @include('admin.partials.delete-confirm')
 @endsection

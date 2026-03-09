@@ -5,49 +5,95 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cotización {{ $quotation->code }}</title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
         body {
             font-family: 'Helvetica', 'Arial', sans-serif;
-            font-size: 12px;
-            margin: 0;
+            font-size: 11px;
             padding: 20px;
             color: #333;
         }
-        .header {
-            text-align: center;
-            border-bottom: 2px solid #333;
-            padding-bottom: 15px;
+        .header-container {
+            width: 100%;
             margin-bottom: 20px;
+            border-bottom: 2px solid #1a4a7a;
+            padding-bottom: 15px;
         }
-        .header h1 {
-            margin: 0;
-            font-size: 18px;
-            text-transform: uppercase;
+        .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
         }
-        .header h2 {
-            margin: 5px 0 0 0;
-            font-size: 14px;
+        .logo-section {
+            width: 180px;
+        }
+        .logo-section img {
+            width: 150px;
+            height: auto;
+        }
+        .company-info {
+            text-align: right;
+            flex: 1;
+            padding-left: 20px;
+        }
+        .company-name {
+            font-size: 16px;
+            font-weight: bold;
+            color: #1a4a7a;
+            margin-bottom: 3px;
+        }
+        .company-rif {
+            font-size: 11px;
             color: #666;
         }
-        .info-box {
+        .document-info {
+            margin-top: 15px;
+            text-align: right;
+        }
+        .document-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #1a4a7a;
+            margin-bottom: 5px;
+        }
+        .document-number {
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .document-date {
+            font-size: 11px;
+            color: #666;
+        }
+        .info-section {
+            display: flex;
+            gap: 30px;
             margin-bottom: 20px;
         }
-        .info-row {
-            display: flex;
-            margin-bottom: 5px;
+        .info-box {
+            flex: 1;
+            border: 1px solid #ddd;
+            padding: 12px;
+            background: #fafafa;
+        }
+        .info-box-title {
+            font-size: 10px;
+            text-transform: uppercase;
+            color: #1a4a7a;
+            font-weight: bold;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #1a4a7a;
+            padding-bottom: 5px;
+        }
+        .info-item {
+            margin-bottom: 4px;
+            line-height: 1.4;
         }
         .info-label {
             font-weight: bold;
-            width: 150px;
-        }
-        .info-value {
-            flex: 1;
-        }
-        .two-columns {
-            display: flex;
-            gap: 40px;
-        }
-        .column {
-            flex: 1;
+            color: #555;
         }
         table {
             width: 100%;
@@ -55,116 +101,177 @@
             margin-bottom: 20px;
         }
         th, td {
-            border: 1px solid #ddd;
+            border: 1px solid #333;
             padding: 8px;
             text-align: left;
         }
         th {
+            background: #1a4a7a;
+            color: white;
+            font-weight: bold;
+            font-size: 10px;
+            text-transform: uppercase;
+        }
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .totals-section {
+            width: 300px;
+            margin-left: auto;
+            margin-bottom: 20px;
+        }
+        .totals-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .totals-table td {
+            border: 1px solid #ddd;
+            padding: 6px 10px;
+        }
+        .totals-label {
+            font-weight: bold;
+            text-align: right;
             background: #f5f5f5;
+        }
+        .totals-value {
+            text-align: right;
+        }
+        .grand-total {
+            background: #1a4a7a !important;
+            color: white !important;
+            font-size: 14px;
             font-weight: bold;
         }
-        .text-center {
-            text-align: center;
+        .notes-section {
+            margin-bottom: 20px;
         }
-        .text-right {
-            text-align: right;
+        .notes-title {
+            font-size: 11px;
+            font-weight: bold;
+            color: #1a4a7a;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+        .notes-content {
+            border: 1px solid #ddd;
+            padding: 12px;
+            background: #fafafa;
+            font-size: 10px;
+            line-height: 1.5;
         }
         .footer {
             margin-top: 40px;
             padding-top: 15px;
             border-top: 1px solid #ddd;
-            font-size: 10px;
-            color: #666;
+            font-size: 9px;
+            color: #888;
+            text-align: center;
         }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>Cotización de Proveedor</h1>
-        <h2>{{ $quotation->code }}</h2>
-    </div>
-
-    <div class="two-columns">
-        <div class="column">
-            <h4>Proveedor</h4>
-            <div class="info-box">
-                <p><strong>{{ $quotation->getSupplierDisplayName() }}</strong></p>
-                @if($quotation->getSupplierDisplayEmail() != '-')
-                    <p>{{ $quotation->getSupplierDisplayEmail() }}</p>
-                @endif
-                @if($quotation->supplier_phone_temp || ($quotation->supplier && $quotation->supplier->phone))
-                    <p>{{ $quotation->supplier_phone_temp ?? $quotation->supplier->phone }}</p>
-                @endif
+    <div class="header-container">
+        <div class="header-row">
+            <div class="logo-section">
+                <img src="{{ public_path('images/logo-iac.png') }}" alt="Logo IAC">
+            </div>
+            <div class="company-info">
+                <div class="company-name">Inmunologia Asociacion Civil</div>
+                <div class="company-rif">RIF: J-30710739-1</div>
+                <div class="document-info">
+                    <div class="document-title">COTIZACIÓN</div>
+                    <div class="document-number">N° {{ $quotation->code }}</div>
+                    <div class="document-date">Fecha: {{ $quotation->date_issued->format('d/m/Y') }}</div>
+                </div>
             </div>
         </div>
-        <div class="column">
-            <h4>Información</h4>
-            <div class="info-box">
-                <div class="info-row">
-                    <span class="info-label">Fecha Emisión:</span>
-                    <span class="info-value">{{ $quotation->date_issued->format('d/m/Y') }}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Válido hasta:</span>
-                    <span class="info-value">{{ $quotation->valid_until?->format('d/m/Y') ?? '-' }}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Entrega:</span>
-                    <span class="info-value">{{ $quotation->delivery_date?->format('d/m/Y') ?? '-' }}</span>
-                </div>
-                @if($quotation->supplier_reference)
-                    <div class="info-row">
-                        <span class="info-label">Ref. Proveedor:</span>
-                        <span class="info-value">{{ $quotation->supplier_reference }}</span>
-                    </div>
-                @endif
-            </div>
+    </div>
+
+    <div class="info-section">
+        <div class="info-box">
+            <div class="info-box-title">Datos del Proveedor</div>
+            <div class="info-item"><span class="info-label">Nombre:</span> {{ $quotation->getSupplierDisplayName() }}</div>
+            @if($quotation->supplier && $quotation->supplier->tax_id)
+                <div class="info-item"><span class="info-label">RIF:</span> {{ $quotation->supplier->tax_id }}</div>
+            @endif
+            @if($quotation->getSupplierDisplayEmail() != '-')
+                <div class="info-item"><span class="info-label">Email:</span> {{ $quotation->getSupplierDisplayEmail() }}</div>
+            @endif
+            @if($quotation->supplier_phone_temp || ($quotation->supplier && $quotation->supplier->phone))
+                <div class="info-item"><span class="info-label">Teléfono:</span> {{ $quotation->supplier_phone_temp ?? $quotation->supplier->phone }}</div>
+            @endif
+            @if($quotation->supplier_reference)
+                <div class="info-item"><span class="info-label">Ref. Proveedor:</span> {{ $quotation->supplier_reference }}</div>
+            @endif
+        </div>
+        <div class="info-box">
+            <div class="info-box-title">Información de la Cotización</div>
+            @if($quotation->rfq)
+                <div class="info-item"><span class="info-label">RFQ:</span> {{ $quotation->rfq->code }}</div>
+            @endif
+            <div class="info-item"><span class="info-label">Fecha de Emisión:</span> {{ $quotation->date_issued->format('d/m/Y') }}</div>
+            <div class="info-item"><span class="info-label">Válido hasta:</span> {{ $quotation->valid_until?->format('d/m/Y') ?? 'Sin fecha límite' }}</div>
+            <div class="info-item"><span class="info-label">Fecha de Entrega:</span> {{ $quotation->delivery_date?->format('d/m/Y') ?? 'A convenir' }}</div>
+            <div class="info-item"><span class="info-label">Moneda:</span> {{ $quotation->currency }}</div>
+            <div class="info-item"><span class="info-label">Tipo de Cambio:</span> {{ number_format($quotation->exchange_rate, 4) }}</div>
+            @if($quotation->user)
+                <div class="info-item"><span class="info-label">Elaborado por:</span> {{ $quotation->user->name }}</div>
+            @endif
         </div>
     </div>
 
     <table>
         <thead>
             <tr>
-                <th style="width: 5%">#</th>
-                <th style="width: 45%">Producto</th>
-                <th style="width: 15%">Cantidad</th>
-                <th style="width: 15%">Costo Unit.</th>
-                <th style="width: 20%">Total</th>
+                <th style="width: 5%; text-align: center;">#</th>
+                <th style="width: 10%;">Código</th>
+                <th style="width: 40%;">Descripción / Producto</th>
+                <th style="width: 10%; text-align: center;">Cant.</th>
+                <th style="width: 15%; text-align: right;">Costo Unit.</th>
+                <th style="width: 10%; text-align: right;">Total</th>
             </tr>
         </thead>
         <tbody>
             @foreach($quotation->items as $index => $item)
                 <tr>
                     <td class="text-center">{{ $index + 1 }}</td>
+                    <td>{{ $item->product->code ?? '-' }}</td>
                     <td>{{ $item->product_name }}</td>
                     <td class="text-center">{{ $item->quantity }}</td>
-                    <td class="text-right">${{ number_format($item->unit_cost, 2) }}</td>
-                    <td class="text-right">${{ number_format($item->total_cost, 2) }}</td>
+                    <td class="text-right">{{ $quotation->currency }} {{ number_format($item->unit_cost, 2) }}</td>
+                    <td class="text-right">{{ $quotation->currency }} {{ number_format($item->total_cost, 2) }}</td>
                 </tr>
             @endforeach
         </tbody>
-        <tfoot>
-            <tr>
-                <td colspan="4" class="text-right"><strong>Subtotal:</strong></td>
-                <td class="text-right"><strong>${{ number_format($quotation->subtotal, 2) }}</strong></td>
-            </tr>
-            <tr>
-                <td colspan="4" class="text-right"><strong>Total ({{ $quotation->currency }}):</strong></td>
-                <td class="text-right"><strong style="font-size: 14px;">${{ number_format($quotation->total, 2) }}</strong></td>
-            </tr>
-        </tfoot>
     </table>
 
+    <div class="totals-section">
+        <table class="totals-table">
+            <tr>
+                <td class="totals-label">Subtotal:</td>
+                <td class="totals-value">{{ $quotation->currency }} {{ number_format($quotation->subtotal, 2) }}</td>
+            </tr>
+            @if($quotation->tax_amount > 0)
+            <tr>
+                <td class="totals-label">Impuesto:</td>
+                <td class="totals-value">{{ $quotation->currency }} {{ number_format($quotation->tax_amount, 2) }}</td>
+            </tr>
+            @endif
+            <tr class="grand-total">
+                <td class="totals-label" style="background: #1a4a7a; color: white;">TOTAL {{ $quotation->currency }}:</td>
+                <td class="totals-value" style="background: #1a4a7a; color: white;">{{ $quotation->currency }} {{ number_format($quotation->total, 2) }}</td>
+            </tr>
+        </table>
+    </div>
+
     @if($quotation->notes)
-        <div style="background: #f5f5f5; padding: 10px; border-left: 4px solid #666; margin-bottom: 20px;">
-            <strong>Notas:</strong><br>
-            {{ $quotation->notes }}
+        <div class="notes-section">
+            <div class="notes-title">Observaciones</div>
+            <div class="notes-content">{{ $quotation->notes }}</div>
         </div>
     @endif
 
     <div class="footer">
-        <p>Documento generado el {{ now()->format('d/m/Y H:i') }}</p>
-        <p>Sistema de Gestión de Inventario - Cotización {{ $quotation->code }}</p>
+        <p>Documento generado el {{ now()->format('d/m/Y') }} | Sistema de Gestión de Inventario - IAC</p>
     </div>
 </body>
 </html>

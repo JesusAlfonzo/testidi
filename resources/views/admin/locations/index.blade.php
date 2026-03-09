@@ -76,12 +76,9 @@
                                                 @endcan
 
                                                 @can('ubicaciones_eliminar')
-                                                    <form action="{{ route('admin.locations.destroy', $location) }}" method="POST" style="display:inline-block;">
-                                                        @csrf @method('DELETE')
-                                                        <button type="submit" class="btn btn-default text-danger" onclick="return confirm('¿Estás seguro de que deseas eliminar esta ubicación? Se recomienda solo si no tiene productos asociados.')" title="Eliminar">
-                                                            <i class="fas fa-trash"></i>
-                                                        </button>
-                                                    </form>
+                                                    <button type="button" class="btn btn-default text-danger" onclick="confirmDelete('{{ route('admin.locations.destroy', $location) }}', '{{ $location->name }}')" title="Eliminar">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
                                                 @endcan
                                             </div>
                                         </td>
@@ -158,4 +155,5 @@
             setTimeout(function() { locationsTable.columns.adjust().responsive.recalc(); }, 500);
         });
     </script>
+    @include('admin.partials.delete-confirm')
 @endsection

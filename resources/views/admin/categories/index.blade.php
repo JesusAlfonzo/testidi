@@ -75,12 +75,9 @@
                                                 @endcan
 
                                                 @can('categorias_eliminar')
-                                                    <form action="{{ route('admin.categories.destroy', $category) }}" method="POST" style="display:inline-block;">
-                                                        @csrf @method('DELETE')
-                                                        <button type="submit" class="btn btn-default text-danger" onclick="return confirm('⚠️ ADVERTENCIA: ¿Está seguro de eliminar esta categoría?')" title="Eliminar">
-                                                            <i class="fas fa-trash"></i>
-                                                        </button>
-                                                    </form>
+                                                    <button type="button" class="btn btn-default text-danger" onclick="confirmDelete('{{ route('admin.categories.destroy', $category) }}', '{{ $category->name }}')" title="Eliminar">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
                                                 @endcan
                                             </div>
                                         </td>
@@ -153,4 +150,5 @@
             setTimeout(function() { categoriesTable.columns.adjust().responsive.recalc(); }, 500);
         });
     </script>
+    @include('admin.partials.delete-confirm')
 @endsection

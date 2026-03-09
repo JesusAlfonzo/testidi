@@ -145,4 +145,6 @@
             });
         });
     </script>
+    @include('admin.partials.delete-confirm')
+    @include('admin.partials.confirm-action')
 @endsection

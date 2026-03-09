@@ -70,14 +70,24 @@
                         <div class="card-body">
                             <p class="text-danger">¡Atención! La aprobación de esta solicitud ajustará el stock de los productos.</p>
                             
-                            {{-- FORMULARIO DE APROBACIÓN --}}
-                            <form action="{{ route('admin.requests.process', ['request' => $request->id]) }}" method="POST">
-                                @csrf
-                                <input type="hidden" name="action" value="approve">
-                                <button type="submit" class="btn btn-success btn-lg btn-block mb-3" onclick="return confirm('¿Confirma que desea APROBAR esta solicitud y reducir el stock de inventario?')">
-                                    <i class="fas fa-check-circle"></i> Aprobar Solicitud
-                                </button>
-                            </form>
+                            {{-- BOTÓN APROBAR CON MODAL --}}
+                            <button type="button" class="btn btn-success btn-lg btn-block mb-3" onclick="confirmAction({
+                                title: 'Aprobar Solicitud',
+                                message: '¿Está seguro de APROBAR esta solicitud de inventario?',
+                                alert: 'Se reducirá el stock de los productos solicitados. Esta acción no se puede deshacer.',
+                                confirmBtnClass: 'btn-success',
+                                onConfirm: function() {
+                                    var form = document.createElement('form');
+                                    form.method = 'POST';
+                                    form.action = '{{ route('admin.requests.process', ['request' => $request->id]) }}';
+                                    var csrfToken = document.querySelector('meta[name=&quot;csrf-token&quot;]').getAttribute('content');
+                                    form.innerHTML = '<input type=&quot;hidden&quot; name=&quot;_token&quot; value=&quot;' + csrfToken + '&quot;><input type=&quot;hidden&quot; name=&quot;action&quot; value=&quot;approve&quot;>';
+                                    document.body.appendChild(form);
+                                    form.submit();
+                                }
+                            })">
+                                <i class="fas fa-check-circle"></i> Aprobar Solicitud
+                            </button>
                             
                             {{-- BOTÓN PARA ACTIVAR EL RECHAZO (MODAL) --}}
                             <button type="button" class="btn btn-danger btn-lg btn-block" data-toggle="modal" data-target="#rejectModal">
@@ -228,4 +238,7 @@
             </div>
         </div>
     @endif
+
+    @include('admin.partials.delete-confirm')
+    @include('admin.partials.confirm-action')
 @stop

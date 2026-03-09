@@ -75,12 +75,9 @@
                                                 @endcan
 
                                                 @can('unidades_eliminar')
-                                                    <form action="{{ route('admin.units.destroy', $unit) }}" method="POST" style="display:inline-block;">
-                                                        @csrf @method('DELETE')
-                                                        <button type="submit" class="btn btn-default text-danger" onclick="return confirm('⚠️ ADVERTENCIA: ¿Está seguro de eliminar esta Unidad? Esto podría afectar a productos asociados.')" title="Eliminar">
-                                                            <i class="fas fa-trash"></i>
-                                                        </button>
-                                                    </form>
+                                                    <button type="button" class="btn btn-default text-danger" onclick="confirmDelete('{{ route('admin.units.destroy', $unit) }}', '{{ $unit->name }} ({{ $unit->abbreviation }})')" title="Eliminar">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
                                                 @endcan
                                             </div>
                                         </td>
@@ -153,4 +150,5 @@
             setTimeout(function() { unitsTable.columns.adjust().responsive.recalc(); }, 500);
         });
     </script>
+    @include('admin.partials.delete-confirm')
 @endsection

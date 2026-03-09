@@ -128,28 +128,61 @@
                     <div class="card-body">
                         @if($rfq->status === 'draft')
                             <span class="text-muted mr-3">Marcar como enviada cuando haya compartido el PDF con proveedores.</span>
-                            <form action="{{ route('admin.rfq.mark-sent', $rfq) }}" method="POST" style="display:inline;">
-                                @csrf
-                                <button type="submit" class="btn btn-success" onclick="return confirm('¿Marcar como enviada?')">
-                                    <i class="fas fa-paper-plane"></i> Marcar Enviada
-                                </button>
-                            </form>
+                            <button type="button" class="btn btn-success" onclick="confirmAction({
+                                title: 'Enviar RFQ',
+                                message: '¿Está seguro de marcar esta Solicitud de Cotización como ENVIADA?',
+                                alert: 'Una vez enviada, ya no podrá editarla.',
+                                confirmBtnClass: 'btn-success',
+                                onConfirm: function() {
+                                    var form = document.createElement('form');
+                                    form.method = 'POST';
+                                    form.action = '{{ route('admin.rfq.mark-sent', $rfq) }}';
+                                    var csrfToken = document.querySelector('meta[name=&quot;csrf-token&quot;]').getAttribute('content');
+                                    form.innerHTML = '<input type=&quot;hidden&quot; name=&quot;_token&quot; value=&quot;' + csrfToken + '&quot;>';
+                                    document.body.appendChild(form);
+                                    form.submit();
+                                }
+                            })">
+                                <i class="fas fa-paper-plane"></i> Marcar Enviada
+                            </button>
                         @elseif($rfq->status === 'sent')
-                            <form action="{{ route('admin.rfq.mark-closed', $rfq) }}" method="POST" style="display:inline;">
-                                @csrf
-                                <button type="submit" class="btn btn-success" onclick="return confirm('¿Cerrar esta RFQ?')">
-                                    <i class="fas fa-check"></i> Cerrar RFQ
-                                </button>
-                            </form>
+                            <button type="button" class="btn btn-success" onclick="confirmAction({
+                                title: 'Cerrar RFQ',
+                                message: '¿Está seguro de CERRAR esta Solicitud de Cotización?',
+                                alert: 'Esto finalizará el proceso de cotización.',
+                                confirmBtnClass: 'btn-success',
+                                onConfirm: function() {
+                                    var form = document.createElement('form');
+                                    form.method = 'POST';
+                                    form.action = '{{ route('admin.rfq.mark-closed', $rfq) }}';
+                                    var csrfToken = document.querySelector('meta[name=&quot;csrf-token&quot;]').getAttribute('content');
+                                    form.innerHTML = '<input type=&quot;hidden&quot; name=&quot;_token&quot; value=&quot;' + csrfToken + '&quot;>';
+                                    document.body.appendChild(form);
+                                    form.submit();
+                                }
+                            })">
+                                <i class="fas fa-check"></i> Cerrar RFQ
+                            </button>
                         @endif
 
                         @if(in_array($rfq->status, ['draft', 'sent']))
-                            <form action="{{ route('admin.rfq.cancel', $rfq) }}" method="POST" style="display:inline;">
-                                @csrf
-                                <button type="submit" class="btn btn-danger" onclick="return confirm('¿Cancelar esta RFQ?')">
-                                    <i class="fas fa-times"></i> Cancelar
-                                </button>
-                            </form>
+                            <button type="button" class="btn btn-danger" onclick="confirmAction({
+                                title: 'Cancelar RFQ',
+                                message: '¿Está seguro de CANCELAR esta Solicitud de Cotización?',
+                                alert: 'Esta acción no se puede deshacer.',
+                                confirmBtnClass: 'btn-danger',
+                                onConfirm: function() {
+                                    var form = document.createElement('form');
+                                    form.method = 'POST';
+                                    form.action = '{{ route('admin.rfq.cancel', $rfq) }}';
+                                    var csrfToken = document.querySelector('meta[name=&quot;csrf-token&quot;]').getAttribute('content');
+                                    form.innerHTML = '<input type=&quot;hidden&quot; name=&quot;_token&quot; value=&quot;' + csrfToken + '&quot;>';
+                                    document.body.appendChild(form);
+                                    form.submit();
+                                }
+                            })">
+                                <i class="fas fa-times"></i> Cancelar
+                            </button>
                         @endif
                     </div>
                 </div>
@@ -164,4 +197,7 @@
             </a>
         </div>
     </div>
+
+    @include('admin.partials.delete-confirm')
+    @include('admin.partials.confirm-action')
 @stop

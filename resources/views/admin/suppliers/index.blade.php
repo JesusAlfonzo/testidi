@@ -76,12 +76,9 @@
                                                 @endcan
 
                                                 @can('proveedores_eliminar')
-                                                    <form action="{{ route('admin.suppliers.destroy', $supplier) }}" method="POST" style="display:inline-block;">
-                                                        @csrf @method('DELETE')
-                                                        <button type="submit" class="btn btn-default text-danger" onclick="return confirm('⚠️ ADVERTENCIA: ¿Estás seguro de eliminar este proveedor?')" title="Eliminar">
-                                                            <i class="fas fa-trash"></i>
-                                                        </button>
-                                                    </form>
+                                                    <button type="button" class="btn btn-default text-danger" onclick="confirmDelete('{{ route('admin.suppliers.destroy', $supplier) }}', '{{ $supplier->name }}')" title="Eliminar">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
                                                 @endcan
                                             </div>
                                         </td>
@@ -167,4 +164,5 @@
             setTimeout(function() { suppliersTable.columns.adjust().responsive.recalc(); }, 500);
         });
     </script>
+    @include('admin.partials.delete-confirm')
 @endsection

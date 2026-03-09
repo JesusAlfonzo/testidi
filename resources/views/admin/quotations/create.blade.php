@@ -369,7 +369,7 @@
                         <a href="{{ route('admin.quotations.index') }}" class="btn btn-secondary btn-lg">
                             <i class="fas fa-times"></i> Cancelar
                         </a>
-                        <button type="submit" class="btn btn-primary btn-lg">
+                        <button type="button" class="btn btn-primary btn-lg" id="saveQuotationBtn">
                             <i class="fas fa-save"></i> Registrar Cotización
                         </button>
                     </div>
@@ -687,6 +687,20 @@
             toggleSupplierBlocks();
             updateRemoveButtons();
             calculateTotals();
+
+            // Modal de confirmación para guardar cotización
+            document.getElementById('saveQuotationBtn').addEventListener('click', function() {
+                confirmAction({
+                    title: 'Crear Cotización',
+                    message: '¿Está seguro de registrar esta cotización?',
+                    alert: 'Verifique que todos los datos, productos y precios sean correctos.',
+                    confirmBtnClass: 'btn-primary',
+                    onConfirm: function() {
+                        document.getElementById('quotationForm').submit();
+                    }
+                });
+            });
         });
     </script>
+    @include('admin.partials.confirm-action')
 @endsection

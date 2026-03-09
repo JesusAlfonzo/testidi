@@ -229,4 +229,5 @@
             }, 500);
         });
     </script>
+    @include('admin.partials.delete-confirm')
 @endsection

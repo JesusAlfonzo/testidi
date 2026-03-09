@@ -195,12 +195,23 @@
                 <div class="card-body">
                     @if($quotation->status === 'pending')
                         @can('cotizaciones_aprobar')
-                            <form action="{{ route('admin.quotations.select', $quotation) }}" method="POST" style="display:inline;">
-                                @csrf
-                                <button type="submit" class="btn btn-info" onclick="return confirm('¿Seleccionar esta cotización para revisión administrativa?')">
-                                    <i class="fas fa-star"></i> Seleccionar para Aprobación
-                                </button>
-                            </form>
+                            <button type="button" class="btn btn-info" onclick="confirmAction({
+                                title: 'Seleccionar Cotización',
+                                message: '¿Está seguro de SELECCIONAR esta cotización?',
+                                alert: 'Pasará a revisión administrativa para su aprobación.',
+                                confirmBtnClass: 'btn-info',
+                                onConfirm: function() {
+                                    var form = document.createElement('form');
+                                    form.method = 'POST';
+                                    form.action = '{{ route('admin.quotations.select', $quotation) }}';
+                                    var csrfToken = document.querySelector('meta[name=&quot;csrf-token&quot;]').getAttribute('content');
+                                    form.innerHTML = '<input type=&quot;hidden&quot; name=&quot;_token&quot; value=&quot;' + csrfToken + '&quot;>';
+                                    document.body.appendChild(form);
+                                    form.submit();
+                                }
+                            })">
+                                <i class="fas fa-star"></i> Seleccionar para Aprobación
+                            </button>
                         @endcan
                         @can('cotizaciones_rechazar')
                             <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#rejectModal">
@@ -209,12 +220,23 @@
                         @endcan
                     @elseif($quotation->status === 'selected')
                         @can('cotizaciones_aprobar')
-                            <form action="{{ route('admin.quotations.approve', $quotation) }}" method="POST" style="display:inline;">
-                                @csrf
-                                <button type="submit" class="btn btn-success btn-lg" onclick="return confirm('¿Aprobar esta cotización?')">
-                                    <i class="fas fa-check"></i> Aprobar Cotización
-                                </button>
-                            </form>
+                            <button type="button" class="btn btn-success btn-lg" onclick="confirmAction({
+                                title: 'Aprobar Cotización',
+                                message: '¿Está seguro de APROBAR esta cotización?',
+                                alert: 'Una vez aprobada, podrá generar la Orden de Compra.',
+                                confirmBtnClass: 'btn-success',
+                                onConfirm: function() {
+                                    var form = document.createElement('form');
+                                    form.method = 'POST';
+                                    form.action = '{{ route('admin.quotations.approve', $quotation) }}';
+                                    var csrfToken = document.querySelector('meta[name=&quot;csrf-token&quot;]').getAttribute('content');
+                                    form.innerHTML = '<input type=&quot;hidden&quot; name=&quot;_token&quot; value=&quot;' + csrfToken + '&quot;>';
+                                    document.body.appendChild(form);
+                                    form.submit();
+                                }
+                            })">
+                                <i class="fas fa-check"></i> Aprobar Cotización
+                            </button>
                         @endcan
                         @can('cotizaciones_rechazar')
                             <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#rejectModal">
@@ -310,4 +332,7 @@
             </a>
         </div>
     </div>
+
+    @include('admin.partials.delete-confirm')
+    @include('admin.partials.confirm-action')
 @stop

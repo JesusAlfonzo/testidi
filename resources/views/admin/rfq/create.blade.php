@@ -17,7 +17,7 @@
         $brands = \App\Models\Brand::orderBy('name')->get();
     @endphp
 
-    <form action="{{ route('admin.rfq.store') }}" method="POST">
+    <form action="{{ route('admin.rfq.store') }}" method="POST" id="rfqForm">
         @csrf
 
         <!-- Sección: Información General -->
@@ -174,7 +174,7 @@
                         <a href="{{ route('admin.rfq.index') }}" class="btn btn-secondary btn-lg">
                             <i class="fas fa-times"></i> Cancelar
                         </a>
-                        <button type="submit" class="btn btn-primary btn-lg">
+                        <button type="button" class="btn btn-primary btn-lg" id="saveRfqBtn">
                             <i class="fas fa-save"></i> Guardar RFQ
                         </button>
                     </div>
@@ -477,6 +477,20 @@
             initSelect2();
             updateRemoveButtons();
             attachProductButtonEvents();
+
+            // Modal de confirmación para guardar RFQ
+            document.getElementById('saveRfqBtn').addEventListener('click', function() {
+                confirmAction({
+                    title: 'Crear Solicitud de Cotización',
+                    message: '¿Está seguro de crear esta Solicitud de Cotización?',
+                    alert: 'Verifique que todos los productos y cantidades sean correctos.',
+                    confirmBtnClass: 'btn-primary',
+                    onConfirm: function() {
+                        document.getElementById('rfqForm').submit();
+                    }
+                });
+            });
         });
     </script>
+    @include('admin.partials.confirm-action')
 @endsection
