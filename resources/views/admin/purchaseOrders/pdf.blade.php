@@ -240,11 +240,14 @@
         <thead>
             <tr>
                 <th style="width: 5%; text-align: center;">#</th>
-                <th style="width: 12%;">Código</th>
-                <th style="width: 38%;">Descripción / Producto</th>
-                <th style="width: 10%; text-align: center;">Cant.</th>
-                <th style="width: 15%; text-align: right;">Costo Unit.</th>
-                <th style="width: 10%; text-align: center;">Und.</th>
+                <th style="width: 10%;">Código</th>
+                <th style="width: 25%;">Descripción / Producto</th>
+                <th style="width: 8%; text-align: center;">Cant.</th>
+                <th style="width: 12%; text-align: right;">Costo Unit.</th>
+                @if($purchaseOrder->is_foreign_currency)
+                <th style="width: 12%; text-align: right;">Equiv. Bs</th>
+                @endif
+                <th style="width: 8%; text-align: center;">Und.</th>
                 <th style="width: 10%; text-align: right;">Total</th>
             </tr>
         </thead>
@@ -255,9 +258,12 @@
                     <td>{{ $item->product_code ?? '-' }}</td>
                     <td>{{ $item->product_name }}</td>
                     <td class="text-center">{{ $item->quantity }}</td>
-                    <td class="text-right">{{ $purchaseOrder->currency }} {{ number_format($item->unit_cost, 2) }}</td>
+                    <td class="text-right">{{ $purchaseOrder->currency_symbol }}{{ number_format($item->unit_cost, 2) }}</td>
+                    @if($purchaseOrder->is_foreign_currency)
+                    <td class="text-right">Bs {{ number_format($item->equivalent_bs / $item->quantity, 2) }}</td>
+                    @endif
                     <td class="text-center">{{ $item->product->unit->abbreviation ?? 'und' }}</td>
-                    <td class="text-right">{{ $purchaseOrder->currency }} {{ number_format($item->total_cost, 2) }}</td>
+                    <td class="text-right">{{ $purchaseOrder->currency_symbol }}{{ number_format($item->total_cost, 2) }}</td>
                 </tr>
             @endforeach
         </tbody>
@@ -265,20 +271,41 @@
 
     <div class="totals-section">
         <table class="totals-table">
+            @if($purchaseOrder->currency === 'Bs')
             <tr>
-                <td class="totals-label">Subtotal:</td>
-                <td class="totals-value">{{ $purchaseOrder->currency }} {{ number_format($purchaseOrder->subtotal, 2) }}</td>
+                <td class="totals-label">Subtotal Bs (sin IVA):</td>
+                <td class="totals-value">Bs {{ number_format($purchaseOrder->subtotal, 2) }}</td>
             </tr>
-            @if($purchaseOrder->tax_amount > 0)
             <tr>
-                <td class="totals-label">Impuesto ({{ $purchaseOrder->tax_rate ?? 0 }}%):</td>
-                <td class="totals-value">{{ $purchaseOrder->currency }} {{ number_format($purchaseOrder->tax_amount, 2) }}</td>
+                <td class="totals-label" style="color: #dc3545;">IVA 16% Bs:</td>
+                <td class="totals-value" style="color: #dc3545;">Bs {{ number_format($purchaseOrder->tax_amount_bs, 2) }}</td>
+            </tr>
+            <tr class="grand-total">
+                <td class="totals-label" style="background: #1a4a7a; color: white;">TOTAL Bs (con IVA):</td>
+                <td class="totals-value" style="background: #1a4a7a; color: white;">Bs {{ number_format($purchaseOrder->total_bs, 2) }}</td>
+            </tr>
+            @else
+            <tr>
+                <td class="totals-label">Subtotal ({{ $purchaseOrder->currency }}):</td>
+                <td class="totals-value">{{ $purchaseOrder->currency_symbol }}{{ number_format($purchaseOrder->subtotal, 2) }}</td>
+            </tr>
+            <tr>
+                <td class="totals-label">Equivalente Bs (sin IVA):</td>
+                <td class="totals-value">Bs {{ number_format($purchaseOrder->subtotal_bs, 2) }}</td>
+            </tr>
+            <tr>
+                <td class="totals-label" style="color: #dc3545;">IVA 16% Bs:</td>
+                <td class="totals-value" style="color: #dc3545;">Bs {{ number_format($purchaseOrder->tax_amount_bs, 2) }}</td>
+            </tr>
+            <tr class="grand-total">
+                <td class="totals-label" style="background: #17a2b8; color: white;">TOTAL Bs (con IVA):</td>
+                <td class="totals-value" style="background: #17a2b8; color: white;">Bs {{ number_format($purchaseOrder->total_bs, 2) }}</td>
+            </tr>
+            <tr>
+                <td class="totals-label" style="background: #1a4a7a; color: white;">Total ({{ $purchaseOrder->currency }}):</td>
+                <td class="totals-value" style="background: #1a4a7a; color: white;">{{ $purchaseOrder->currency_symbol }}{{ number_format($purchaseOrder->total, 2) }}</td>
             </tr>
             @endif
-            <tr class="grand-total">
-                <td class="totals-label" style="background: #1a4a7a; color: white;">TOTAL {{ $purchaseOrder->currency }}:</td>
-                <td class="totals-value" style="background: #1a4a7a; color: white;">{{ $purchaseOrder->currency }} {{ number_format($purchaseOrder->total, 2) }}</td>
-            </tr>
         </table>
     </div>
 

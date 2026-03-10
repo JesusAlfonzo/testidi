@@ -19,11 +19,13 @@ class PurchaseOrderItem extends Model
         'quantity_received',
         'unit_cost',
         'total_cost',
+        'equivalent_bs',
     ];
 
     protected $casts = [
         'unit_cost' => 'decimal:2',
         'total_cost' => 'decimal:2',
+        'equivalent_bs' => 'decimal:2',
     ];
 
     public function order(): BelongsTo

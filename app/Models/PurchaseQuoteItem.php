@@ -15,7 +15,14 @@ class PurchaseQuoteItem extends Model
         'product_name',
         'quantity',
         'unit_cost',
-        'total_cost'
+        'total_cost',
+        'equivalent_bs'
+    ];
+
+    protected $casts = [
+        'unit_cost' => 'decimal:2',
+        'total_cost' => 'decimal:2',
+        'equivalent_bs' => 'decimal:2',
     ];
 
     // 🔗 RELACIONES

@@ -21,7 +21,7 @@ class PurchaseOrdersController extends Controller
             ->where(function($query) use ($search) {
                 $query->whereRaw('LOWER(name) LIKE ?', [strtolower("%{$search}%")])
                       ->orWhereRaw('LOWER(email) LIKE ?', [strtolower("%{$search}%")])
-                      ->orWhereRaw('LOWER(ruc) LIKE ?', [strtolower("%{$search}%")]);
+                      ->orWhereRaw('LOWER(tax_id) LIKE ?', [strtolower("%{$search}%")]);
             })
             ->orderBy('name')
             ->limit(20)
@@ -190,7 +190,7 @@ class PurchaseOrdersController extends Controller
             'supplier_id' => 'required|exists:suppliers,id',
             'date_issued' => 'required|date',
             'delivery_date' => 'nullable|date|after_or_equal:date_issued',
-            'currency' => 'required|string|size:3',
+            'currency' => 'required|string|max:3',
             'exchange_rate' => 'required|numeric|min:0',
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
@@ -202,12 +202,25 @@ class PurchaseOrdersController extends Controller
             DB::beginTransaction();
 
             $subtotal = 0;
+            $subtotalBs = 0;
+            $ivaRate = 0.16;
+            $isBs = $request->currency === 'Bs';
+
             foreach ($request->items as $item) {
-                $subtotal += $item['quantity'] * $item['unit_cost'];
+                $itemTotal = $item['quantity'] * $item['unit_cost'];
+                $subtotal += $itemTotal;
+                
+                if ($isBs) {
+                    $equivalentBs = $item['unit_cost'];
+                } else {
+                    $equivalentBs = $item['unit_cost'] * $request->exchange_rate;
+                }
+                $subtotalBs += $equivalentBs * $item['quantity'];
             }
 
-            $taxAmount = 0;
-            $total = $subtotal + $taxAmount;
+            $taxAmountBs = $subtotalBs * $ivaRate;
+            $totalBs = $subtotalBs + $taxAmountBs;
+            $total = $subtotal;
 
             $order = PurchaseOrder::create([
                 'code' => $request->code ?? PurchaseOrder::generateCode(),
@@ -217,10 +230,13 @@ class PurchaseOrdersController extends Controller
                 'delivery_date' => $request->delivery_date,
                 'delivery_address' => $request->delivery_address,
                 'currency' => $request->currency,
-                'exchange_rate' => $request->exchange_rate,
+                'exchange_rate' => $isBs ? 1 : $request->exchange_rate,
                 'subtotal' => $subtotal,
-                'tax_amount' => $taxAmount,
+                'tax_amount' => 0,
                 'total' => $total,
+                'subtotal_bs' => $subtotalBs,
+                'tax_amount_bs' => $taxAmountBs,
+                'total_bs' => $totalBs,
                 'terms' => $request->terms,
                 'notes' => $request->notes,
                 'status' => 'draft',
@@ -229,6 +245,12 @@ class PurchaseOrdersController extends Controller
 
             foreach ($request->items as $item) {
                 $product = Product::find($item['product_id']);
+                
+                if ($isBs) {
+                    $equivalentBs = $item['unit_cost'];
+                } else {
+                    $equivalentBs = $item['unit_cost'] * $request->exchange_rate;
+                }
 
                 PurchaseOrderItem::create([
                     'purchase_order_id' => $order->id,
@@ -239,6 +261,7 @@ class PurchaseOrdersController extends Controller
                     'quantity_received' => 0,
                     'unit_cost' => $item['unit_cost'],
                     'total_cost' => $item['quantity'] * $item['unit_cost'],
+                    'equivalent_bs' => $equivalentBs * $item['quantity'],
                 ]);
             }
 
@@ -289,7 +312,7 @@ class PurchaseOrdersController extends Controller
             'supplier_id' => 'required|exists:suppliers,id',
             'date_issued' => 'required|date',
             'delivery_date' => 'nullable|date|after_or_equal:date_issued',
-            'currency' => 'required|string|size:3',
+            'currency' => 'required|string|max:3',
             'exchange_rate' => 'required|numeric|min:0',
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
@@ -303,12 +326,25 @@ class PurchaseOrdersController extends Controller
             $purchaseOrder->items()->delete();
 
             $subtotal = 0;
+            $subtotalBs = 0;
+            $ivaRate = 0.16;
+            $isBs = $request->currency === 'Bs';
+
             foreach ($request->items as $item) {
-                $subtotal += $item['quantity'] * $item['unit_cost'];
+                $itemTotal = $item['quantity'] * $item['unit_cost'];
+                $subtotal += $itemTotal;
+                
+                if ($isBs) {
+                    $equivalentBs = $item['unit_cost'];
+                } else {
+                    $equivalentBs = $item['unit_cost'] * $request->exchange_rate;
+                }
+                $subtotalBs += $equivalentBs * $item['quantity'];
             }
 
-            $taxAmount = 0;
-            $total = $subtotal + $taxAmount;
+            $taxAmountBs = $subtotalBs * $ivaRate;
+            $totalBs = $subtotalBs + $taxAmountBs;
+            $total = $subtotal;
 
             $purchaseOrder->update([
                 'supplier_id' => $request->supplier_id,
@@ -316,16 +352,25 @@ class PurchaseOrdersController extends Controller
                 'delivery_date' => $request->delivery_date,
                 'delivery_address' => $request->delivery_address,
                 'currency' => $request->currency,
-                'exchange_rate' => $request->exchange_rate,
+                'exchange_rate' => $isBs ? 1 : $request->exchange_rate,
                 'subtotal' => $subtotal,
-                'tax_amount' => $taxAmount,
+                'tax_amount' => 0,
                 'total' => $total,
+                'subtotal_bs' => $subtotalBs,
+                'tax_amount_bs' => $taxAmountBs,
+                'total_bs' => $totalBs,
                 'terms' => $request->terms,
                 'notes' => $request->notes,
             ]);
 
             foreach ($request->items as $item) {
                 $product = Product::find($item['product_id']);
+                
+                if ($isBs) {
+                    $equivalentBs = $item['unit_cost'];
+                } else {
+                    $equivalentBs = $item['unit_cost'] * $request->exchange_rate;
+                }
 
                 PurchaseOrderItem::create([
                     'purchase_order_id' => $purchaseOrder->id,
@@ -336,6 +381,7 @@ class PurchaseOrdersController extends Controller
                     'quantity_received' => 0,
                     'unit_cost' => $item['unit_cost'],
                     'total_cost' => $item['quantity'] * $item['unit_cost'],
+                    'equivalent_bs' => $equivalentBs * $item['quantity'],
                 ]);
             }
 

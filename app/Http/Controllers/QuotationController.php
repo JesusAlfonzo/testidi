@@ -152,7 +152,7 @@ class QuotationController extends Controller
             'date_issued' => 'required|date',
             'valid_until' => 'nullable|date|after_or_equal:date_issued',
             'delivery_date' => 'nullable|date|after_or_equal:date_issued',
-            'currency' => 'required|string|size:3',
+            'currency' => 'required|string|max:3',
             'exchange_rate' => 'required|numeric|min:0',
             'notes' => 'nullable|string',
             'items' => 'required|array|min:1',
@@ -184,12 +184,27 @@ class QuotationController extends Controller
             DB::beginTransaction();
 
             $subtotal = 0;
+            $subtotalBs = 0;
+            $ivaRate = 0.16;
+            $isBs = $request->currency === 'Bs';
+
             foreach ($request->items as $item) {
-                $subtotal += $item['quantity'] * $item['unit_cost'];
+                $itemTotal = $item['quantity'] * $item['unit_cost'];
+                $subtotal += $itemTotal;
+                
+                // Si es Bs, el equivalente es el mismo valor
+                // Si es USD/EUR, calcula el equivalente en Bs
+                if ($isBs) {
+                    $equivalentBs = $item['unit_cost'];
+                } else {
+                    $equivalentBs = $item['unit_cost'] * $request->exchange_rate;
+                }
+                $subtotalBs += $equivalentBs * $item['quantity'];
             }
 
-            $taxAmount = 0;
-            $total = $subtotal + $taxAmount;
+            $taxAmountBs = $subtotalBs * $ivaRate;
+            $totalBs = $subtotalBs + $taxAmountBs;
+            $total = $subtotal;
 
             $quoteData = [
                 'rfq_id' => $request->rfq_id ?: null,
@@ -200,10 +215,13 @@ class QuotationController extends Controller
                 'valid_until' => $request->valid_until,
                 'delivery_date' => $request->delivery_date,
                 'currency' => $request->currency,
-                'exchange_rate' => $request->exchange_rate,
+                'exchange_rate' => $isBs ? 1 : $request->exchange_rate,
                 'subtotal' => $subtotal,
-                'tax_amount' => $taxAmount,
+                'tax_amount' => 0,
                 'total' => $total,
+                'subtotal_bs' => $subtotalBs,
+                'tax_amount_bs' => $taxAmountBs,
+                'total_bs' => $totalBs,
                 'notes' => $request->notes,
                 'status' => 'pending',
             ];
@@ -220,6 +238,12 @@ class QuotationController extends Controller
 
             foreach ($request->items as $item) {
                 $product = Product::find($item['product_id']);
+                
+                if ($isBs) {
+                    $equivalentBs = $item['unit_cost'];
+                } else {
+                    $equivalentBs = $item['unit_cost'] * $request->exchange_rate;
+                }
 
                 PurchaseQuoteItem::create([
                     'purchase_quote_id' => $quote->id,
@@ -228,6 +252,7 @@ class QuotationController extends Controller
                     'quantity' => $item['quantity'],
                     'unit_cost' => $item['unit_cost'],
                     'total_cost' => $item['quantity'] * $item['unit_cost'],
+                    'equivalent_bs' => $equivalentBs * $item['quantity'],
                 ]);
             }
 
@@ -274,7 +299,7 @@ class QuotationController extends Controller
             'date_issued' => 'required|date',
             'valid_until' => 'nullable|date|after_or_equal:date_issued',
             'delivery_date' => 'nullable|date|after_or_equal:date_issued',
-            'currency' => 'required|string|size:3',
+            'currency' => 'required|string|max:3',
             'exchange_rate' => 'required|numeric|min:0',
             'notes' => 'nullable|string',
             'items' => 'required|array|min:1',
@@ -306,12 +331,25 @@ class QuotationController extends Controller
             $quotation->items()->delete();
 
             $subtotal = 0;
+            $subtotalBs = 0;
+            $ivaRate = 0.16;
+            $isBs = $request->currency === 'Bs';
+
             foreach ($request->items as $item) {
-                $subtotal += $item['quantity'] * $item['unit_cost'];
+                $itemTotal = $item['quantity'] * $item['unit_cost'];
+                $subtotal += $itemTotal;
+                
+                if ($isBs) {
+                    $equivalentBs = $item['unit_cost'];
+                } else {
+                    $equivalentBs = $item['unit_cost'] * $request->exchange_rate;
+                }
+                $subtotalBs += $equivalentBs * $item['quantity'];
             }
 
-            $taxAmount = 0;
-            $total = $subtotal + $taxAmount;
+            $taxAmountBs = $subtotalBs * $ivaRate;
+            $totalBs = $subtotalBs + $taxAmountBs;
+            $total = $subtotal;
 
             $updateData = [
                 'supplier_reference' => $request->supplier_reference,
@@ -319,10 +357,13 @@ class QuotationController extends Controller
                 'valid_until' => $request->valid_until,
                 'delivery_date' => $request->delivery_date,
                 'currency' => $request->currency,
-                'exchange_rate' => $request->exchange_rate,
+                'exchange_rate' => $isBs ? 1 : $request->exchange_rate,
                 'subtotal' => $subtotal,
-                'tax_amount' => $taxAmount,
+                'tax_amount' => 0,
                 'total' => $total,
+                'subtotal_bs' => $subtotalBs,
+                'tax_amount_bs' => $taxAmountBs,
+                'total_bs' => $totalBs,
                 'notes' => $request->notes,
             ];
 
@@ -342,6 +383,12 @@ class QuotationController extends Controller
 
             foreach ($request->items as $item) {
                 $product = Product::find($item['product_id']);
+                
+                if ($isBs) {
+                    $equivalentBs = $item['unit_cost'];
+                } else {
+                    $equivalentBs = $item['unit_cost'] * $request->exchange_rate;
+                }
 
                 PurchaseQuoteItem::create([
                     'purchase_quote_id' => $quotation->id,
@@ -350,6 +397,7 @@ class QuotationController extends Controller
                     'quantity' => $item['quantity'],
                     'unit_cost' => $item['unit_cost'],
                     'total_cost' => $item['quantity'] * $item['unit_cost'],
+                    'equivalent_bs' => $equivalentBs * $item['quantity'],
                 ]);
             }
 

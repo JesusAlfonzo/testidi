@@ -61,7 +61,7 @@
                                     <label for="currency">Moneda</label>
                                     <select name="currency" class="form-control">
                                         <option value="USD" {{ $purchaseOrder->currency == 'USD' ? 'selected' : '' }}>USD - Dólar</option>
-                                        <option value="VES" {{ $purchaseOrder->currency == 'VES' ? 'selected' : '' }}>VES - Bolívar</option>
+                                        <option value="Bs" {{ $purchaseOrder->currency == 'Bs' ? 'selected' : '' }}>Bs - Bolívar</option>
                                         <option value="EUR" {{ $purchaseOrder->currency == 'EUR' ? 'selected' : '' }}>EUR - Euro</option>
                                     </select>
                                 </div>

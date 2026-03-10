@@ -127,8 +127,8 @@
                                     <label for="currency" class="mb-1">Moneda</label>
                                     <select name="currency" class="form-control form-control-sm select2">
                                         <option value="USD" {{ old('currency', $quote?->currency) == 'USD' ? 'selected' : '' }}>💵 USD - Dólar</option>
-                                        <option value="VES" {{ old('currency', $quote?->currency) == 'VES' ? 'selected' : '' }}>🇻🇪 VES - Bolívar</option>
                                         <option value="EUR" {{ old('currency', $quote?->currency) == 'EUR' ? 'selected' : '' }}>💶 EUR - Euro</option>
+                                        <option value="Bs" {{ old('currency', $quote?->currency) == 'Bs' ? 'selected' : '' }}>🇻🇪 Bs - Bolívar</option>
                                     </select>
                                 </div>
                             </div>
@@ -228,6 +228,21 @@
                                     <tr>
                                         <th colspan="3" class="text-right">TOTAL GENERAL:</th>
                                         <th class="text-right"><span id="grandTotal" class="h5 text-success">${{ number_format($quote?->total ?? 0, 2) }}</span></th>
+                                        <th></th>
+                                    </tr>
+                                    <tr class="bg-info-light" id="rowSubtotalBs">
+                                        <th colspan="3" class="text-right">Subtotal Bs (sin IVA):</th>
+                                        <th class="text-right"><span id="grandTotalBs" class="h5 text-info">Bs 0.00</span></th>
+                                        <th></th>
+                                    </tr>
+                                    <tr class="bg-info-light" id="rowIva">
+                                        <th colspan="3" class="text-right">IVA 16%:</th>
+                                        <th class="text-right"><span id="ivaBs" class="h5 text-info">Bs 0.00</span></th>
+                                        <th></th>
+                                    </tr>
+                                    <tr class="bg-info" id="rowTotalBs">
+                                        <th colspan="3" class="text-right">TOTAL Bs (con IVA):</th>
+                                        <th class="text-right"><span id="totalBs" class="h5 text-white">Bs 0.00</span></th>
                                         <th></th>
                                     </tr>
                                 </tfoot>
@@ -423,17 +438,62 @@
         let itemIndex = {{ $quote ? $quote->items->count() : 1 }};
         let currentProductSelect = null;
 
+        function getCurrencySymbol(currency) {
+            switch(currency) {
+                case 'USD': return '$';
+                case 'EUR': return '€';
+                case 'Bs': return 'Bs ';
+                default: return currency + ' ';
+            }
+        }
+
         function calculateTotals() {
+            const currency = $('select[name="currency"]').val();
+            const exchangeRate = parseFloat($('input[name="exchange_rate"]').val()) || 0;
+            const symbol = getCurrencySymbol(currency);
+            const isBs = currency === 'Bs';
+            
             let grandTotal = 0;
+            let grandTotalBs = 0;
+            
             $('#itemsBody tr').each(function() {
                 const qty = parseFloat($(this).find('.item-qty').val()) || 0;
                 const cost = parseFloat($(this).find('.item-cost').val()) || 0;
                 const total = qty * cost;
-                $(this).find('.item-total').text(total.toFixed(2));
+                const totalBs = isBs ? total : (total * exchangeRate);
+                
+                $(this).find('.item-total').text(symbol + total.toFixed(2));
                 grandTotal += total;
+                grandTotalBs += totalBs;
             });
-            $('#grandTotal').text('$' + grandTotal.toFixed(2));
+            
+            $('#grandTotal').text(symbol + grandTotal.toFixed(2));
+            
+            // Calcular IVA y total en Bs
+            const ivaBs = grandTotalBs * 0.16;
+            const totalBs = grandTotalBs + ivaBs;
+            
+            $('#grandTotalBs').text('Bs ' + grandTotalBs.toFixed(2));
+            $('#ivaBs').text('Bs ' + ivaBs.toFixed(2));
+            $('#totalBs').text('Bs ' + totalBs.toFixed(2));
         }
+
+        // Cambiar exchange_rate según la moneda seleccionada
+        $('select[name="currency"]').change(function() {
+            const currency = $(this).val();
+            const exchangeInput = $('input[name="exchange_rate"]');
+            if (currency === 'Bs') {
+                exchangeInput.val(1).prop('readonly', true);
+            } else {
+                if (parseFloat(exchangeInput.val()) === 1 || exchangeInput.val() === '') {
+                    exchangeInput.val('').prop('readonly', false);
+                }
+            }
+            calculateTotals();
+        });
+
+        // Recalcular cuando cambia el exchange_rate
+        $('input[name="exchange_rate"]').on('input', calculateTotals);
 
         function initSelect2() {
             // Select2 normal (proveedores)

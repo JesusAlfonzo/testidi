@@ -29,6 +29,9 @@ class PurchaseQuote extends Model
         'subtotal',
         'tax_amount',
         'total',
+        'subtotal_bs',
+        'tax_amount_bs',
+        'total_bs',
         'attachment_path',
         'status',
         'notes',
@@ -42,7 +45,12 @@ class PurchaseQuote extends Model
         'valid_until' => 'date',
         'delivery_date' => 'date',
         'exchange_rate' => 'decimal:4',
+        'subtotal' => 'decimal:2',
+        'tax_amount' => 'decimal:2',
         'total' => 'decimal:2',
+        'subtotal_bs' => 'decimal:2',
+        'tax_amount_bs' => 'decimal:2',
+        'total_bs' => 'decimal:2',
         'approved_at' => 'datetime',
     ];
 
@@ -129,5 +137,20 @@ class PurchaseQuote extends Model
         $lastQuote = self::withTrashed()->latest('id')->first();
         $number = $lastQuote ? $lastQuote->id + 1 : 1;
         return 'COT-' . date('Y') . '-' . str_pad($number, 4, '0', STR_PAD_LEFT);
+    }
+
+    public function getCurrencySymbolAttribute(): string
+    {
+        return match ($this->currency) {
+            'USD' => '$',
+            'EUR' => '€',
+            'Bs' => 'Bs',
+            default => $this->currency,
+        };
+    }
+
+    public function getIsForeignCurrencyAttribute(): bool
+    {
+        return in_array($this->currency, ['USD', 'EUR']);
     }
 }

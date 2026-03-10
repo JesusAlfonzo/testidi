@@ -116,6 +116,9 @@
                                 <th>Cantidad</th>
                                 <th>Recibido</th>
                                 <th>Costo Unit.</th>
+                                @if($purchaseOrder->is_foreign_currency || $purchaseOrder->currency === 'Bs')
+                                <th>Equiv. Bs</th>
+                                @endif
                                 <th>Total</th>
                                 @if($purchaseOrder->status === 'issued')
                                     <th>Acción</th>
@@ -140,8 +143,11 @@
                                             <span class="badge badge-warning">{{ $item->quantity_received }} / {{ $item->quantity }}</span>
                                         @endif
                                     </td>
-                                    <td>${{ number_format($item->unit_cost, 2) }}</td>
-                                    <td><strong>${{ number_format($item->total_cost, 2) }}</strong></td>
+                                    <td>{{ $purchaseOrder->currency_symbol }}{{ number_format($item->unit_cost, 2) }}</td>
+                                    @if($purchaseOrder->is_foreign_currency || $purchaseOrder->currency === 'Bs')
+                                    <td>Bs {{ number_format($item->equivalent_bs / $item->quantity, 2) }}</td>
+                                    @endif
+                                    <td><strong>{{ $purchaseOrder->currency_symbol }}{{ number_format($item->total_cost, 2) }}</strong></td>
                                     @if($purchaseOrder->status === 'issued')
                                         <td>
                                             @if(!$item->isFullyReceived())
@@ -159,14 +165,43 @@
                             @endforeach
                         </tbody>
                         <tfoot>
+                            @if($purchaseOrder->currency === 'Bs')
                             <tr>
-                                <th colspan="5" class="text-right">Subtotal:</th>
-                                <th>${{ number_format($purchaseOrder->subtotal, 2) }}</th>
+                                <th colspan="5" class="text-right">Subtotal Bs (sin IVA):</th>
+                                <th>Bs {{ number_format($purchaseOrder->subtotal, 2) }}</th>
                             </tr>
                             <tr>
-                                <th colspan="5" class="text-right">Total ({{ $purchaseOrder->currency }}):</th>
-                                <th class="text-primary h5">${{ number_format($purchaseOrder->total, 2) }}</th>
+                                <th colspan="5" class="text-right">IVA 16% Bs:</th>
+                                <th class="text-danger">Bs {{ number_format($purchaseOrder->tax_amount_bs, 2) }}</th>
                             </tr>
+                            <tr>
+                                <th colspan="5" class="text-right">TOTAL Bs (con IVA):</th>
+                                <th class="text-primary h5">Bs {{ number_format($purchaseOrder->total_bs, 2) }}</th>
+                            </tr>
+                            @else
+                            <tr>
+                                <th colspan="{{ ($purchaseOrder->is_foreign_currency || $purchaseOrder->currency === 'Bs') ? 6 : 5 }}" class="text-right">Subtotal ({{ $purchaseOrder->currency }}):</th>
+                                <th>{{ $purchaseOrder->currency_symbol }}{{ number_format($purchaseOrder->subtotal, 2) }}</th>
+                            </tr>
+                            @if($purchaseOrder->is_foreign_currency)
+                            <tr>
+                                <th colspan="6" class="text-right">Subtotal Bs (sin IVA):</th>
+                                <th>Bs {{ number_format($purchaseOrder->subtotal_bs, 2) }}</th>
+                            </tr>
+                            <tr>
+                                <th colspan="6" class="text-right">IVA 16% Bs:</th>
+                                <th class="text-danger">Bs {{ number_format($purchaseOrder->tax_amount_bs, 2) }}</th>
+                            </tr>
+                            <tr>
+                                <th colspan="6" class="text-right">TOTAL Bs (con IVA):</th>
+                                <th class="text-primary h5">Bs {{ number_format($purchaseOrder->total_bs, 2) }}</th>
+                            </tr>
+                            @endif
+                            <tr>
+                                <th colspan="{{ ($purchaseOrder->is_foreign_currency) ? 6 : 5 }}" class="text-right">Total ({{ $purchaseOrder->currency }}):</th>
+                                <th class="text-primary h5">{{ $purchaseOrder->currency_symbol }}{{ number_format($purchaseOrder->total, 2) }}</th>
+                            </tr>
+                            @endif
                         </tfoot>
                     </table>
                 </div>

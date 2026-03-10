@@ -1,181 +1,398 @@
 @extends('adminlte::page')
 
 @section('title', 'Panel de Logística')
-@section('plugins.Chartjs', true) {{-- Necesario para el gráfico --}}
+@section('plugins.Chartjs', true)
+
+@section('css')
+<style>
+    .kpi-card {
+        border: none;
+        border-radius: 12px;
+        transition: transform 0.2s, box-shadow 0.2s;
+        overflow: hidden;
+    }
+    .kpi-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+    .kpi-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+    }
+    .kpi-value {
+        font-size: 28px;
+        font-weight: 700;
+    }
+    .kpi-label {
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .section-title {
+        font-size: 14px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #6c757d;
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .mini-stat {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 12px;
+        text-align: center;
+        transition: all 0.2s;
+    }
+    .mini-stat:hover {
+        background: #e9ecef;
+    }
+    .mini-stat-value {
+        font-size: 20px;
+        font-weight: 700;
+    }
+    .mini-stat-label {
+        font-size: 11px;
+        color: #6c757d;
+        text-transform: uppercase;
+    }
+    .alert-card {
+        border-left: 4px solid;
+        border-radius: 8px;
+    }
+    .alert-card.danger { border-left-color: #dc3545; }
+    .alert-card.warning { border-left-color: #ffc107; }
+    .chart-container {
+        position: relative;
+        height: 220px;
+    }
+    .quick-action-btn {
+        border-radius: 10px;
+        padding: 15px;
+        text-align: center;
+        transition: all 0.2s;
+        border: 2px solid transparent;
+    }
+    .quick-action-btn:hover {
+        transform: translateY(-2px);
+        border-color: #1a4a7a;
+    }
+    .quick-action-icon {
+        font-size: 28px;
+        margin-bottom: 8px;
+    }
+    .quick-action-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: #333;
+    }
+</style>
+@stop
 
 @section('content_header')
-    <div class="d-flex justify-content-between align-items-center">
-        <h1><i class="fas fa-truck-loading text-info"></i> Panel de Control Logístico</h1>
-        <small class="text-muted">Operaciones Diarias</small>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-0" style="font-weight: 700; color: #1a4a7a;">
+                <i class="fas fa-truck-loading mr-2"></i>Panel de Logística
+            </h2>
+            <p class="text-muted mb-0">Operaciones y gestión de inventario</p>
+        </div>
+        <div class="text-right">
+            <span class="text-muted d-block">Última actualización</span>
+            <span class="text-info font-weight-bold">{{ now()->format('d M, Y - H:i') }}</span>
+        </div>
     </div>
 @stop
 
 @section('content')
-    {{-- 1. TARJETAS DE ESTADO (KPIs) --}}
-    <div class="row">
-        <div class="col-lg-4 col-6">
-            {{-- Solicitudes Pendientes --}}
-            <x-adminlte-small-box title="{{ $pendingRequests }}" text="Solicitudes por Aprobar" theme="warning" icon="fas fa-clipboard-list" url="{{ route('admin.requests.index') }}"/>
-        </div>
-        <div class="col-lg-4 col-6">
-            {{-- Stock Crítico --}}
-            <x-adminlte-small-box title="{{ $lowStockCount }}" text="Productos en Stock Crítico" theme="danger" icon="fas fa-exclamation-triangle" url="{{ route('admin.reports.stock') }}"/>
-        </div>
-        <div class="col-lg-4 col-12">
-            {{-- Salidas Hoy --}}
-            <x-adminlte-small-box title="{{ $approvedRequestsToday }}" text="Salidas Procesadas Hoy" theme="success" icon="fas fa-check-circle" url="#"/>
+{{-- KPIs PRINCIPALES --}}
+<div class="row">
+    <div class="col-md-3 col-sm-6">
+        <div class="kpi-card card bg-white shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="kpi-label text-muted">Total Productos</div>
+                        <div class="kpi-value" style="color: #1a4a7a;">{{ $totalProducts }}</div>
+                        <div class="text-muted" style="font-size: 12px;">En inventario</div>
+                    </div>
+                    <div class="kpi-icon" style="background: #e8f4fd; color: #1a4a7a;">
+                        <i class="fas fa-box"></i>
+                    </div>
+                </div>
+            </div>
+            <a href="{{ route('admin.products.index') }}" class="card-footer bg-white border-0 text-muted" style="font-size: 12px;">
+                Ver inventario <i class="fas fa-arrow-right ml-1"></i>
+            </a>
         </div>
     </div>
 
-    {{-- 2. SECCIÓN CENTRAL: TABLA CRÍTICA Y ACCIONES RÁPIDAS --}}
-    <div class="row">
-        {{-- TABLA DE STOCK BAJO (Prioridad Alta) --}}
-        <div class="col-md-8">
-            <div class="card card-danger card-outline">
-                <div class="card-header">
-                    <h3 class="card-title">⚠️ Alertas de Reabastecimiento (Top 5)</h3>
-                    <div class="card-tools">
-                        <a href="{{ route('admin.reports.stock') }}" class="btn btn-tool btn-sm">Ver Todo</a>
+    <div class="col-md-3 col-sm-6">
+        <div class="kpi-card card bg-white shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="kpi-label text-muted">Solicitudes</div>
+                        <div class="kpi-value" style="color: #ffc107;">{{ $pendingRequests }}</div>
+                        <div class="text-muted" style="font-size: 12px;">Pendientes</div>
                     </div>
-                </div>
-                <div class="card-body p-0 table-responsive">
-                    <table class="table table-striped table-valign-middle">
-                        <thead>
-                            <tr>
-                                <th>Producto</th>
-                                <th class="text-center">Stock Actual</th>
-                                <th class="text-center">Mínimo</th>
-                                <th class="text-right">Acción</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse($lowStockProducts as $product)
-                            <tr>
-                                <td>
-                                    {{ $product->name }}
-                                    <br><small class="text-muted">{{ $product->code }}</small>
-                                </td>
-                                <td class="text-center text-danger font-weight-bold" style="font-size: 1.1em;">
-                                    {{ $product->stock }}
-                                </td>
-                                <td class="text-center">{{ $product->min_stock }}</td>
-                                <td class="text-right">
-                                    <a href="{{ route('admin.stock-in.create') }}" class="btn btn-xs btn-success shadow-sm">
-                                        <i class="fas fa-plus-circle"></i> Reabastecer
-                                    </a>
-                                </td>
-                            </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="4" class="text-center text-success py-4">
-                                        <i class="fas fa-check-circle fa-2x mb-2"></i><br>
-                                        ¡Excelente! No hay productos en nivel crítico.
-                                    </td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
+                    <div class="kpi-icon" style="background: #fff3cd; color: #ffc107;">
+                        <i class="fas fa-hand-paper"></i>
+                    </div>
                 </div>
             </div>
+            <a href="{{ route('admin.requests.index') }}" class="card-footer bg-white border-0 text-muted" style="font-size: 12px;">
+                Ver solicitudes <i class="fas fa-arrow-right ml-1"></i>
+            </a>
+        </div>
+    </div>
 
-            {{-- GRÁFICO DE MOVIMIENTOS (Opcional, si quieres mostrarlo) --}}
-            <div class="card card-info card-outline mt-3">
-                <div class="card-header">
-                    <h3 class="card-title"><i class="fas fa-chart-line"></i> Flujo de Salidas (7 días)</h3>
-                    <div class="card-tools">
-                        <button type="button" class="btn btn-tool" data-card-widget="collapse"><i class="fas fa-minus"></i></button>
+    <div class="col-md-3 col-sm-6">
+        <div class="kpi-card card bg-white shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="kpi-label text-muted">Stock Bajo</div>
+                        <div class="kpi-value" style="color: #dc3545;">{{ $lowStockCount }}</div>
+                        <div class="text-muted" style="font-size: 12px;">Crítico</div>
+                    </div>
+                    <div class="kpi-icon" style="background: #f8d7da; color: #dc3545;">
+                        <i class="fas fa-exclamation-triangle"></i>
                     </div>
                 </div>
-                <div class="card-body">
-                    <canvas id="logisticsLineChart" style="min-height: 200px; height: 200px; max-height: 200px; max-width: 100%;"></canvas>
+            </div>
+            <a href="{{ route('admin.reports.stock') }}" class="card-footer bg-white border-0 text-muted" style="font-size: 12px;">
+                Ver reporte <i class="fas fa-arrow-right ml-1"></i>
+            </a>
+        </div>
+    </div>
+
+    <div class="col-md-3 col-sm-6">
+        <div class="kpi-card card bg-white shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="kpi-label text-muted">Salidas Hoy</div>
+                        <div class="kpi-value" style="color: #28a745;">{{ $approvedRequestsToday }}</div>
+                        <div class="text-muted" style="font-size: 12px;">Procesadas</div>
+                    </div>
+                    <div class="kpi-icon" style="background: #d4edda; color: #28a745;">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
                 </div>
+            </div>
+            <a href="{{ route('admin.requests.index') }}?status=Approved" class="card-footer bg-white border-0 text-muted" style="font-size: 12px;">
+                Ver historial <i class="fas fa-arrow-right ml-1"></i>
+            </a>
+        </div>
+    </div>
+</div>
+
+{{-- ALERTA STOCK BAJO --}}
+@if($lowStockCount > 0)
+<div class="row mt-3">
+    <div class="col-12">
+        <div class="alert alert-card danger bg-white shadow-sm">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-exclamation-triangle text-danger mr-3" style="font-size: 24px;"></i>
+                    <div>
+                        <strong>Alerta de Stock Bajo</strong>
+                        <p class="mb-0 text-muted">{{ $lowStockCount }} productos tienen stock por debajo del mínimo</p>
+                    </div>
+                </div>
+                <a href="{{ route('admin.reports.stock') }}?stock_status=low" class="btn btn-danger">
+                    <i class="fas fa-eye mr-1"></i> Ver Productos
+                </a>
             </div>
         </div>
-        
-        {{-- COLUMNA LATERAL: RESUMEN Y ACCESOS --}}
-        <div class="col-md-4">
-            {{-- Resumen Financiero/Global --}}
-            <div class="info-box mb-3 bg-info">
-                <span class="info-box-icon"><i class="fas fa-cubes"></i></span>
-                <div class="info-box-content">
-                    <span class="info-box-text">Total Productos</span>
-                    <span class="info-box-number">{{ $totalProducts }}</span>
-                </div>
-            </div>
-            <div class="info-box mb-3 bg-secondary">
-                <span class="info-box-icon"><i class="fas fa-dollar-sign"></i></span>
-                <div class="info-box-content">
-                    <span class="info-box-text">Valor Inventario</span>
-                    <span class="info-box-number">${{ number_format($totalStockValue, 2) }}</span>
-                </div>
-            </div>
+    </div>
+</div>
+@endif
 
-            {{-- Accesos Rápidos (Botones estilo App) --}}
-            <div class="card card-outline card-primary">
-                <div class="card-header">
-                    <h3 class="card-title">Gestión Rápida</h3>
-                </div>
-                <div class="card-body text-center">
-                    <p class="text-muted mb-3">Operaciones Frecuentes</p>
-                    
-                    <a href="{{ route('admin.stock-in.create') }}" class="btn btn-app bg-light border">
-                        <i class="fas fa-truck-loading text-success"></i> Entrada
-                    </a>
-                    <a href="{{ route('admin.requests.create') }}" class="btn btn-app bg-light border">
-                        <i class="fas fa-clipboard-list text-primary"></i> Salida
-                    </a>
-                    <a href="{{ route('admin.products.create') }}" class="btn btn-app bg-light border">
-                        <i class="fas fa-plus-square text-info"></i> Producto
-                    </a>
-                    <a href="{{ route('admin.kits.create') }}" class="btn btn-app bg-light border">
-                        <i class="fas fa-box-open text-purple"></i> Nuevo Kit
-                    </a>
-                    
-                    <hr>
-                    <a href="{{ route('admin.suppliers.index') }}" class="btn btn-block btn-default btn-sm">
-                        <i class="fas fa-address-book mr-1"></i> Directorio Proveedores
-                    </a>
+{{-- ACCIONES RÁPIDAS --}}
+<div class="row mt-3">
+    <div class="col-12">
+        <div class="section-title">
+            <i class="fas fa-bolt text-warning"></i> Acciones Rápidas
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <a href="{{ route('admin.stock-in.create') }}" class="quick-action-btn d-block bg-white shadow-sm text-decoration-none">
+            <div class="quick-action-icon" style="color: #28a745;"><i class="fas fa-truck-loading"></i></div>
+            <div class="quick-action-label">Entrada Stock</div>
+        </a>
+    </div>
+    <div class="col-6 col-md-3">
+        <a href="{{ route('admin.requests.create') }}" class="quick-action-btn d-block bg-white shadow-sm text-decoration-none">
+            <div class="quick-action-icon" style="color: #dc3545;"><i class="fas fa-hand-holding"></i></div>
+            <div class="quick-action-label">Nueva Solicitud</div>
+        </a>
+    </div>
+    <div class="col-6 col-md-3">
+        <a href="{{ route('admin.products.create') }}" class="quick-action-btn d-block bg-white shadow-sm text-decoration-none">
+            <div class="quick-action-icon" style="color: #1a4a7a;"><i class="fas fa-plus-circle"></i></div>
+            <div class="quick-action-label">Nuevo Producto</div>
+        </a>
+    </div>
+    <div class="col-6 col-md-3">
+        <a href="{{ route('admin.kits.create') }}" class="quick-action-btn d-block bg-white shadow-sm text-decoration-none">
+            <div class="quick-action-icon" style="color: #6c757d;"><i class="fas fa-box-open"></i></div>
+            <div class="quick-action-label">Nuevo Kit</div>
+        </a>
+    </div>
+</div>
+
+{{-- ESTADÍSTICAS Y GRÁFICOS --}}
+<div class="row mt-4">
+    <div class="col-md-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white border-0">
+                <h6 class="font-weight-bold mb-0">
+                    <i class="fas fa-chart-line mr-2 text-primary"></i>Flujo de Solicitudes (7 días)
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="logisticsLineChart"></canvas>
                 </div>
             </div>
         </div>
     </div>
+
+    <div class="col-md-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white border-0">
+                <h6 class="font-weight-bold mb-0">
+                    <i class="fas fa-chart-pie mr-2 text-warning"></i>Estado de Solicitudes
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-12 mb-3">
+                        <div class="mini-stat">
+                            <div class="mini-stat-value text-warning">{{ $chartPending }}</div>
+                            <div class="mini-stat-label">Pendientes</div>
+                        </div>
+                    </div>
+                    <div class="col-12 mb-3">
+                        <div class="mini-stat">
+                            <div class="mini-stat-value text-success">{{ $chartApproved }}</div>
+                            <div class="mini-stat-label">Aprobadas</div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="mini-stat">
+                            <div class="mini-stat-value text-danger">{{ $chartRejected }}</div>
+                            <div class="mini-stat-label">Rechazadas</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- TABLA STOCK BAJO --}}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white border-0" style="border-left: 4px solid #dc3545;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h6 class="font-weight-bold mb-0" style="color: #dc3545;">
+                        <i class="fas fa-exclamation-triangle mr-2"></i>Productos con Stock Bajo
+                    </h6>
+                    <a href="{{ route('admin.reports.stock') }}" class="btn btn-sm btn-outline-secondary">Ver Todo</a>
+                </div>
+            </div>
+            <div class="card-body p-0 table-responsive">
+                <table class="table table-striped table-valign-middle">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th class="text-center">Stock Actual</th>
+                            <th class="text-center">Mínimo</th>
+                            <th class="text-center">Categoría</th>
+                            <th class="text-right">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($lowStockProducts as $product)
+                        <tr>
+                            <td>
+                                <strong>{{ $product->name }}</strong>
+                                <br><small class="text-muted">{{ $product->code }}</small>
+                            </td>
+                            <td class="text-center text-danger font-weight-bold" style="font-size: 1.1em;">
+                                {{ $product->stock }}
+                            </td>
+                            <td class="text-center">{{ $product->min_stock }}</td>
+                            <td class="text-center">{{ $product->category->name ?? '-' }}</td>
+                            <td class="text-right">
+                                <a href="{{ route('admin.stock-in.create') }}" class="btn btn-xs btn-success shadow-sm">
+                                    <i class="fas fa-plus-circle"></i> Reabastecer
+                                </a>
+                            </td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="5" class="text-center py-4">
+                                <i class="fas fa-check-circle text-success fa-2x mb-2"></i>
+                                <p class="mb-0 text-muted">No hay productos en nivel crítico</p>
+                            </td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
 @stop
 
 @push('js')
 <script>
-    $(function() {
-        'use strict'
-        
-        // Gráfico de Líneas para Logística (Mismos datos que Admin pero enfocado en operación)
-        var lineCtx = document.getElementById('logisticsLineChart').getContext('2d');
-        var lineChart = new Chart(lineCtx, {
-            type: 'line',
-            data: {
-                labels: @json($lineChartLabels),
-                datasets: [{
-                    label: 'Solicitudes Creadas',
-                    data: @json($lineChartData),
-                    backgroundColor: 'rgba(23, 162, 184, 0.2)', // Info (Cyan claro)
-                    borderColor: '#17a2b8', // Info (Cyan)
-                    pointRadius: 3,
-                    pointBackgroundColor: '#17a2b8',
-                    fill: true,
-                    tension: 0.4
-                }]
-            },
-            options: {
-                maintainAspectRatio: false,
-                responsive: true,
-                scales: {
-                    yAxes: [{ 
-                        ticks: { beginAtZero: true, precision: 0 },
-                        gridLines: { display: true, color: '#efefef' }
-                    }],
-                    xAxes: [{ gridLines: { display: false } }]
+$(function() {
+    'use strict'
+
+    var lineCtx = document.getElementById('logisticsLineChart').getContext('2d');
+    var lineChart = new Chart(lineCtx, {
+        type: 'line',
+        data: {
+            labels: @json($lineChartLabels),
+            datasets: [{
+                label: 'Solicitudes',
+                data: @json($lineChartData),
+                backgroundColor: 'rgba(26, 74, 122, 0.1)',
+                borderColor: '#1a4a7a',
+                borderWidth: 2,
+                pointRadius: 4,
+                pointBackgroundColor: '#1a4a7a',
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            maintainAspectRatio: false,
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { 
+                    beginAtZero: true, 
+                    precision: 0,
+                    grid: { color: '#f0f0f0' }
                 },
-                legend: { display: false }
+                x: { grid: { display: false } }
             }
-        });
+        }
     });
+});
 </script>
 @endpush

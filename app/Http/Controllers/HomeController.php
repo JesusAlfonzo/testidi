@@ -70,13 +70,13 @@ class HomeController extends Controller
 
     private function logisticaDashboard()
     {
-        $data = $this->getGlobalInventoryStats();
+        $data = $this->getOperationalStats();
         return view('admin.dashboards.logistica', $data);
     }
 
     private function supervisorDashboard()
     {
-        $data = $this->getGlobalInventoryStats();
+        $data = $this->getOperationalStats();
         return view('admin.dashboards.supervisor', $data);
     }
 
@@ -100,7 +100,63 @@ class HomeController extends Controller
     }
 
     // ----------------------------------------------------------------------
-    // HELPER: ESTADÍSTICAS GLOBALES (Para Admin, Logística, Supervisor)
+    // HELPER: ESTADÍSTICAS OPERATIVAS (Sin datos financieros - para Logística y Supervisor)
+    // ----------------------------------------------------------------------
+    private function getOperationalStats()
+    {
+        $sevenDaysAgo = Carbon::now()->subDays(7);
+
+        $dailyRequests = InventoryRequest::select(
+                DB::raw('DATE(requested_at) as date'), 
+                DB::raw('count(*) as count')
+            )
+            ->where('requested_at', '>=', $sevenDaysAgo)
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get();
+            
+        $lineChartLabels = [];
+        $lineChartData = [];
+        
+        for ($i = 6; $i >= 0; $i--) {
+            $date = Carbon::now()->subDays($i)->format('Y-m-d');
+            $record = $dailyRequests->firstWhere('date', $date);
+            $lineChartLabels[] = Carbon::parse($date)->isoFormat('ddd D'); 
+            $lineChartData[] = $record ? $record->count : 0;
+        }
+
+        return [
+            'totalProducts' => Product::where('is_active', true)->count(),
+            'lowStockCount' => Product::where('is_active', true)->whereColumn('stock', '<=', 'min_stock')->count(),
+            'pendingRequests' => InventoryRequest::where('status', 'Pending')->count(),
+            'approvedRequestsToday' => InventoryRequest::where('status', 'Approved')->whereDate('processed_at', Carbon::today())->count(),
+            
+            'inventoryStats' => [
+                'products' => Product::count(),
+                'categories' => Category::count(),
+                'brands' => Brand::count(),
+                'units' => Unit::count(),
+                'locations' => Location::count(),
+                'suppliers' => Supplier::count(),
+            ],
+            
+            'chartApproved' => InventoryRequest::where('status', 'Approved')->count(),
+            'chartRejected' => InventoryRequest::where('status', 'Rejected')->count(),
+            'chartPending' => InventoryRequest::where('status', 'Pending')->count(),
+            
+            'lineChartLabels' => $lineChartLabels,
+            'lineChartData' => $lineChartData,
+            
+            'lowStockProducts' => Product::where('is_active', true)
+                                         ->whereColumn('stock', '<=', 'min_stock')
+                                         ->orderBy('stock', 'asc')
+                                         ->limit(5)
+                                         ->get(),
+        ];
+    }
+
+    // ----------------------------------------------------------------------
+    // HELPER: ESTADÍSTICAS GLOBALES (Para Admin)
     // ----------------------------------------------------------------------
     private function getGlobalInventoryStats()
     {

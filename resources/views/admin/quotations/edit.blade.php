@@ -122,7 +122,7 @@
                                     <label for="currency">Moneda</label>
                                     <select name="currency" class="form-control" style="width: 100%">
                                         <option value="USD" {{ $quotation->currency == 'USD' ? 'selected' : '' }}>USD - Dólar</option>
-                                        <option value="VES" {{ $quotation->currency == 'VES' ? 'selected' : '' }}>VES - Bolívar</option>
+                                        <option value="Bs" {{ $quotation->currency == 'Bs' ? 'selected' : '' }}>Bs - Bolívar</option>
                                         <option value="EUR" {{ $quotation->currency == 'EUR' ? 'selected' : '' }}>EUR - Euro</option>
                                     </select>
                                 </div>

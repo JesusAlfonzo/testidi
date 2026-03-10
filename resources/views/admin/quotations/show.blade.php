@@ -143,6 +143,9 @@
                                 <th>Producto</th>
                                 <th>Cantidad</th>
                                 <th>Costo Unit.</th>
+                                @if($quotation->is_foreign_currency)
+                                <th>Equiv. Bs</th>
+                                @endif
                                 <th>Total</th>
                             </tr>
                         </thead>
@@ -157,20 +160,52 @@
                                         @endif
                                     </td>
                                     <td>{{ $item->quantity }}</td>
-                                    <td>${{ number_format($item->unit_cost, 2) }}</td>
-                                    <td><strong>${{ number_format($item->total_cost, 2) }}</strong></td>
+                                    <td>{{ $quotation->currency_symbol }}{{ number_format($item->unit_cost, 2) }}</td>
+                                    @if($quotation->is_foreign_currency)
+                                    <td>Bs {{ number_format($item->equivalent_bs / $item->quantity, 2) }}</td>
+                                    @endif
+                                    <td><strong>{{ $quotation->currency_symbol }}{{ number_format($item->total_cost, 2) }}</strong></td>
                                 </tr>
                             @endforeach
                         </tbody>
                         <tfoot>
+                            @if($quotation->currency === 'Bs')
                             <tr>
-                                <th colspan="4" class="text-right">Subtotal:</th>
-                                <th>${{ number_format($quotation->subtotal, 2) }}</th>
+                                <th colspan="3" class="text-right">Subtotal Bs (sin IVA):</th>
+                                <th>Bs {{ number_format($quotation->subtotal, 2) }}</th>
                             </tr>
                             <tr>
-                                <th colspan="4" class="text-right">Total ({{ $quotation->currency }}):</th>
-                                <th class="text-primary h5">${{ number_format($quotation->total, 2) }}</th>
+                                <th colspan="3" class="text-right">IVA 16% Bs:</th>
+                                <th class="text-danger">Bs {{ number_format($quotation->tax_amount_bs, 2) }}</th>
                             </tr>
+                            <tr class="bg-info">
+                                <th colspan="3" class="text-right">TOTAL Bs (con IVA):</th>
+                                <th class="text-primary h5">Bs {{ number_format($quotation->total_bs, 2) }}</th>
+                            </tr>
+                            @else
+                            <tr>
+                                <th colspan="{{ $quotation->is_foreign_currency ? 4 : 3 }}" class="text-right">Subtotal ({{ $quotation->currency }}):</th>
+                                <th>{{ $quotation->currency_symbol }}{{ number_format($quotation->subtotal, 2) }}</th>
+                            </tr>
+                            @if($quotation->is_foreign_currency)
+                            <tr>
+                                <th colspan="4" class="text-right">Subtotal Bs:</th>
+                                <th>Bs {{ number_format($quotation->subtotal_bs, 2) }}</th>
+                            </tr>
+                            <tr>
+                                <th colspan="4" class="text-right">IVA 16% Bs:</th>
+                                <th class="text-danger">Bs {{ number_format($quotation->tax_amount_bs, 2) }}</th>
+                            </tr>
+                            <tr class="bg-info">
+                                <th colspan="4" class="text-right">TOTAL Bs (con IVA):</th>
+                                <th class="text-primary h5">Bs {{ number_format($quotation->total_bs, 2) }}</th>
+                            </tr>
+                            @endif
+                            <tr>
+                                <th colspan="{{ $quotation->is_foreign_currency ? 4 : 3 }}" class="text-right">Total ({{ $quotation->currency }}):</th>
+                                <th class="text-primary h5">{{ $quotation->currency_symbol }}{{ number_format($quotation->total, 2) }}</th>
+                            </tr>
+                            @endif
                         </tfoot>
                     </table>
                 </div>
