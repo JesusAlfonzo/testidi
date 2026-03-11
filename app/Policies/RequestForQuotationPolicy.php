@@ -17,6 +17,9 @@ class RequestForQuotationPolicy
 
     public function view(User $user, RequestForQuotation $rfq): bool
     {
+        if ($user->isSuperAdmin()) {
+            return $user->can('rfq_ver');
+        }
         return $user->can('rfq_ver');
     }
 
@@ -27,26 +30,41 @@ class RequestForQuotationPolicy
 
     public function update(User $user, RequestForQuotation $rfq): bool
     {
+        if ($user->isSuperAdmin()) {
+            return $user->can('rfq_editar');
+        }
         return $user->can('rfq_editar');
     }
 
     public function delete(User $user, RequestForQuotation $rfq): bool
     {
+        if ($user->isSuperAdmin()) {
+            return $user->can('rfq_eliminar');
+        }
         return $user->can('rfq_eliminar');
     }
 
     public function markAsSent(User $user, RequestForQuotation $rfq): bool
     {
+        if ($user->isSuperAdmin()) {
+            return $user->can('rfq_enviar');
+        }
         return $user->can('rfq_enviar');
     }
 
     public function markAsClosed(User $user, RequestForQuotation $rfq): bool
     {
+        if ($user->isSuperAdmin()) {
+            return $user->can('rfq_enviar');
+        }
         return $user->can('rfq_enviar');
     }
 
     public function cancel(User $user, RequestForQuotation $rfq): bool
     {
+        if ($user->isSuperAdmin()) {
+            return $user->can('rfq_enviar');
+        }
         return $user->can('rfq_enviar');
     }
 }

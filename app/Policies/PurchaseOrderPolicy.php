@@ -17,6 +17,9 @@ class PurchaseOrderPolicy
 
     public function view(User $user, PurchaseOrder $purchaseOrder): bool
     {
+        if ($user->isSuperAdmin()) {
+            return $user->can('ordenes_compra_ver');
+        }
         return $user->can('ordenes_compra_ver');
     }
 
@@ -27,26 +30,41 @@ class PurchaseOrderPolicy
 
     public function update(User $user, PurchaseOrder $purchaseOrder): bool
     {
+        if ($user->isSuperAdmin()) {
+            return $user->can('ordenes_compra_editar');
+        }
         return $user->can('ordenes_compra_editar');
     }
 
     public function delete(User $user, PurchaseOrder $purchaseOrder): bool
     {
+        if ($user->isSuperAdmin()) {
+            return $user->can('ordenes_compra_eliminar');
+        }
         return $user->can('ordenes_compra_eliminar');
     }
 
     public function issue(User $user, PurchaseOrder $purchaseOrder): bool
     {
+        if ($user->isSuperAdmin()) {
+            return $user->can('ordenes_compra_aprobar');
+        }
         return $user->can('ordenes_compra_aprobar');
     }
 
     public function complete(User $user, PurchaseOrder $purchaseOrder): bool
     {
+        if ($user->isSuperAdmin()) {
+            return $user->can('ordenes_compra_aprobar');
+        }
         return $user->can('ordenes_compra_aprobar');
     }
 
     public function cancel(User $user, PurchaseOrder $purchaseOrder): bool
     {
+        if ($user->isSuperAdmin()) {
+            return $user->can('ordenes_compra_anular');
+        }
         return $user->can('ordenes_compra_anular');
     }
 }

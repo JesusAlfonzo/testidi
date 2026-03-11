@@ -102,19 +102,6 @@
                 "ordering": true,
                 "info": true,
                 "autoWidth": false,
-                "order": [[ 5, "desc" ]],
-                "pageLength": 15,
-                "lengthMenu": [[15, 25, 50, 100], [15, 25, 50, 100]],
-
-                "ajax": {
-                    "url": "{{ route('admin.quotations.index') }}",
-                    "type": "GET",
-                    "data": function(d) {
-                        d.rfq_id = $('select[name="rfq_id"]').val();
-                        d.supplier_id = $('select[name="supplier_id"]').val();
-                        d.status = $('select[name="status"]').val();
-                    }
-                },
 
                 "columns": [
                     { "data": "code", "name": "code" },

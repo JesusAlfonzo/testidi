@@ -199,10 +199,15 @@ class HomeController extends Controller
             ->toArray();
         
         // 6. Actividad reciente del sistema (últimos 10)
-        $recentActivity = Activity::with('causer')
-            ->orderBy('created_at', 'desc')
-            ->limit(10)
-            ->get();
+        $user = Auth::user();
+        $activityQuery = Activity::with('causer');
+        
+        // Si no es admin, solo mostrar su propia actividad
+        if (!$user->isSuperAdmin()) {
+            $activityQuery->where('causer_id', $user->id);
+        }
+        
+        $recentActivity = $activityQuery->orderBy('created_at', 'desc')->limit(10)->get();
 
         return [
             // KPIs Inventario

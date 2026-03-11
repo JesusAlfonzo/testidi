@@ -108,19 +108,6 @@
                 "ordering": true, 
                 "info": true, 
                 "autoWidth": false,
-                "order": [[ 0, "desc" ]],
-                "pageLength": 15,
-                "lengthMenu": [[15, 25, 50, 100], [15, 25, 50, 100]],
-
-                "ajax": {
-                    "url": "{{ route('admin.stock-in.index') }}",
-                    "type": "GET",
-                    "data": function(d) {
-                        d.date_from = $('input[name="date_from"]').val();
-                        d.date_to = $('input[name="date_to"]').val();
-                        d.product_id = $('select[name="product_id"]').val();
-                    }
-                },
 
                 "columns": [
                     { "data": "date", "name": "entry_date" },

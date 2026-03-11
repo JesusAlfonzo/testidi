@@ -145,7 +145,7 @@
                                     </td>
                                     <td>{{ $purchaseOrder->currency_symbol }}{{ number_format($item->unit_cost, 2) }}</td>
                                     @if($purchaseOrder->is_foreign_currency || $purchaseOrder->currency === 'Bs')
-                                    <td>Bs {{ number_format($item->equivalent_bs / $item->quantity, 2) }}</td>
+                                    <td>Bs {{ number_format($item->equivalent_bs, 2) }}</td>
                                     @endif
                                     <td><strong>{{ $purchaseOrder->currency_symbol }}{{ number_format($item->total_cost, 2) }}</strong></td>
                                     @if($purchaseOrder->status === 'issued')

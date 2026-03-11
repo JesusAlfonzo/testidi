@@ -17,8 +17,7 @@ class PurchaseOrdersController extends Controller
     {
         $search = $request->get('q', '');
         
-        $suppliers = Supplier::where('is_active', true)
-            ->where(function($query) use ($search) {
+        $suppliers = Supplier::where(function($query) use ($search) {
                 $query->whereRaw('LOWER(name) LIKE ?', [strtolower("%{$search}%")])
                       ->orWhereRaw('LOWER(email) LIKE ?', [strtolower("%{$search}%")])
                       ->orWhereRaw('LOWER(tax_id) LIKE ?', [strtolower("%{$search}%")]);
@@ -42,8 +41,7 @@ class PurchaseOrdersController extends Controller
     {
         $search = $request->get('q', '');
         
-        $products = Product::where('is_active', true)
-            ->where(function($query) use ($search) {
+        $products = Product::where(function($query) use ($search) {
                 $query->whereRaw('LOWER(name) LIKE ?', [strtolower("%{$search}%")])
                       ->orWhereRaw('LOWER(code) LIKE ?', [strtolower("%{$search}%")]);
             })
@@ -113,8 +111,19 @@ class PurchaseOrdersController extends Controller
         $start = $request->input('start', 0);
         $length = $request->input('length', 15);
         $search = $request->input('search.value', '');
-        $orderColumn = $request->input('order.0.column', 5);
-        $orderDir = $request->input('order.0.dir', 'desc');
+        
+        $isInitialLoad = !$search && !$request->filled('supplier_id') && !$request->filled('status');
+        
+        if ($isInitialLoad) {
+            $query->orderBy('created_at', 'desc');
+        } else {
+            $orderColumn = $request->input('order.0.column', 5);
+            $orderDir = $request->input('order.0.dir', 'desc');
+            $columns = ['code', 'supplier_id', 'total', 'status', 'date_issued', 'created_at'];
+            if (isset($columns[$orderColumn])) {
+                $query->orderBy($columns[$orderColumn], $orderDir);
+            }
+        }
 
         if ($search) {
             $query->where(function($q) use ($search) {
@@ -127,11 +136,6 @@ class PurchaseOrdersController extends Controller
 
         $totalRecords = PurchaseOrder::count();
         $totalFiltered = $query->count();
-
-        $columns = ['code', 'supplier_id', 'total', 'status', 'date_issued', 'created_at'];
-        if (isset($columns[$orderColumn])) {
-            $query->orderBy($columns[$orderColumn], $orderDir);
-        }
 
         $orders = $query->offset($start)->limit($length)->get();
 
@@ -178,7 +182,7 @@ class PurchaseOrdersController extends Controller
         }
 
         $suppliers = Supplier::orderBy('name')->get();
-        $products = Product::with(['category', 'unit'])->where('is_active', true)->get();
+        $products = Product::with(['category', 'unit'])->get();
         $code = PurchaseOrder::generateCode();
 
         return view('admin.purchaseOrders.create', compact('suppliers', 'products', 'code', 'quote'));
@@ -297,7 +301,7 @@ class PurchaseOrdersController extends Controller
 
         $purchaseOrder->load('items.product');
         $suppliers = Supplier::orderBy('name')->get();
-        $products = Product::with(['category', 'unit'])->where('is_active', true)->get();
+        $products = Product::with(['category', 'unit'])->get();
 
         return view('admin.purchaseOrders.edit', compact('purchaseOrder', 'suppliers', 'products'));
     }

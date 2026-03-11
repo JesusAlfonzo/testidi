@@ -91,9 +91,6 @@
                 "ordering": true,
                 "info": true,
                 "autoWidth": false,
-                "order": [[ 4, "desc" ]],
-                "pageLength": 15,
-                "lengthMenu": [[15, 25, 50, 100], [15, 25, 50, 100]],
 
                 "ajax": {
                     "url": "{{ route('admin.purchaseOrders.index') }}",

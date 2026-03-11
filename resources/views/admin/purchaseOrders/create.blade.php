@@ -180,8 +180,11 @@
                                         @foreach($quote->items as $index => $item)
                                             <tr>
                                                 <td>
-                                                    <select name="items[{{ $index }}][product_id]" class="form-control form-control-sm select2-product-ajax" data-url="{{ route('admin.purchaseOrders.searchProducts') }}" required>
-                                                        <option value="{{ $item->product_id }}" selected>{{ $item->product->name }} ({{ $item->product->code ?? 'S/C' }})</option>
+                                                    <select name="items[{{ $index }}][product_id]" class="form-control form-control-sm select2-product" required>
+                                                        <option value="">Seleccione...</option>
+                                                        @foreach($products as $product)
+                                                            <option value="{{ $product->id }}" {{ $product->id == $item->product_id ? 'selected' : '' }}>{{ $product->name }} ({{ $product->code ?? 'S/C' }})</option>
+                                                        @endforeach
                                                     </select>
                                                 </td>
                                                 <td>
@@ -203,8 +206,11 @@
                                     @else
                                         <tr>
                                             <td>
-                                                <select name="items[0][product_id]" class="form-control form-control-sm select2-product-ajax" data-url="{{ route('admin.purchaseOrders.searchProducts') }}" required>
-                                                    <option value="">Buscar producto...</option>
+                                                <select name="items[0][product_id]" class="form-control form-control-sm select2-product" required>
+                                                    <option value="">Seleccione...</option>
+                                                    @foreach($products as $product)
+                                                        <option value="{{ $product->id }}">{{ $product->name }} ({{ $product->code ?? 'S/C' }})</option>
+                                                    @endforeach
                                                 </select>
                                             </td>
                                             <td>
@@ -510,6 +516,7 @@
                         theme: 'bootstrap4',
                         width: '100%',
                         allowClear: true,
+                        minimumInputLength: 0,
                         ajax: {
                             url: $(this).data('url'),
                             dataType: 'json',
@@ -524,27 +531,14 @@
                     }).addClass('select2initialized');
                 }
             });
-
-            // Select2 AJAX para productos
-            $('.select2-product-ajax').each(function() {
-                if (!$(this).hasClass('select2initialized')) {
-                    $(this).select2({
-                        theme: 'bootstrap4',
-                        width: '100%',
-                        allowClear: true,
-                        ajax: {
-                            url: $(this).data('url'),
-                            dataType: 'json',
-                            delay: 250,
-                            processResults: function(data) {
-                                return {
-                                    results: data.results
-                                };
-                            },
-                            cache: true
-                        }
-                    }).addClass('select2initialized');
-                }
+            
+            // Select2 normal para productos - solo los no inicializados
+            $('.select2-product').not('.select2-initialized').each(function() {
+                $(this).addClass('select2-initialized').select2({
+                    theme: 'bootstrap4',
+                    width: '100%',
+                    allowClear: true
+                });
             });
         }
 
@@ -606,7 +600,12 @@
             `;
             $('#itemsBody').append(row);
             itemIndex++;
-            initSelect2();
+            // Solo inicializar el nuevo select, no todos
+            $('#itemsBody').find('.select2-product').last().select2({
+                theme: 'bootstrap4',
+                width: '100%',
+                allowClear: true
+            });
             updateRemoveButtons();
             attachProductButtonEvents();
         });

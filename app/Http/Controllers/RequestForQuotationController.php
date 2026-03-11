@@ -57,8 +57,19 @@ class RequestForQuotationController extends Controller
         $start = $request->input('start', 0);
         $length = $request->input('length', 15);
         $search = $request->input('search.value', '');
-        $orderColumn = $request->input('order.0.column', 0);
-        $orderDir = $request->input('order.0.dir', 'desc');
+        
+        $isInitialLoad = !$search && !$request->filled('status');
+        
+        if ($isInitialLoad) {
+            $query->orderBy('created_at', 'desc');
+        } else {
+            $orderColumn = $request->input('order.0.column', 4);
+            $orderDir = $request->input('order.0.dir', 'desc');
+            $columns = ['code', 'title', 'status', 'date_required', 'created_at'];
+            if (isset($columns[$orderColumn])) {
+                $query->orderBy($columns[$orderColumn], $orderDir);
+            }
+        }
 
         if ($search) {
             $query->where(function($q) use ($search) {
@@ -69,11 +80,6 @@ class RequestForQuotationController extends Controller
 
         $totalRecords = RequestForQuotation::count();
         $totalFiltered = $query->count();
-
-        $columns = ['code', 'title', 'status', 'date_required', 'created_at'];
-        if (isset($columns[$orderColumn])) {
-            $query->orderBy($columns[$orderColumn], $orderDir);
-        }
 
         $rfqs = $query->offset($start)->limit($length)->get();
 

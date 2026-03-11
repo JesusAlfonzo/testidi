@@ -168,14 +168,18 @@
             text-align: center;
         }
         .signature-section {
-            margin-top: 40px;
-            display: flex;
-            justify-content: space-between;
-            padding: 0 40px;
+            margin-top: 50px;
+            width: 100%;
         }
-        .signature-box {
+        .signature-row {
+            display: table;
+            width: 100%;
+        }
+        .signature-cell {
+            display: table-cell;
+            width: 50%;
             text-align: center;
-            width: 200px;
+            padding: 0 20px;
         }
         .signature-line {
             border-top: 1px solid #333;
@@ -260,7 +264,7 @@
                     <td class="text-center">{{ $item->quantity }}</td>
                     <td class="text-right">{{ $purchaseOrder->currency_symbol }}{{ number_format($item->unit_cost, 2) }}</td>
                     @if($purchaseOrder->is_foreign_currency)
-                    <td class="text-right">Bs {{ number_format($item->equivalent_bs / $item->quantity, 2) }}</td>
+                    <td class="text-right">Bs {{ number_format($item->equivalent_bs, 2) }}</td>
                     @endif
                     <td class="text-center">{{ $item->product->unit->abbreviation ?? 'und' }}</td>
                     <td class="text-right">{{ $purchaseOrder->currency_symbol }}{{ number_format($item->total_cost, 2) }}</td>
@@ -324,11 +328,13 @@
     @endif
 
     <div class="signature-section">
-        <div class="signature-box">
-            <div class="signature-line">Firma y Sello del Proveedor</div>
-        </div>
-        <div class="signature-box">
-            <div class="signature-line">Firma y Sello del Autorizador</div>
+        <div class="signature-row">
+            <div class="signature-cell">
+                <div class="signature-line">Firma y Sello del Autorizador</div>
+            </div>
+            <div class="signature-cell">
+                <div class="signature-line">Firma y Sello del Proveedor</div>
+            </div>
         </div>
     </div>
 

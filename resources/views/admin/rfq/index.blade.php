@@ -81,17 +81,6 @@
                 "ordering": true,
                 "info": true,
                 "autoWidth": false,
-                "order": [[ 0, "desc" ]],
-                "pageLength": 15,
-                "lengthMenu": [[15, 25, 50, 100], [15, 25, 50, 100]],
-
-                "ajax": {
-                    "url": "{{ route('admin.rfq.index') }}",
-                    "type": "GET",
-                    "data": function(d) {
-                        d.status = $('select[name="status"]').val();
-                    }
-                },
 
                 "columns": [
                     { "data": "code", "name": "code" },

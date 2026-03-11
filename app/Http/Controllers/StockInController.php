@@ -81,8 +81,20 @@ class StockInController extends Controller
         $start = $request->input('start', 0);
         $length = $request->input('length', 15);
         $search = $request->input('search.value', '');
-        $orderColumn = $request->input('order.0.column', 0);
-        $orderDir = $request->input('order.0.dir', 'desc');
+        
+        $isInitialLoad = !$search && !$request->filled('date_from') && !$request->filled('date_to') 
+            && !$request->filled('supplier_id') && !$request->filled('product_id');
+        
+        if ($isInitialLoad) {
+            $query->orderBy('created_at', 'desc');
+        } else {
+            $orderColumn = $request->input('order.0.column', 5);
+            $orderDir = $request->input('order.0.dir', 'desc');
+            $columns = ['entry_date', 'quantity', 'product_id', 'supplier_id', 'unit_cost', 'created_at'];
+            if (isset($columns[$orderColumn])) {
+                $query->orderBy($columns[$orderColumn], $orderDir);
+            }
+        }
 
         if ($search) {
             $query->where(function($q) use ($search) {
@@ -98,11 +110,6 @@ class StockInController extends Controller
 
         $totalRecords = StockIn::count();
         $totalFiltered = $query->count();
-
-        $columns = ['entry_date', 'quantity', 'product_id', 'supplier_id', 'unit_cost', 'created_at'];
-        if (isset($columns[$orderColumn])) {
-            $query->orderBy($columns[$orderColumn], $orderDir);
-        }
 
         $stockIns = $query->offset($start)->limit($length)->get();
 

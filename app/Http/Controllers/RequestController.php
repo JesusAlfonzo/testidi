@@ -45,9 +45,9 @@ class RequestController extends Controller
         $query = RequestModel::with(['requester', 'approver', 'items.product'])
             ->orderBy('requested_at', 'desc');
 
-        // 3. Aplicar Filtros de Seguridad (Si no es aprobador, solo ve lo suyo)
+        // 3. Aplicar Filtros de Seguridad (Admin ve todas, usuarios normales solo las propias)
         $user = auth()->user();
-        if (!$user->can('solicitudes_aprobar')) {
+        if (!$user->isSuperAdmin() && !$user->can('solicitudes_aprobar')) {
             $query->where('requester_id', $user->id);
         }
 
@@ -81,7 +81,8 @@ class RequestController extends Controller
         
         $query = RequestModel::with(['requester', 'approver']);
 
-        if (!$user->can('solicitudes_aprobar')) {
+        // Admin ve todas las solicitudes, usuarios normales solo las propias
+        if (!$user->isSuperAdmin() && !$user->can('solicitudes_aprobar')) {
             $query->where('requester_id', $user->id);
         }
 
@@ -101,8 +102,20 @@ class RequestController extends Controller
         $start = $request->input('start', 0);
         $length = $request->input('length', 15);
         $search = $request->input('search.value', '');
-        $orderColumn = $request->input('order.0.column', 0);
-        $orderDir = $request->input('order.0.dir', 'desc');
+        
+        $isInitialLoad = !$search && !$request->filled('date_from') && !$request->filled('date_to') 
+            && !$request->filled('status') && !$request->filled('requester_id');
+        
+        if ($isInitialLoad) {
+            $query->orderBy('created_at', 'desc');
+        } else {
+            $orderColumn = $request->input('order.0.column', 5);
+            $orderDir = $request->input('order.0.dir', 'desc');
+            $columns = ['id', 'requested_at', 'status', 'requester_id', 'processed_at', 'created_at'];
+            if (isset($columns[$orderColumn])) {
+                $query->orderBy($columns[$orderColumn], $orderDir);
+            }
+        }
 
         if ($search) {
             $query->where(function($q) use ($search) {
@@ -115,11 +128,6 @@ class RequestController extends Controller
 
         $totalRecords = RequestModel::count();
         $totalFiltered = $query->count();
-
-        $columns = ['requested_at', 'status', 'requester_id', 'processed_at'];
-        if (isset($columns[$orderColumn])) {
-            $query->orderBy($columns[$orderColumn], $orderDir);
-        }
 
         $requests = $query->offset($start)->limit($length)->get();
 

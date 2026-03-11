@@ -110,12 +110,13 @@
         <thead>
             <tr>
                 <th style="width: 10%; text-align: center;">Código</th>
-                <th style="width: 30%;">Producto</th>
-                <th style="width: 15%;">Categoría</th>
+                <th style="width: 25%;">Producto</th>
+                <th style="width: 12%;">Categoría</th>
+                <th style="width: 10%;">Marca</th>
                 <th style="width: 10%;">Ubicación</th>
-                <th style="width: 10%; text-align: right;">Stock</th>
-                <th style="width: 10%; text-align: right;">Mínimo</th>
-                <th style="width: 15%; text-align: center;">Estado</th>
+                <th style="width: 8%; text-align: right;">Stock</th>
+                <th style="width: 8%; text-align: right;">Mínimo</th>
+                <th style="width: 12%; text-align: center;">Estado</th>
             </tr>
         </thead>
         <tbody>
@@ -136,6 +137,7 @@
                     <td>{{ $product->code }}</td>
                     <td><strong>{{ $product->name }}</strong></td>
                     <td>{{ $product->category->name ?? 'N/A' }}</td>
+                    <td>{{ $product->brand->name ?? 'N/A' }}</td>
                     <td>{{ $product->location->name ?? 'N/A' }}</td>
                     <td class="text-right"><strong>{{ $product->stock }}</strong> {{ $product->unit->abbreviation ?? '' }}</td>
                     <td class="text-right">{{ $product->min_stock }}</td>

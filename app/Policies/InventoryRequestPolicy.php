@@ -17,6 +17,9 @@ class InventoryRequestPolicy
 
     public function view(User $user, InventoryRequest $inventoryRequest): bool
     {
+        if ($user->isSuperAdmin()) {
+            return $user->can('solicitudes_ver');
+        }
         return $user->can('solicitudes_ver');
     }
 
@@ -27,6 +30,9 @@ class InventoryRequestPolicy
 
     public function update(User $user, InventoryRequest $inventoryRequest): bool
     {
+        if ($user->isSuperAdmin()) {
+            return $user->can('solicitudes_editar');
+        }
         if ($inventoryRequest->status !== 'Pending') {
             return false;
         }
@@ -35,6 +41,9 @@ class InventoryRequestPolicy
 
     public function delete(User $user, InventoryRequest $inventoryRequest): bool
     {
+        if ($user->isSuperAdmin()) {
+            return $user->can('solicitudes_eliminar');
+        }
         if ($inventoryRequest->status !== 'Pending') {
             return false;
         }
@@ -43,6 +52,9 @@ class InventoryRequestPolicy
 
     public function process(User $user, InventoryRequest $inventoryRequest): bool
     {
+        if ($user->isSuperAdmin()) {
+            return $user->can('solicitudes_aprobar');
+        }
         return $user->can('solicitudes_aprobar');
     }
 }

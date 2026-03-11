@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\StockIn;
 use App\Models\Category;
 use App\Models\Location;
+use App\Models\Brand;
 use App\Models\User;
 use App\Services\KardexService;
 use Illuminate\Http\Request;
@@ -33,10 +34,19 @@ class ReportController extends Controller
     {
         $categories = Category::pluck('name', 'id');
         $locations = Location::pluck('name', 'id');
+        $brands = Brand::pluck('name', 'id');
 
-        $query = Product::with(['unit', 'category', 'location'])
+        $query = Product::with(['unit', 'category', 'location', 'brand'])
             ->where('is_active', true)
             ->orderBy('name', 'asc');
+
+        if ($request->filled('search')) {
+            $search = strtolower($request->search);
+            $query->where(function($q) use ($search) {
+                $q->whereRaw('LOWER(name) LIKE ?', ["%{$search}%"])
+                  ->orWhereRaw('LOWER(code) LIKE ?', ["%{$search}%"]);
+            });
+        }
 
         if ($request->filled('category_id')) {
             $query->where('category_id', $request->category_id);
@@ -44,32 +54,49 @@ class ReportController extends Controller
         if ($request->filled('location_id')) {
             $query->where('location_id', $request->location_id);
         }
+        if ($request->filled('brand_id')) {
+            $query->where('brand_id', $request->brand_id);
+        }
         if ($request->filled('stock_status')) {
             if ($request->stock_status === 'low') {
                 $query->whereColumn('stock', '<=', 'min_stock');
             } elseif ($request->stock_status === 'ok') {
                 $query->whereColumn('stock', '>', 'min_stock');
+            } elseif ($request->stock_status === 'zero') {
+                $query->where('stock', 0);
+            } elseif ($request->stock_status === 'with_stock') {
+                $query->where('stock', '>', 0);
             }
         }
 
         $products = $query->get();
 
-        return view('admin.reports.stock', compact('products', 'categories', 'locations'));
+        return view('admin.reports.stock', compact('products', 'categories', 'locations', 'brands'));
     }
 
     public function exportStockExcel(Request $request)
     {
         $fileName = 'inventario_stock_' . date('Y-m-d_H-i') . '.csv';
 
-        $query = Product::with(['unit', 'category', 'location'])
+        $query = Product::with(['unit', 'category', 'location', 'brand'])
             ->where('is_active', true)
             ->orderBy('name', 'asc');
 
+        if ($request->filled('search')) {
+            $search = strtolower($request->search);
+            $query->where(function($q) use ($search) {
+                $q->whereRaw('LOWER(name) LIKE ?', ["%{$search}%"])
+                  ->orWhereRaw('LOWER(code) LIKE ?', ["%{$search}%"]);
+            });
+        }
         if ($request->filled('category_id')) $query->where('category_id', $request->category_id);
         if ($request->filled('location_id')) $query->where('location_id', $request->location_id);
+        if ($request->filled('brand_id')) $query->where('brand_id', $request->brand_id);
         if ($request->filled('stock_status')) {
             if ($request->stock_status === 'low') $query->whereColumn('stock', '<=', 'min_stock');
             elseif ($request->stock_status === 'ok') $query->whereColumn('stock', '>', 'min_stock');
+            elseif ($request->stock_status === 'zero') $query->where('stock', 0);
+            elseif ($request->stock_status === 'with_stock') $query->where('stock', '>', 0);
         }
 
         $products = $query->get();
@@ -81,7 +108,7 @@ class ReportController extends Controller
             "Cache-Control" => "must-revalidate, post-check=0, pre-check=0",
             "Expires" => "0"
         ];
-        $columns = ['CÓDIGO', 'PRODUCTO', 'CATEGORÍA', 'UBICACIÓN', 'STOCK', 'UNIDAD', 'MÍNIMO', 'COSTO', 'PRECIO', 'ESTADO'];
+        $columns = ['CÓDIGO', 'PRODUCTO', 'CATEGORÍA', 'MARCA', 'UBICACIÓN', 'STOCK', 'UNIDAD', 'MÍNIMO', 'COSTO', 'PRECIO', 'ESTADO'];
 
         $callback = function () use ($products, $columns) {
             $file = fopen('php://output', 'w');
@@ -93,6 +120,7 @@ class ReportController extends Controller
                     $product->code,
                     $product->name,
                     $product->category->name ?? '',
+                    $product->brand->name ?? '',
                     $product->location->name ?? '',
                     $product->stock,
                     $product->unit->abbreviation ?? '',
@@ -109,15 +137,25 @@ class ReportController extends Controller
 
     public function exportStockPdf(Request $request)
     {
-        $query = Product::with(['unit', 'category', 'location'])
+        $query = Product::with(['unit', 'category', 'location', 'brand'])
             ->where('is_active', true)
             ->orderBy('name', 'asc');
 
+        if ($request->filled('search')) {
+            $search = strtolower($request->search);
+            $query->where(function($q) use ($search) {
+                $q->whereRaw('LOWER(name) LIKE ?', ["%{$search}%"])
+                  ->orWhereRaw('LOWER(code) LIKE ?', ["%{$search}%"]);
+            });
+        }
         if ($request->filled('category_id')) $query->where('category_id', $request->category_id);
         if ($request->filled('location_id')) $query->where('location_id', $request->location_id);
+        if ($request->filled('brand_id')) $query->where('brand_id', $request->brand_id);
         if ($request->filled('stock_status')) {
             if ($request->stock_status === 'low') $query->whereColumn('stock', '<=', 'min_stock');
             elseif ($request->stock_status === 'ok') $query->whereColumn('stock', '>', 'min_stock');
+            elseif ($request->stock_status === 'zero') $query->where('stock', 0);
+            elseif ($request->stock_status === 'with_stock') $query->where('stock', '>', 0);
         }
 
         $products = $query->get();

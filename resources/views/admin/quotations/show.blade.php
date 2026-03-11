@@ -162,7 +162,7 @@
                                     <td>{{ $item->quantity }}</td>
                                     <td>{{ $quotation->currency_symbol }}{{ number_format($item->unit_cost, 2) }}</td>
                                     @if($quotation->is_foreign_currency)
-                                    <td>Bs {{ number_format($item->equivalent_bs / $item->quantity, 2) }}</td>
+                                    <td>Bs {{ number_format($item->equivalent_bs, 2) }}</td>
                                     @endif
                                     <td><strong>{{ $quotation->currency_symbol }}{{ number_format($item->total_cost, 2) }}</strong></td>
                                 </tr>

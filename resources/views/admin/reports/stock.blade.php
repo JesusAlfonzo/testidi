@@ -60,16 +60,32 @@
             </div>
         </div>
         <div class="card-body">
-            <form method="GET" action="{{ route('admin.reports.stock') }}">
+            <form method="GET" action="{{ route('admin.reports.stock') }}" id="filterForm">
                 <div class="row">
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label>Buscar Producto</label>
+                            <input type="text" name="search" class="form-control" placeholder="Nombre o código..." value="{{ request('search') }}">
+                        </div>
+                    </div>
                     <div class="col-md-3">
                         <div class="form-group">
                             <label>Categoría</label>
                             <select name="category_id" class="form-control select2">
                                 <option value="">Todas</option>
                                 @foreach ($categories as $id => $name)
-                                    <option value="{{ $id }}"
-                                        {{ request('category_id') == $id ? 'selected' : '' }}>{{ $name }}</option>
+                                    <option value="{{ $id }}" {{ request('category_id') == $id ? 'selected' : '' }}>{{ $name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label>Marca</label>
+                            <select name="brand_id" class="form-control select2">
+                                <option value="">Todas</option>
+                                @foreach ($brands as $id => $name)
+                                    <option value="{{ $id }}" {{ request('brand_id') == $id ? 'selected' : '' }}>{{ $name }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -80,29 +96,31 @@
                             <select name="location_id" class="form-control select2">
                                 <option value="">Todas</option>
                                 @foreach ($locations as $id => $name)
-                                    <option value="{{ $id }}"
-                                        {{ request('location_id') == $id ? 'selected' : '' }}>{{ $name }}</option>
+                                    <option value="{{ $id }}" {{ request('location_id') == $id ? 'selected' : '' }}>{{ $name }}</option>
                                 @endforeach
                             </select>
                         </div>
                     </div>
+                </div>
+                <div class="row">
                     <div class="col-md-3">
                         <div class="form-group">
                             <label>Estado de Stock</label>
-                            {{-- También aplicamos select2 aquí para que se vea uniforme --}}
                             <select name="stock_status" class="form-control select2">
                                 <option value="">Todos</option>
-                                <option value="low" {{ request('stock_status') == 'low' ? 'selected' : '' }}>Bajo Stock
-                                    (Alerta)</option>
-                                <option value="ok" {{ request('stock_status') == 'ok' ? 'selected' : '' }}>Óptimo
-                                </option>
+                                <option value="low" {{ request('stock_status') == 'low' ? 'selected' : '' }}>Bajo Stock (Alerta)</option>
+                                <option value="ok" {{ request('stock_status') == 'ok' ? 'selected' : '' }}>Óptimo</option>
+                                <option value="zero" {{ request('stock_status') == 'zero' ? 'selected' : '' }}>Sin Stock (0)</option>
+                                <option value="with_stock" {{ request('stock_status') == 'with_stock' ? 'selected' : '' }}>Con Stock</option>
                             </select>
                         </div>
                     </div>
-                    <div class="col-md-3 d-flex align-items-end">
+                    <div class="col-md-6 d-flex align-items-end">
                         <div class="form-group w-100">
-                            <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-search"></i> Filtrar
-                                Resultados</button>
+                            <div class="btn-group w-100">
+                                <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> Filtrar</button>
+                                <button type="button" class="btn btn-secondary" id="clearFilters"><i class="fas fa-eraser"></i> Limpiar</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -132,10 +150,12 @@
                         <tr>
                             <th>Estado</th>
                             <th>Producto</th>
+                            <th>Categoría</th>
+                            <th>Marca</th>
+                            <th>Ubicación</th>
                             <th>Stock Actual</th>
-                            <th>Código</th>
-                            <th>Unidad</th>
                             <th>Mínimo</th>
+                            <th>Código</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -146,21 +166,20 @@
                             <tr data-stock-actual="{{ $product->stock }}">
                                 <td>
                                     @if ($isLow)
-                                        <span class="badge badge-danger"><i class="fas fa-exclamation-triangle"></i>
-                                            Bajo</span>
+                                        <span class="badge badge-danger"><i class="fas fa-exclamation-triangle"></i> Bajo</span>
                                     @else
                                         <span class="badge badge-success">Óptimo</span>
                                     @endif
                                 </td>
                                 <td><strong>{{ $product->name }}</strong></td>
+                                <td>{{ $product->category->name ?? 'N/A' }}</td>
+                                <td>{{ $product->brand->name ?? 'N/A' }}</td>
+                                <td>{{ $product->location->name ?? 'N/A' }}</td>
                                 <td>
-                                    <h4><span
-                                            class="badge badge-{{ $isLow ? 'danger' : 'success' }}">{{ $product->stock }}</span>
-                                    </h4>
+                                    <span class="badge badge-{{ $isLow ? 'danger' : 'success' }}">{{ $product->stock }}</span>
                                 </td>
-                                <td><span class="text-muted">{{ $product->code }}</span></td>
-                                <td>{{ $product->unit->abbreviation ?? 'N/A' }}</td>
                                 <td>{{ $product->min_stock }}</td>
+                                <td><span class="text-muted">{{ $product->code }}</span></td>
                             </tr>
                         @endforeach
                     </tbody>
@@ -179,6 +198,11 @@
                 width: '100%', // Fuerza el ancho al 100% del contenedor padre
                 placeholder: 'Seleccione una opción',
                 allowClear: true
+            });
+
+            // Botón limpiar filtros
+            $('#clearFilters').click(function() {
+                window.location.href = '{{ route("admin.reports.stock") }}';
             });
 
             const stockTable = $('#stockTable').DataTable({

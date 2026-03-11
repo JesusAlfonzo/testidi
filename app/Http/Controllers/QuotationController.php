@@ -71,25 +71,24 @@ class QuotationController extends Controller
         $start = $request->input('start', 0);
         $length = $request->input('length', 15);
         $search = $request->input('search.value', '');
-        $orderColumn = $request->input('order.0.column', 4);
-        $orderDir = $request->input('order.0.dir', 'desc');
-
-        if ($search) {
-            $query->where(function($q) use ($search) {
-                $q->whereRaw('LOWER(code) LIKE ?', [strtolower("%{$search}%")])
-                  ->orWhereHas('supplier', function($sq) use ($search) {
-                      $sq->whereRaw('LOWER(name) LIKE ?', [strtolower("%{$search}%")]);
-                  });
-            });
+        
+        // Determinar si es una carga inicial (sin filtros ni búsqueda)
+        $isInitialLoad = !$search && !$request->filled('rfq_id') && !$request->filled('supplier_id') && !$request->filled('status');
+        
+        // Si es carga inicial, forzar orden por created_at
+        if ($isInitialLoad) {
+            $query->orderBy('created_at', 'desc');
+        } else {
+            $orderColumn = $request->input('order.0.column', 5);
+            $orderDir = $request->input('order.0.dir', 'desc');
+            $columns = ['code', 'supplier_id', 'total', 'status', 'date_issued', 'created_at'];
+            if (isset($columns[$orderColumn])) {
+                $query->orderBy($columns[$orderColumn], $orderDir);
+            }
         }
 
         $totalRecords = PurchaseQuote::count();
         $totalFiltered = $query->count();
-
-        $columns = ['code', 'supplier_id', 'total', 'status', 'date_issued'];
-        if (isset($columns[$orderColumn])) {
-            $query->orderBy($columns[$orderColumn], $orderDir);
-        }
 
         $quotations = $query->offset($start)->limit($length)->get();
 

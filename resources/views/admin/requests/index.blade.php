@@ -115,20 +115,6 @@
                 "ordering": true,
                 "info": true,
                 "autoWidth": false,
-                "order": [[ 4, "desc" ]],
-                "pageLength": 15,
-                "lengthMenu": [[15, 25, 50, 100], [15, 25, 50, 100]],
-
-                "ajax": {
-                    "url": "{{ route('admin.requests.index') }}",
-                    "type": "GET",
-                    "data": function(d) {
-                        d.date_from = $('input[name="date_from"]').val();
-                        d.date_to = $('input[name="date_to"]').val();
-                        d.status = $('select[name="status"]').val();
-                        d.requester_id = $('select[name="requester_id"]').val();
-                    }
-                },
 
                 "columns": [
                     { "data": "id", "name": "id" },
