@@ -75,12 +75,13 @@
                             <thead>
                                 <tr>
                                     <th>Fecha</th>
-                                    <th>Producto</th>
+                                    <th>Referencia</th>
                                     <th>Cantidad</th>
                                     <th>Costo Unit.</th>
                                     <th>Total</th>
                                     <th>Proveedor</th>
                                     <th>Documento</th>
+                                    <th>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -111,12 +112,13 @@
 
                 "columns": [
                     { "data": "date", "name": "entry_date" },
-                    { "data": "product", "name": "product_id" },
+                    { "data": "reference", "name": "purchase_order_id" },
                     { "data": "quantity", "name": "quantity" },
                     { "data": "unit_cost", "name": "unit_cost" },
                     { "data": "total", "name": "quantity" },
                     { "data": "supplier", "name": "supplier_id" },
-                    { "data": "document", "name": "document_type" }
+                    { "data": "document", "name": "document_type" },
+                    { "data": "actions", "name": "actions", "orderable": false, "searchable": false }
                 ],
 
                 "language": {
@@ -141,7 +143,7 @@
                 },
 
                 "columnDefs": [
-                    { "orderable": false, "targets": [2, 4, 6] },
+                    { "orderable": false, "targets": [2, 4, 6, 7] },
                     { "type": "date", "targets": 0 }
                 ]
             });

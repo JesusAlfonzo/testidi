@@ -13,6 +13,7 @@ use App\Services\CacheService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request as HttpRequest;
 use Illuminate\Support\Str;
+use PDF;
 use Carbon\Carbon;
 
 class RequestController extends Controller
@@ -132,20 +133,31 @@ class RequestController extends Controller
         $requests = $query->offset($start)->limit($length)->get();
 
         $data = $requests->map(function ($item) {
-            $statusClass = match($item->status) {
-                'Pending' => 'warning',
-                'Approved' => 'success',
-                'Rejected' => 'danger',
-                default => 'secondary'
-            };
+            $statusLabel = '';
+            $statusClass = 'secondary';
+            
+            if ($item->status === 'Pending') {
+                $statusLabel = 'Pendiente';
+                $statusClass = 'warning';
+            } elseif ($item->status === 'Approved') {
+                $statusLabel = 'Aprobada';
+                $statusClass = 'success';
+            } elseif ($item->status === 'Rejected') {
+                $statusLabel = 'Rechazada';
+                $statusClass = 'danger';
+            } else {
+                $statusLabel = $item->status;
+            }
+            
             return [
                 'id' => 'REQ-' . $item->id,
                 'date' => $item->requested_at->format('d/m/Y H:i'),
                 'requester' => $item->requester->name ?? 'N/A',
                 'justification' => Str::limit($item->justification, 50),
-                'status' => '<span class="badge badge-' . $statusClass . '">' . $item->status . '</span>',
+                'status' => '<span class="badge badge-' . $statusClass . '">' . $statusLabel . '</span>',
                 'approver' => $item->approver->name ?? '-',
                 'processed' => $item->processed_at ? $item->processed_at->format('d/m/Y') : '-',
+                'actions' => $this->getActionsColumn($item),
             ];
         });
 
@@ -160,7 +172,7 @@ class RequestController extends Controller
     public function create()
     {
         // Cargar productos y kits activos para el selector
-        $products = Product::where('is_active', true)->orderBy('name')->get(['id', 'name', 'stock']);
+        $products = Product::where('is_active', true)->orderBy('name')->get(['id', 'name', 'code', 'stock']);
         $kits = Kit::where('is_active', true)->orderBy('name')->get(['id', 'name']);
         
         return view('admin.requests.create', compact('products', 'kits'));
@@ -169,6 +181,8 @@ class RequestController extends Controller
     // Lógica: Guardar la solicitud y sus items
     public function store(StoreRequestRequest $request)
     {
+        $this->authorize('solicitudes_crear');
+        
         $validatedData = $request->validated();
 
         DB::beginTransaction();
@@ -227,8 +241,8 @@ class RequestController extends Controller
             $requestModel->items()->createMany($itemsToStore);
 
             DB::commit();
-            return redirect()->route('admin.requests.show', $requestModel)
-                ->with('success', '✅ Solicitud enviada para aprobación: REQ-' . $requestModel->id);
+            return redirect()->route('admin.requests.index')
+                ->with('success', 'Solicitud creada correctamente: REQ-' . $requestModel->id);
 
         } catch (\Exception $e) {
             DB::rollback();
@@ -237,21 +251,18 @@ class RequestController extends Controller
     }
 
     // Muestra los detalles de la solicitud
-    public function show(RequestModel $request)
+    public function show(RequestModel $requestModel)
     {
-        // 🛡️ SEGURIDAD ADICIONAL
-        if (!auth()->user()->can('solicitudes_aprobar') && $request->requester_id !== auth()->id()) {
-            abort(403, 'No tienes permiso para ver esta solicitud.');
-        }
-
-        $request->load([
+        $this->authorize('solicitudes_ver');
+        
+        $requestModel->load([
             'requester',
             'approver',
             'items.product.unit',
             'items.kit.components.unit', // Carga componentes de kits
         ]);
 
-        return view('admin.requests.show', compact('request'));
+        return view('admin.requests.show', compact('requestModel'));
     }
 
     // Método especializado para APROBAR o RECHAZAR una solicitud
@@ -348,6 +359,45 @@ class RequestController extends Controller
             DB::rollback();
             return redirect()->back()->with('error', '❌ Error al procesar: ' . $e->getMessage());
         }
+    }
+
+    protected function getActionsColumn($item)
+    {
+        $user = auth()->user();
+        $actions = '';
+
+        // Botón Ver
+        $actions .= '<a href="' . route('admin.requests.show', $item->id) . '" class="btn btn-sm btn-info" title="Ver detalles"><i class="fas fa-eye"></i></a> ';
+
+        // Botón PDF
+        $actions .= '<a href="' . route('admin.requests.pdf', $item->id) . '" class="btn btn-sm btn-secondary" title="Ver PDF" target="_blank"><i class="fas fa-file-pdf"></i></a> ';
+
+        // Botones Aprobar/Rechazar (solo si está pendiente y tiene permiso)
+        if ($item->status === 'Pending' && ($user->can('solicitudes_aprobar') || $user->isSuperAdmin())) {
+            $processUrl = route('admin.requests.process', $item->id);
+            $csrf = csrf_token();
+            
+            $actions .= '<form method="POST" action="' . $processUrl . '" style="display:inline;">';
+            $actions .= '<input type="hidden" name="_token" value="' . $csrf . '">';
+            $actions .= '<input type="hidden" name="action" value="approve">';
+            $actions .= '<button type="submit" class="btn btn-sm btn-success" title="Aprobar" onclick="return confirm(\'¿Está seguro de APROBAR esta solicitud?\');">';
+            $actions .= '<i class="fas fa-check"></i></button></form> ';
+
+            $actions .= '<form method="POST" action="' . $processUrl . '" style="display:inline;">';
+            $actions .= '<input type="hidden" name="_token" value="' . $csrf . '">';
+            $actions .= '<input type="hidden" name="action" value="reject">';
+            $actions .= '<button type="submit" class="btn btn-sm btn-danger" title="Rechazar" onclick="return confirm(\'¿Está seguro de RECHAZAR esta solicitud?\');">';
+            $actions .= '<i class="fas fa-times"></i></button></form>';
+        }
+
+        return $actions;
+    }
+
+    public function pdf(RequestModel $request)
+    {
+        $request->load(['requester', 'items.product.unit', 'items.kit']);
+        
+        return \PDF::loadView('admin.requests.pdf', compact('request'))->stream('solicitud-' . $request->id . '.pdf');
     }
 
     public function destroy($id) { return abort(404); }

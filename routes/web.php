@@ -82,6 +82,7 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::post('quotations/{quotation}/approve', [QuotationController::class, 'approve'])->name('quotations.approve');
     Route::post('quotations/{quotation}/reject', [QuotationController::class, 'reject'])->name('quotations.reject');
     Route::post('quotations/{quotation}/convert-supplier', [QuotationController::class, 'convertToSupplier'])->name('quotations.convert-supplier');
+    Route::get('quotations/create/from-rfq/{rfq}', [QuotationController::class, 'createFromRfq'])->name('quotations.create-from-rfq');
 
     // MOVIMIENTOS - ENTRADAS DE STOCK
     Route::resource('stock-in', StockInController::class);
@@ -90,7 +91,10 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     // 1. Ruta especializada para APROBACIÓN/RECHAZO
     Route::post('requests/{request}/process', [RequestController::class, 'process'])->name('requests.process');
 
-    // 2. Recurso principal
+    // 2. Ruta para PDF individual
+    Route::get('requests/{request}/pdf', [RequestController::class, 'pdf'])->name('requests.pdf');
+
+    // 3. Recurso principal
     Route::resource('requests', RequestController::class)
         ->except(['edit', 'update'])
         ->parameters([

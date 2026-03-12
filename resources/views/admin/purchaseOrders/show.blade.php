@@ -249,6 +249,12 @@
                             </button>
                         @endcan
                     @elseif($purchaseOrder->status === 'issued')
+                        @can('entradas_crear')
+                            <a href="{{ route('admin.stock-in.create', ['order' => $purchaseOrder->id]) }}" class="btn btn-success">
+                                <i class="fas fa-truck-loading"></i> Generar Entrada de Stock
+                            </a>
+                        @endcan
+
                         @if($purchaseOrder->isFullyReceived())
                             @can('ordenes_compra_aprobar')
                                 <button type="button" class="btn btn-success btn-lg" onclick="confirmAction({

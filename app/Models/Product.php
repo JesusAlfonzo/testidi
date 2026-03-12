@@ -24,6 +24,8 @@ class Product extends Model
         'price',
         'stock',
         'min_stock',
+        'expiry_warning_days',
+        'track_expiry',
         'is_active',
         'created_on_the_fly',
         'user_id',
@@ -59,6 +61,43 @@ class Product extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function batches()
+    {
+        return $this->hasMany(ProductBatch::class);
+    }
+
+    public static function getExpiringProducts(int $days = 30)
+    {
+        return self::where('track_expiry', true)
+            ->whereHas('batches', function ($query) use ($days) {
+                $query->where('quantity', '>', 0)
+                    ->whereDate('expiry_date', '<=', now()->addDays($days))
+                    ->whereDate('expiry_date', '>=', now());
+            })
+            ->with(['batches' => function ($query) use ($days) {
+                $query->where('quantity', '>', 0)
+                    ->whereDate('expiry_date', '<=', now()->addDays($days))
+                    ->whereDate('expiry_date', '>=', now())
+                    ->orderBy('expiry_date', 'asc');
+            }])
+            ->get();
+    }
+
+    public static function getExpiredProducts()
+    {
+        return self::where('track_expiry', true)
+            ->whereHas('batches', function ($query) {
+                $query->where('quantity', '>', 0)
+                    ->whereDate('expiry_date', '<', now());
+            })
+            ->with(['batches' => function ($query) {
+                $query->where('quantity', '>', 0)
+                    ->whereDate('expiry_date', '<', now())
+                    ->orderBy('expiry_date', 'asc');
+            }])
+            ->get();
     }
 
     // Configuración del Log de Actividad de Spatie

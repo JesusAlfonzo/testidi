@@ -88,6 +88,7 @@
                                     <th>Fecha Solicitud</th>
                                     <th>Aprobador</th>
                                     <th>Fecha Procesado</th>
+                                    <th>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -123,7 +124,8 @@
                     { "data": "status", "name": "status" },
                     { "data": "date", "name": "requested_at" },
                     { "data": "approver", "name": "approver_id" },
-                    { "data": "processed", "name": "processed_at" }
+                    { "data": "processed", "name": "processed_at" },
+                    { "data": "actions", "name": "actions", "orderable": false, "searchable": false }
                 ],
 
                 "language": {
@@ -148,7 +150,7 @@
                 },
 
                 "columnDefs": [
-                    { "orderable": false, "targets": [2] }
+                    { "orderable": false, "targets": [2, 7] }
                 ]
             });
 

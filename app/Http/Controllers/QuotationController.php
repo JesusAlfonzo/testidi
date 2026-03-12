@@ -144,6 +144,25 @@ class QuotationController extends Controller
         return view('admin.quotations.create', compact('suppliers', 'products', 'code', 'rfqs', 'selectedRfq'));
     }
 
+    public function createFromRfq(RequestForQuotation $rfq)
+    {
+        if (!in_array($rfq->status, ['sent', 'closed'])) {
+            return redirect()->route('admin.rfq.index')
+                ->with('error', 'Solo se puede crear cotización desde una RFQ enviada o cerrada.');
+        }
+
+        $suppliers = Supplier::orderBy('name')->get();
+        $products = Product::with(['category', 'unit'])->where('is_active', true)->get();
+        $rfqs = RequestForQuotation::whereIn('status', ['sent', 'closed'])->orderBy('created_at', 'desc')->get();
+        
+        $rfq->load('items.product');
+
+        $code = PurchaseQuote::generateCode();
+        $selectedRfq = $rfq;
+
+        return view('admin.quotations.create', compact('suppliers', 'products', 'code', 'rfqs', 'selectedRfq'));
+    }
+
     public function store(Request $request)
     {
         $request->validate([
@@ -231,6 +250,10 @@ class QuotationController extends Controller
                 $quoteData['supplier_name_temp'] = $request->supplier_name_temp;
                 $quoteData['supplier_email_temp'] = $request->supplier_email_temp;
                 $quoteData['supplier_phone_temp'] = $request->supplier_phone_temp;
+            }
+
+            if ($request->filled('rfq_id')) {
+                $quoteData['rfq_id'] = $request->rfq_id;
             }
 
             $quote = PurchaseQuote::create($quoteData);

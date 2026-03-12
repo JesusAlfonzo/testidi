@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\InventoryRequest; 
 use App\Models\Product;
+use App\Models\ProductBatch;
 use App\Models\Category;
 use App\Models\Brand;
 use App\Models\Unit;
@@ -152,6 +153,15 @@ class HomeController extends Controller
                                          ->orderBy('stock', 'asc')
                                          ->limit(5)
                                          ->get(),
+            
+            // Alerta de productos por vencer
+            'expiringProducts' => ProductBatch::where('quantity', '>', 0)
+                ->whereDate('expiry_date', '<=', Carbon::now()->addDays(30))
+                ->whereDate('expiry_date', '>=', Carbon::now())
+                ->with('product')
+                ->orderBy('expiry_date', 'asc')
+                ->limit(5)
+                ->get(),
         ];
     }
 
@@ -268,6 +278,15 @@ class HomeController extends Controller
                                          ->orderBy('stock', 'asc')
                                          ->limit(5)
                                          ->get(),
+
+            // Alerta de productos por vencer
+            'expiringProducts' => ProductBatch::where('quantity', '>', 0)
+                ->whereDate('expiry_date', '<=', Carbon::now()->addDays(30))
+                ->whereDate('expiry_date', '>=', Carbon::now())
+                ->with('product')
+                ->orderBy('expiry_date', 'asc')
+                ->limit(5)
+                ->get(),
 
             // Actividad reciente
             'recentActivity' => $recentActivity,

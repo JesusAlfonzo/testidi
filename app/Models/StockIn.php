@@ -18,6 +18,8 @@ class StockIn extends Model
         'purchase_order_id',
         'document_type',
         'document_number',
+        'invoice_number',
+        'delivery_note_number',
         'quantity',
         'unit_cost',
         'reason',
@@ -48,6 +50,11 @@ class StockIn extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function items()
+    {
+        return $this->hasMany(StockInItem::class);
     }
 
     public function getActivitylogOptions(): LogOptions
