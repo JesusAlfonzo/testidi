@@ -68,4 +68,34 @@ class SupplierController extends Controller
         return redirect()->route('admin.suppliers.index')
                          ->with('success', 'Proveedor eliminado con éxito.');
     }
+
+    public function quickStore(Request $request)
+    {
+        $request->validate([
+            "name" => "required|string|max:255",
+            "rif" => "required|string|max:20|unique:suppliers,rif",
+            "email" => "nullable|email|max:255",
+            "phone" => "nullable|string|max:50",
+            "address" => "nullable|string|max:500",
+        ]);
+
+        $supplier = Supplier::create([
+            "name" => $request->name,
+            "rif" => $request->rif,
+            "email" => $request->email,
+            "phone" => $request->phone,
+            "address" => $request->address,
+            "contact_person" => $request->contact_person ?? null,
+            "is_active" => true,
+            "user_id" => auth()->id(),
+        ]);
+
+        $this->cacheService->invalidateSuppliers();
+
+        return response()->json([
+            "success" => true,
+            "message" => "Proveedor creado exitosamente",
+            "supplier" => $supplier
+        ]);
+    }
 }

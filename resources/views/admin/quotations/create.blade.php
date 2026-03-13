@@ -16,7 +16,61 @@
         $locations = \App\Models\Location::orderBy('name')->get();
         $brands = \App\Models\Brand::orderBy('name')->get();
     @endphp
+
     
+
+
+    <div class="modal fade" id="supplierModal" tabindex="-1" role="dialog" aria-labelledby="supplierModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header" style="background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);">
+                    <h5 class="modal-title text-white" id="supplierModalLabel"><i class="fas fa-building"></i> Crear Nuevo Proveedor</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form id="supplierForm">
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-12 col-md-6">
+                                <div class="form-group">
+                                    <label for="supplier_name">Nombre (*)</label>
+                                    <input type="text" name="name" id="supplier_name" class="form-control" required>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <div class="form-group">
+                                    <label for="supplier_rif">RIF (*)</label>
+                                    <input type="text" name="rif" id="supplier_rif" class="form-control" required>
+                                    <small class="text-danger" id="supplierRifError" style="display:none;">El RIF ya existe</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12 col-md-6">
+                                <div class="form-group">
+                                    <label for="supplier_email">Email</label>
+                                    <input type="email" name="email" id="supplier_email" class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <div class="form-group">
+                                    <label for="supplier_phone">Teléfono</label>
+                                    <input type="text" name="phone" id="supplier_phone" class="form-control">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="form-group">
+                                    <label for="supplier_address">Dirección</label>
+                                    <textarea name="address" id="supplier_address" rows="2" class="form-control"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+
     <form action="{{ route('admin.quotations.store') }}" method="POST" id="quotationForm">
         @csrf
         
@@ -506,6 +560,15 @@
                 </form>
             </div>
         </div>
+    </div><div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" id="saveSupplierBtn">
+                            <i class="fas fa-save"></i> Guardar Proveedor
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 @stop
 
@@ -741,7 +804,83 @@
             }
         });
 
-        $(document).ready(function() {
+        
+        // Botón para abrir modal de proveedor
+        $("#addSupplierBtn").click(function() {
+            $("#supplierModal").modal("show");
+        });
+
+        // Formulario de Proveedor rápido
+        $("#supplierForm").on("submit", function(e) {
+            e.preventDefault();
+            const btn = $("#saveSupplierBtn");
+            btn.prop("disabled", true).html("<i class=\"fas fa-spinner fa-spin\"></i> Guardando...");
+            $.ajax({
+                url: "/admin/suppliers/quick-store",
+                method: "POST",
+                data: $(this).serialize(),
+                headers: {"X-CSRF-TOKEN": $("meta[name=\"csrf-token\"]").attr("content")},
+                success: function(response) {
+                    $("#supplierModal").modal("hide");
+                    $("#supplierForm")[0].reset();
+                    // Agregar el nuevo proveedor al select
+                    const newOption = new Option(
+                        response.supplier.name + " | " + (response.supplier.email || "Sin email") + " | " + (response.supplier.phone || "Sin teléfono"),
+                        response.supplier.id,
+                        true,
+                        true
+                    );
+                    $("#supplier_id").append(newOption).trigger("change");
+                    
+                    // Cambiar a proveedor registrado
+                    $("#supplierRegistered").prop("checked", true).trigger("change");
+                    
+                    Swal.fire({
+                        icon: "success",
+                        title: "¡Éxito!",
+                        text: response.message,
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                },
+                error: function(xhr) {
+                    if(xhr.status === 422) {
+                        const errors = xhr.responseJSON.errors;
+                        if(errors.rif) {
+                            $("#supplierRifError").show();
+                        }
+                    } else {
+                        Swal.fire({
+                            icon: "error",
+                            title: "Error",
+                            text: "Hubo un error al guardar el proveedor"
+                        });
+                    }
+                },
+                complete: function() {
+                    btn.prop("disabled", false).html("<i class=\"fas fa-save\"></i> Guardar Proveedor");
+                }
+            });
+        });
+
+        $("#supplierModal").on("hidden.bs.modal", function() {
+            $("#supplierForm")[0].reset();
+            $("#supplierRifError").hide();
+        });
+
+        $("#supplier_rif").on("blur", function() {
+            const rif = $(this).val();
+            if(rif) {
+                $.get("/admin/suppliers", { search: rif }, function(data) {
+                    // Asumiendo que hay un endpoint de búsqueda
+                    // Por simplicidad, verificamos localmente si hay proveedores con ese rif
+                    const exists = false; // Implementar según sea necesario
+                    $("#supplierRifError").hide();
+                });
+            }
+        });
+
+$(document).ready(function() {
             initSelect2();
             toggleSupplierBlocks();
             updateRemoveButtons();

@@ -27,12 +27,14 @@ class Product extends Model
         'expiry_warning_days',
         'track_expiry',
         'is_active',
+        'is_kit',
         'created_on_the_fly',
         'user_id',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
+        'is_kit' => 'boolean',
         'created_on_the_fly' => 'boolean',
     ];
 

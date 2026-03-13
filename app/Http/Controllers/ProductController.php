@@ -220,6 +220,45 @@ class ProductController extends Controller
         ]);
     }
 
+    
+    public function quickStoreKit(Request $request)
+    {
+        $request->validate([
+            "code" => "required|string|max:255|unique:products,code",
+            "name" => "required|string|max:255",
+            "category_id" => "required|exists:categories,id",
+            "unit_id" => "required|exists:units,id",
+            "location_id" => "required|exists:locations,id",
+            "brand_id" => "nullable|exists:brands,id",
+            "cost" => "nullable|numeric|min:0",
+        ]);
+
+        $product = Product::create([
+            "code" => $request->code,
+            "name" => $request->name,
+            "category_id" => $request->category_id,
+            "unit_id" => $request->unit_id,
+            "location_id" => $request->location_id,
+            "brand_id" => $request->brand_id,
+            "cost" => $request->cost ?? 0,
+            "price" => 0,
+            "stock" => 0,
+            "min_stock" => 0,
+            "is_active" => true,
+            "is_kit" => true,
+            "created_on_the_fly" => true,
+            "user_id" => auth()->id(),
+        ]);
+
+        $product->load(["category", "unit", "location", "brand"]);
+
+        return response()->json([
+            "success" => true,
+            "message" => "Kit creado exitosamente",
+            "product" => $product
+        ]);
+    }
+
     public function search(Request $request)
     {
         $search = $request->get('search', '');

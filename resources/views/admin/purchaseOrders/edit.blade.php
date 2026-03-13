@@ -16,6 +16,102 @@
         $locations = \App\Models\Location::orderBy('name')->get();
         $brands = \App\Models\Brand::orderBy('name')->get();
     @endphp
+    
+
+    <!-- Modal para crear Kit rápido -->
+    <div class="modal fade" id="kitModal" tabindex="-1" role="dialog" aria-labelledby="kitModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header" style="background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);">
+                    <h5 class="modal-title text-white" id="kitModalLabel"><i class="fas fa-boxes"></i> Crear Nuevo Kit</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form id="kitForm">
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-12 col-md-6">
+                                <div class="form-group">
+                                    <label for="kit_code">Código/SKU (*)</label>
+                                    <input type="text" name="code" id="kit_code" class="form-control" required>
+                                    <small class="text-danger" id="kitCodeError" style="display:none;">El código ya existe</small>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <div class="form-group">
+                                    <label for="kit_name">Nombre (*)</label>
+                                    <input type="text" name="name" id="kit_name" class="form-control" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12 col-md-6">
+                                <div class="form-group">
+                                    <label for="kit_category_id">Categoría (*)</label>
+                                    <select name="category_id" id="kit_category_id" class="form-control select2" required>
+                                        <option value="">Seleccione...</option>
+                                        @foreach($categories as $category)
+                                            <option value="{{ $category->id }}">{{ $category->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <div class="form-group">
+                                    <label for="kit_unit_id">Unidad (*)</label>
+                                    <select name="unit_id" id="kit_unit_id" class="form-control select2" required>
+                                        <option value="">Seleccione...</option>
+                                        @foreach($units as $unit)
+                                            <option value="{{ $unit->id }}">{{ $unit->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12 col-md-6">
+                                <div class="form-group">
+                                    <label for="kit_brand_id">Marca</label>
+                                    <select name="brand_id" id="kit_brand_id" class="form-control select2">
+                                        <option value="">Seleccione...</option>
+                                        @foreach($brands as $brand)
+                                            <option value="{{ $brand->id }}">{{ $brand->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <div class="form-group">
+                                    <label for="kit_location_id">Ubicación (*)</label>
+                                    <select name="location_id" id="kit_location_id" class="form-control select2" required>
+                                        <option value="">Seleccione...</option>
+                                        @foreach($locations as $location)
+                                            <option value="{{ $location->id }}">{{ $location->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12 col-md-6">
+                                <div class="form-group">
+                                    <label for="kit_cost">Costo</label>
+                                    <input type="number" step="0.01" name="cost" id="kit_cost" class="form-control" value="0" min="0">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-warning" id="saveKitBtn">
+                            <i class="fas fa-save"></i> Guardar Kit
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
     <form action="{{ route('admin.purchaseOrders.update', $purchaseOrder) }}" method="POST" id="orderForm">
         @csrf
@@ -155,6 +251,9 @@
                             <h3 class="card-title text-white">
                                 <i class="fas fa-boxes"></i> Items de la Orden
                             </h3>
+                            <button type="button" id="addKitItem" class="btn btn-sm btn-warning text-dark mr-2">
+                                <i class="fas fa-plus"></i> Agregar Kit
+                            </button>
                             <button type="button" id="addItem" class="btn btn-sm btn-light text-danger">
                                 <i class="fas fa-plus"></i> Agregar Item
                             </button>
@@ -546,7 +645,43 @@
             });
         });
 
-        $(document).ready(function() {
+        
+        $("#addKitItem").click(function() {
+            $("#kitModal").modal("show");
+        });
+
+        $("#kitForm").on("submit", function(e) {
+            e.preventDefault();
+            const btn = $("#saveKitBtn");
+            btn.prop("disabled", true).html("<i class=\"fas fa-spinner fa-spin\"></i> Guardando...");
+            $.ajax({
+                url: "/admin/products/quick-store-kit",
+                method: "POST",
+                data: $(this).serialize(),
+                headers: {"X-CSRF-TOKEN": $("meta[name=\"csrf-token\"]").attr("content")},
+                success: function(response) {
+                    $("#kitModal").modal("hide");
+                    $("#kitForm")[0].reset();
+                    $("#kitModal .select2").val("").trigger("change");
+                    const row = "<tr><td><select name=\"items["+itemIndex+"][product_id]\" class=\"form-control select2-product form-control-sm\" required><option value=\""+response.product.id+"\" selected>"+response.product.name+" ("+response.product.code+") [KIT]</option></select></td><td><input type=\"number\" name=\"items["+itemIndex+"][quantity]\" class=\"form-control form-control-sm\" min=\"1\" value=\"1\" required></td><td><input type=\"number\" step=\"0.01\" name=\"items["+itemIndex+"][unit_cost]\" class=\"form-control form-control-sm\" min=\"0\" value=\"0\" required></td><td class=\"text-right\"><span class=\"item-total font-weight-bold\">0.00</span></td><td class=\"text-center\"><button type=\"button\" class=\"btn btn-sm btn-danger remove-item\"><i class=\"fas fa-times\"></i></button></td></tr>";
+                    $("#itemsBody").append(row);
+                    itemIndex++;
+                    initSelect2();
+                    updateRemoveButtons();
+                    refreshProductSelects();
+                    calculateTotals();
+                    Swal.fire({icon: "success", title: "¡Éxito!", text: response.message, timer: 2000, showConfirmButton: false});
+                },
+                error: function(xhr) { if(xhr.status===422){if(xhr.responseJSON.errors.code){$("#kitCodeError").show();}} else {Swal.fire({icon:"error",title:"Error",text:"Hubo un error al guardar el kit"});} },
+                complete: function() { btn.prop("disabled",false).html("<i class=\"fas fa-save\"></i> Guardar Kit"); }
+            });
+        });
+
+        $("#kitModal").on("hidden.bs.modal", function() { $("#kitForm")[0].reset(); $("#kitCodeError").hide(); });
+
+        $("#kit_code").on("blur", function() { const c=$(this).val(); if(c){$.get("/admin/products/search",{search:c},function(p){const e=p.some(x=>x.code.toLowerCase()===c.toLowerCase());$("#kitCodeError").toggle(e);}); }});
+
+$(document).ready(function() {
             initSelect2();
             updateRemoveButtons();
             calculateTotals();

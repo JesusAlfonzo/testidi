@@ -49,10 +49,12 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::resource('locations', LocationController::class);
     Route::resource('brands', BrandController::class);
     Route::resource('suppliers', SupplierController::class);
+    Route::post('suppliers/quick-store', [SupplierController::class, 'quickStore'])->name('suppliers.quick-store');
 
     // MÓDULO INVENTARIO
     Route::resource('products', ProductController::class);
     Route::post('products/quick-store', [ProductController::class, 'quickStore'])->name('products.quick-store');
+    Route::post('products/quick-store-kit', [ProductController::class, 'quickStoreKit'])->name('products.quick-store-kit');
     Route::get('products/search', [ProductController::class, 'search'])->name('products.search');
 
     // MÓDULO KITS
