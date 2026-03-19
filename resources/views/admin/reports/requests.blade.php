@@ -188,6 +188,21 @@
                 theme: 'bootstrap4',
                 width: '100%'
             });
+            
+            $(document).on('select2:open', function() {
+                setTimeout(function() {
+                    var dropdown = document.querySelector('.select2-dropdown');
+                    if (dropdown) {
+                        dropdown.style.maxHeight = '350px';
+                        dropdown.style.overflow = 'hidden';
+                        var results = dropdown.querySelector('.select2-results');
+                        if (results) {
+                            results.style.maxHeight = '350px';
+                            results.style.overflowY = 'auto';
+                        }
+                    }
+                }, 10);
+            });
 
             // Inicializar DataTables
             const requestsTable = $('#requestsTable').DataTable({

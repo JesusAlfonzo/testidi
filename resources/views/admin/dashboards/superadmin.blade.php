@@ -557,6 +557,58 @@
         </div>
     </div>
 </div>
+
+{{-- MODAL PRODUCTOS POR VENCER --}}
+@if(isset($expiringProducts) && $expiringProducts->count() > 0)
+<div class="modal fade" id="expiringProductsModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title"><i class="fas fa-clock"></i> Productos por Vencer</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <table class="table table-striped table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th>Lote</th>
+                            <th>Fecha Vencimiento</th>
+                            <th>Cantidad</th>
+                            <th>Días Restantes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($expiringProducts as $batch)
+                        <tr>
+                            <td>{{ $batch->product->name ?? 'N/A' }}</td>
+                            <td>{{ $batch->batch_number ?? 'Sin lote' }}</td>
+                            <td>{{ $batch->expiry_date->format('d/m/Y') }}</td>
+                            <td>{{ $batch->quantity }}</td>
+                            <td>
+                                @php $daysLeft = now()->diffInDays($batch->expiry_date, false); @endphp
+                                @if($daysLeft <= 7)
+                                    <span class="badge badge-danger">{{ $daysLeft }} días</span>
+                                @elseif($daysLeft <= 15)
+                                    <span class="badge badge-warning">{{ $daysLeft }} días</span>
+                                @else
+                                    <span class="badge badge-info">{{ $daysLeft }} días</span>
+                                @endif
+                            </td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
 @stop
 
 @push('js')
@@ -671,55 +723,3 @@ $(function() {
 });
 </script>
 @endpush
-
-{{-- MODAL PRODUCTOS POR VENCER --}}
-@if(isset($expiringProducts) && $expiringProducts->count() > 0)
-<div class="modal fade" id="expiringProductsModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content">
-            <div class="modal-header bg-warning">
-                <h5 class="modal-title"><i class="fas fa-clock"></i> Productos por Vencer</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                <table class="table table-striped table-bordered">
-                    <thead>
-                        <tr>
-                            <th>Producto</th>
-                            <th>Lote</th>
-                            <th>Fecha Vencimiento</th>
-                            <th>Cantidad</th>
-                            <th>Días Restantes</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($expiringProducts as $batch)
-                        <tr>
-                            <td>{{ $batch->product->name ?? 'N/A' }}</td>
-                            <td>{{ $batch->batch_number ?? 'Sin lote' }}</td>
-                            <td>{{ $batch->expiry_date->format('d/m/Y') }}</td>
-                            <td>{{ $batch->quantity }}</td>
-                            <td>
-                                @php $daysLeft = now()->diffInDays($batch->expiry_date, false); @endphp
-                                @if($daysLeft <= 7)
-                                    <span class="badge badge-danger">{{ $daysLeft }} días</span>
-                                @elseif($daysLeft <= 15)
-                                    <span class="badge badge-warning">{{ $daysLeft }} días</span>
-                                @else
-                                    <span class="badge badge-info">{{ $daysLeft }} días</span>
-                                @endif
-                            </td>
-                        </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
-            </div>
-        </div>
-    </div>
-</div>
-@endif

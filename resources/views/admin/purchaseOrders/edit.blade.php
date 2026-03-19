@@ -139,7 +139,7 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-12 col-md-5">
+                            <div class="col-12 col-md-4">
                                 <div class="form-group mb-2">
                                     <label for="supplier_id" class="mb-1">Proveedor (*)</label>
                                     <select name="supplier_id" id="supplier_id" class="form-control form-control-sm select2" data-placeholder="Buscar proveedor..." required>
@@ -151,6 +151,11 @@
                                         @endforeach
                                     </select>
                                 </div>
+                            </div>
+                            <div class="col-12 col-md-1 d-flex align-items-end pb-2">
+                                <button type="button" id="addSupplierBtn" class="btn btn-warning btn-sm text-dark mb-2" title="Crear Proveedor">
+                                    <i class="fas fa-plus"></i>
+                                </button>
                             </div>
                             <div class="col-12 col-md-4">
                                 <div class="form-group mb-2">
@@ -251,12 +256,17 @@
                             <h3 class="card-title text-white">
                                 <i class="fas fa-boxes"></i> Items de la Orden
                             </h3>
-                            <button type="button" id="addKitItem" class="btn btn-sm btn-warning text-dark mr-2">
-                                <i class="fas fa-plus"></i> Agregar Kit
-                            </button>
-                            <button type="button" id="addItem" class="btn btn-sm btn-light text-danger">
-                                <i class="fas fa-plus"></i> Agregar Item
-                            </button>
+                            <div class="d-flex">
+                                <button type="button" class="btn btn-sm btn-outline-light text-light mr-2 create-product-btn" data-toggle="modal" data-target="#productModal">
+                                    <i class="fas fa-plus"></i> Crear Producto
+                                </button>
+                                <button type="button" id="addKitItem" class="btn btn-sm btn-warning text-dark mr-2">
+                                    <i class="fas fa-plus"></i> Agregar Kit
+                                </button>
+                                <button type="button" id="addItem" class="btn btn-sm btn-light text-danger">
+                                    <i class="fas fa-plus"></i> Agregar Item
+                                </button>
+                            </div>
                         </div>
                     </div>
                     <div class="card-body p-0">
@@ -363,8 +373,8 @@
         <div class="row">
             <div class="col-12">
                 <div class="card">
-                    <div class="card-body d-flex justify-content-between">
-                        <a href="{{ route('admin.purchaseOrders.index') }}" class="btn btn-secondary btn-lg">
+                    <div class="card-body d-flex justify-content-end">
+                        <a href="{{ route('admin.purchaseOrders.index') }}" class="btn btn-secondary btn-lg mr-2">
                             <i class="fas fa-times"></i> Cancelar
                         </a>
                         <button type="button" class="btn btn-primary btn-lg" id="saveOrderBtn">
@@ -375,6 +385,67 @@
             </div>
         </div>
     </form>
+
+    <!-- Modal para crear Proveedor rápido -->
+    <div class="modal fade" id="supplierModal" tabindex="-1" role="dialog" aria-labelledby="supplierModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header" style="background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);">
+                    <h5 class="modal-title text-white" id="supplierModalLabel"><i class="fas fa-building"></i> Crear Nuevo Proveedor</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form id="supplierForm">
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-12 col-md-6">
+                                <div class="form-group">
+                                    <label for="supplier_name">Nombre (*)</label>
+                                    <input type="text" name="name" id="supplier_name" class="form-control" required>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <div class="form-group">
+                                    <label for="supplier_tax_id">RIF / Tax ID (*)</label>
+                                    <input type="text" name="tax_id" id="supplier_tax_id" class="form-control" required>
+                                    <small class="text-danger" id="supplierTaxIdError" style="display:none;">El RIF ya existe</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12 col-md-6">
+                                <div class="form-group">
+                                    <label for="supplier_email">Email</label>
+                                    <input type="email" name="email" id="supplier_email" class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <div class="form-group">
+                                    <label for="supplier_phone">Teléfono</label>
+                                    <input type="text" name="phone" id="supplier_phone" class="form-control">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="form-group">
+                                    <label for="supplier_address">Dirección</label>
+                                    <textarea name="address" id="supplier_address" rows="2" class="form-control"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-warning text-dark" id="saveSupplierBtn">
+                            <i class="fas fa-save"></i> Guardar Proveedor
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
     <!-- Modal para crear producto -->
     <div class="modal fade" id="productModal" tabindex="-1" role="dialog" aria-labelledby="productModalLabel" aria-hidden="true">
@@ -544,6 +615,21 @@
                 });
             });
         }
+        
+        $(document).on('select2:open', function() {
+            setTimeout(function() {
+                var dropdown = document.querySelector('.select2-dropdown');
+                if (dropdown) {
+                    dropdown.style.maxHeight = '350px';
+                    dropdown.style.overflow = 'hidden';
+                    var results = dropdown.querySelector('.select2-results');
+                    if (results) {
+                        results.style.maxHeight = '350px';
+                        results.style.overflowY = 'auto';
+                    }
+                }
+            }, 10);
+        });
 
         function updateRemoveButtons() {
             const rows = $('#itemsBody tr').length;
@@ -680,6 +766,76 @@
         $("#kitModal").on("hidden.bs.modal", function() { $("#kitForm")[0].reset(); $("#kitCodeError").hide(); });
 
         $("#kit_code").on("blur", function() { const c=$(this).val(); if(c){$.get("/admin/products/search",{search:c},function(p){const e=p.some(x=>x.code.toLowerCase()===c.toLowerCase());$("#kitCodeError").toggle(e);}); }});
+
+        // Botón para abrir modal de proveedor
+        $(document).on('click', '#addSupplierBtn', function() {
+            $("#supplierModal").modal("show");
+        });
+
+        // Click en botón guardar proveedor
+        $(document).on('click', '#saveSupplierBtn', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const btn = $(this);
+            btn.prop("disabled", true).html("<i class=\"fas fa-spinner fa-spin\"></i> Guardando...");
+            
+            $.ajax({
+                url: "/admin/suppliers/quick-store",
+                method: "POST",
+                data: $("#supplierForm").serialize(),
+                headers: {"X-CSRF-TOKEN": $("meta[name=\"csrf-token\"]").attr("content")},
+                success: function(response) {
+                    $("#supplierModal").modal("hide");
+                    $("#supplierForm")[0].reset();
+                    
+                    const newOption = new Option(
+                        response.supplier.name + " | " + (response.supplier.email || "Sin email"),
+                        response.supplier.id,
+                        false,
+                        false
+                    );
+                    
+                    const $supplierSelect = $("#supplier_id");
+                    $supplierSelect.append(newOption);
+                    $supplierSelect.val(response.supplier.id).trigger('change');
+                    
+                    Swal.fire({
+                        icon: "success",
+                        title: "¡Éxito!",
+                        text: response.message,
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                },
+                error: function(xhr) {
+                    if(xhr.status === 422) {
+                        const errors = xhr.responseJSON ? xhr.responseJSON.errors : {};
+                        if(errors.tax_id) {
+                            $("#supplierTaxIdError").show();
+                        }
+                        Swal.fire({
+                            icon: "error",
+                            title: "Error de validación",
+                            text: Object.values(errors).flat().join(', ')
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: "error",
+                            title: "Error",
+                            text: "Error " + xhr.status + ": No se pudo guardar el proveedor"
+                        });
+                    }
+                },
+                complete: function() {
+                    btn.prop("disabled", false).html("<i class=\"fas fa-save\"></i> Guardar Proveedor");
+                }
+            });
+        });
+
+        $("#supplierModal").on("hidden.bs.modal", function() {
+            $("#supplierForm")[0].reset();
+            $("#supplierTaxIdError").hide();
+        });
 
 $(document).ready(function() {
             initSelect2();

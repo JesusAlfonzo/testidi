@@ -19,68 +19,6 @@
 
     
 
-    <!-- Modal para crear Proveedor rápido -->
-    <div class="modal fade" id="supplierModal" tabindex="-1" role="dialog" aria-labelledby="supplierModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg" role="document">
-            <div class="modal-content">
-                <div class="modal-header" style="background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);">
-                    <h5 class="modal-title text-white" id="supplierModalLabel"><i class="fas fa-building"></i> Crear Nuevo Proveedor</h5>
-                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <form id="supplierForm">
-                    <div class="modal-body">
-                        <div class="row">
-                            <div class="col-12 col-md-6">
-                                <div class="form-group">
-                                    <label for="supplier_name">Nombre (*)</label>
-                                    <input type="text" name="name" id="supplier_name" class="form-control" required>
-                                </div>
-                            </div>
-                            <div class="col-12 col-md-6">
-                                <div class="form-group">
-                                    <label for="supplier_rif">RIF (*)</label>
-                                    <input type="text" name="rif" id="supplier_rif" class="form-control" required>
-                                    <small class="text-danger" id="supplierRifError" style="display:none;">El RIF ya existe</small>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-12 col-md-6">
-                                <div class="form-group">
-                                    <label for="supplier_email">Email</label>
-                                    <input type="email" name="email" id="supplier_email" class="form-control">
-                                </div>
-                            </div>
-                            <div class="col-12 col-md-6">
-                                <div class="form-group">
-                                    <label for="supplier_phone">Teléfono</label>
-                                    <input type="text" name="phone" id="supplier_phone" class="form-control">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-12">
-                                <div class="form-group">
-                                    <label for="supplier_address">Dirección</label>
-                                    <textarea name="address" id="supplier_address" rows="2" class="form-control"></textarea>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
-                        <button type="submit" class="btn btn-primary" id="saveSupplierBtn">
-                            <i class="fas fa-save"></i> Guardar Proveedor
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-
     <form action="{{ route('admin.quotations.update', $quotation) }}" method="POST" id="quotationForm">
         @csrf
         @method('PUT')
@@ -134,6 +72,33 @@
                         </h3>
                     </div>
                     <div class="card-body">
+                        <div class="row">
+                            <div class="col-12 col-md-10">
+                                <div class="form-group">
+                                    <label for="supplier_id">Seleccionar Proveedor (*)</label>
+                                    <select name="supplier_id" id="supplier_id" class="form-control select2" data-placeholder="Buscar proveedor..." required>
+                                        <option value="">Seleccione...</option>
+                                        @foreach($suppliers as $supplier)
+                                            <option value="{{ $supplier->id }}" {{ $quotation->supplier_id == $supplier->id ? 'selected' : '' }}>
+                                                {{ $supplier->name }} | {{ $supplier->email }} | {{ $supplier->phone ?? 'Sin teléfono' }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-2 d-flex align-items-end">
+                                <div class="form-group w-100">
+                                    <button type="button" id="addSupplierBtn" class="btn btn-warning btn-block text-dark">
+                                        <i class="fas fa-plus"></i> Crear Proveedor
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+                    <div class="card-body">
                         <div class="row mb-3">
                             <div class="col-12">
                                 <div class="btn-group w-100" role="group">
@@ -152,7 +117,7 @@
 
                         <div id="registeredSupplierBlock" class="{{ !$quotation->hasRegisteredSupplier() ? 'd-none' : '' }}">
                             <div class="row">
-                                <div class="col-12">
+                                <div class="col-12 col-md-10">
                                     <div class="form-group">
                                         <label for="supplier_id">Seleccionar Proveedor (*)</label>
                                         <select name="supplier_id" id="supplier_id" class="form-control select2" data-placeholder="Buscar proveedor...">
@@ -163,6 +128,13 @@
                                                 </option>
                                             @endforeach
                                         </select>
+                                    </div>
+                                </div>
+                                <div class="col-12 col-md-2 d-flex align-items-end">
+                                    <div class="form-group w-100">
+                                        <button type="button" id="addSupplierBtn" class="btn btn-warning btn-block text-dark">
+                                            <i class="fas fa-plus"></i> Crear Proveedor
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -306,9 +278,14 @@
                             <h3 class="card-title text-white">
                                 <i class="fas fa-boxes"></i> Items de la Cotización
                             </h3>
-                            <button type="button" id="addItem" class="btn btn-sm btn-light text-danger">
-                                <i class="fas fa-plus"></i> Agregar Item
-                            </button>
+                            <div class="d-flex">
+                                <button type="button" class="btn btn-sm btn-outline-light text-light mr-2 create-product-btn" data-toggle="modal" data-target="#productModal">
+                                    <i class="fas fa-plus"></i> Crear Producto
+                                </button>
+                                <button type="button" id="addItem" class="btn btn-sm btn-light text-danger">
+                                    <i class="fas fa-plus"></i> Agregar Item
+                                </button>
+                            </div>
                         </div>
                     </div>
                     <div class="card-body p-0">
@@ -330,7 +307,7 @@
                                                 <select name="items[{{ $index }}][product_id]" class="form-control select2-product form-control-sm" required>
                                                     <option value="">Seleccione...</option>
                                                     @foreach($products as $product)
-                                                        <option value="{{ $product->id }}" {{ $item->product_id == $product->id ? 'selected' : '' }}>
+                                                        <option value="{{ $product->id }}" data-cost="{{ $product->cost ?? 0 }}" {{ $item->product_id == $product->id ? 'selected' : '' }}>
                                                             {{ $product->name }} ({{ $product->code ?? 'S/C' }})
                                                         </option>
                                                     @endforeach
@@ -404,8 +381,8 @@
         <div class="row">
             <div class="col-12">
                 <div class="card">
-                    <div class="card-body d-flex justify-content-between">
-                        <a href="{{ route('admin.quotations.index') }}" class="btn btn-secondary btn-lg">
+                    <div class="card-body d-flex justify-content-end">
+                        <a href="{{ route('admin.quotations.index') }}" class="btn btn-secondary btn-lg mr-2">
                             <i class="fas fa-times"></i> Cancelar
                         </a>
                         <button type="button" class="btn btn-primary btn-lg" id="saveQuotationBtn">
@@ -416,6 +393,67 @@
             </div>
         </div>
     </form>
+
+    <!-- Modal para crear Proveedor rápido -->
+    <div class="modal fade" id="supplierModal" tabindex="-1" role="dialog" aria-labelledby="supplierModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header" style="background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);">
+                    <h5 class="modal-title text-white" id="supplierModalLabel"><i class="fas fa-building"></i> Crear Nuevo Proveedor</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form id="supplierForm">
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-12 col-md-6">
+                                <div class="form-group">
+                                    <label for="supplier_name">Nombre (*)</label>
+                                    <input type="text" name="name" id="supplier_name" class="form-control" required>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <div class="form-group">
+                                    <label for="supplier_tax_id">RIF / Tax ID (*)</label>
+                                    <input type="text" name="tax_id" id="supplier_tax_id" class="form-control" required>
+                                    <small class="text-danger" id="supplierTaxIdError" style="display:none;">El RIF ya existe</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12 col-md-6">
+                                <div class="form-group">
+                                    <label for="supplier_email">Email</label>
+                                    <input type="email" name="email" id="supplier_email" class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <div class="form-group">
+                                    <label for="supplier_phone">Teléfono</label>
+                                    <input type="text" name="phone" id="supplier_phone" class="form-control">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="form-group">
+                                    <label for="supplier_address">Dirección</label>
+                                    <textarea name="address" id="supplier_address" rows="2" class="form-control"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-warning text-dark" id="saveSupplierBtn">
+                            <i class="fas fa-save"></i> Guardar Proveedor
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
     <!-- Modal para crear producto -->
     <div class="modal fade" id="productModal" tabindex="-1" role="dialog" aria-labelledby="productModalLabel" aria-hidden="true">
@@ -555,17 +593,6 @@
             $('#totalBs').text('Bs ' + totalBs.toFixed(2));
         }
 
-        function toggleSupplierBlocks() {
-            const type = $('input[name="supplier_type"]:checked').val();
-            if (type === 'registered') {
-                $('#registeredSupplierBlock').removeClass('d-none');
-                $('#tempSupplierBlock').addClass('d-none');
-            } else {
-                $('#registeredSupplierBlock').addClass('d-none');
-                $('#tempSupplierBlock').removeClass('d-none');
-            }
-        }
-
         function initSelect2() {
             $('.select2').select2({
                 theme: 'bootstrap4',
@@ -581,6 +608,21 @@
                 });
             });
         }
+        
+        $(document).on('select2:open', function() {
+            setTimeout(function() {
+                var dropdown = document.querySelector('.select2-dropdown');
+                if (dropdown) {
+                    dropdown.style.maxHeight = '350px';
+                    dropdown.style.overflow = 'hidden';
+                    var results = dropdown.querySelector('.select2-results');
+                    if (results) {
+                        results.style.maxHeight = '350px';
+                        results.style.overflowY = 'auto';
+                    }
+                }
+            }, 10);
+        });
 
         function updateRemoveButtons() {
             const rows = $('#itemsBody tr').length;
@@ -595,7 +637,7 @@
             });
         }
 
-        const productOptions = `@foreach($products as $product)<option value="{{ $product->id }}">{{ $product->name }} ({{ $product->code ?? 'S/C' }})</option>@endforeach`;
+        const productOptions = `@foreach($products as $product)<option value="{{ $product->id }}" data-cost="{{ $product->cost ?? 0 }}">{{ $product->name }} ({{ $product->code ?? 'S/C' }})</option>@endforeach`;
 
         $('#addItem').click(function() {
             const row = `
@@ -633,7 +675,11 @@
 
         $(document).on('input', '.item-qty, .item-cost', calculateTotals);
 
-        $('input[name="supplier_type"]').change(toggleSupplierBlocks);
+        $(document).on('select2:select', '.select2-product', function(e) {
+            const cost = $(this).find('option:selected').data('cost') || 0;
+            $(this).closest('tr').find('.item-cost').val(cost);
+            calculateTotals();
+        });
 
         $('select[name="currency"]').change(function() {
             const currency = $(this).val();
@@ -650,7 +696,7 @@
 
         $('input[name="exchange_rate"]').on('input', calculateTotals);
 
-        $('#productForm').on('submit', function(e) {
+        $(document).on('submit', '#productForm', function(e) {
             e.preventDefault();
             
             const btn = $('#saveProductBtn');
@@ -668,15 +714,18 @@
                     $('#productForm')[0].reset();
                     $('#productModal .select2').val('').trigger('change');
                     
-                    if (currentProductSelect) {
-                        const newOption = new Option(
-                            `${response.product.name} (${response.product.code})`, 
-                            response.product.id, 
-                            true, 
-                            true
-                        );
-                        currentProductSelect.append(newOption).trigger('change');
-                    }
+                    const newOption = new Option(
+                        `${response.product.name} (${response.product.code})`, 
+                        response.product.id, 
+                        false, 
+                        false
+                    );
+                    
+                    $('.select2-product').each(function() {
+                        $(this).append(newOption.cloneNode(true));
+                    });
+                    
+                    $('.select2-product').last().val(response.product.id).trigger('change');
                     
                     Swal.fire({
                         icon: 'success',
@@ -686,12 +735,20 @@
                         showConfirmButton: false
                     });
                 },
-                error: function() {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: 'Hubo un error al guardar el producto'
-                    });
+                error: function(xhr) {
+                    if (xhr.status === 422) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error de validación',
+                            text: Object.values(xhr.responseJSON.errors).flat().join(', ')
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Hubo un error al guardar el producto'
+                        });
+                    }
                 },
                 complete: function() {
                     btn.prop('disabled', false).html('<i class="fas fa-save"></i> Guardar Producto');
@@ -699,13 +756,21 @@
             });
         });
 
-        
-        $("#addSupplierBtn").click(function() {
+        // Botón para crear producto rápido
+        $(document).on('click', '.create-product-btn', function(e) {
+            e.preventDefault();
+            currentProductSelect = null;
+            $('#productModal').modal('show');
+        });
+
+        $(document).on('click', '#addSupplierBtn', function() {
+            console.log('addSupplierBtn clicked');
             $("#supplierModal").modal("show");
         });
 
-        $("#supplierForm").on("submit", function(e) {
+        $(document).on("submit", "#supplierForm", function(e) {
             e.preventDefault();
+            console.log('Supplier form submitted');
             const btn = $("#saveSupplierBtn");
             btn.prop("disabled", true).html("<i class=\"fas fa-spinner fa-spin\"></i> Guardando...");
             $.ajax({
@@ -714,16 +779,22 @@
                 data: $(this).serialize(),
                 headers: {"X-CSRF-TOKEN": $("meta[name=\"csrf-token\"]").attr("content")},
                 success: function(response) {
+                    console.log('Supplier created:', response);
                     $("#supplierModal").modal("hide");
                     $("#supplierForm")[0].reset();
+                    
+                    // Create the option and add to select
                     const newOption = new Option(
                         response.supplier.name + " | " + (response.supplier.email || "Sin email") + " | " + (response.supplier.phone || "Sin teléfono"),
                         response.supplier.id,
-                        true,
-                        true
+                        false,
+                        false
                     );
-                    $("#supplier_id").append(newOption).trigger("change");
-                    $("#supplierRegistered").prop("checked", true).trigger("change");
+                    
+                    // Add to select and select it
+                    const $supplierSelect = $("#supplier_id");
+                    $supplierSelect.append(newOption);
+                    $supplierSelect.val(response.supplier.id).trigger('change.select2');
                     
                     Swal.fire({
                         icon: "success",
@@ -734,16 +805,29 @@
                     });
                 },
                 error: function(xhr) {
+                    console.log('Supplier error status:', xhr.status);
+                    console.log('Supplier error response:', xhr.responseText);
                     if(xhr.status === 422) {
-                        const errors = xhr.responseJSON.errors;
-                        if(errors.rif) {
-                            $("#supplierRifError").show();
+                        const errors = xhr.responseJSON ? xhr.responseJSON.errors : {};
+                        if(errors.tax_id) {
+                            $("#supplierTaxIdError").show();
                         }
+                        Swal.fire({
+                            icon: "error",
+                            title: "Error de validación",
+                            text: Object.values(errors).flat().join(', ')
+                        });
+                    } else if(xhr.status === 419) {
+                        Swal.fire({
+                            icon: "error",
+                            title: "Error de seguridad",
+                            text: "La sesión expiró. Por favor recargue la página."
+                        });
                     } else {
                         Swal.fire({
                             icon: "error",
                             title: "Error",
-                            text: "Hubo un error al guardar el proveedor"
+                            text: "Error " + xhr.status + ": No se pudo guardar el proveedor"
                         });
                     }
                 },
@@ -755,12 +839,11 @@
 
         $("#supplierModal").on("hidden.bs.modal", function() {
             $("#supplierForm")[0].reset();
-            $("#supplierRifError").hide();
+            $("#supplierTaxIdError").hide();
         });
 
 $(document).ready(function() {
             initSelect2();
-            toggleSupplierBlocks();
             updateRemoveButtons();
             calculateTotals();
 

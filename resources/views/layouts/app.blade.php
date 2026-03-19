@@ -46,30 +46,30 @@
 
 {{-- Add common Javascript/Jquery code --}}
 
-@push('js')
+@section('plugins.Jquery', true)
+
+@section('js')
 <script>
-
-    $(document).ready(function() {
-        // Add your common script logic here...
-    });
-
+document.addEventListener('DOMContentLoaded', function() {
+    function fixSelect2Scroll() {
+        var dropdowns = document.querySelectorAll('.select2-dropdown');
+        dropdowns.forEach(function(dropdown) {
+            dropdown.style.maxHeight = '350px';
+            dropdown.style.overflow = 'hidden';
+            var results = dropdown.querySelector('.select2-results');
+            if (results) {
+                results.style.maxHeight = '350px';
+                results.style.overflowY = 'auto';
+            }
+        });
+    }
+    
+    setTimeout(function() {
+        $(document).on('select2:open', function() {
+            setTimeout(fixSelect2Scroll, 10);
+        });
+        setInterval(fixSelect2Scroll, 100);
+    }, 1000);
+});
 </script>
-@endpush
-
-{{-- Add common CSS customizations --}}
-
-@push('css')
-<style type="text/css">
-
-    {{-- You can add AdminLTE customizations here --}}
-    /*
-    .card-header {
-        border-bottom: none;
-    }
-    .card-title {
-        font-weight: 600;
-    }
-    */
-
-</style>
-@endpush
+@endsection

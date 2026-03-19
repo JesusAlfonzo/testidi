@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Supplier;
 use App\Http\Requests\StoreUpdateSupplierRequest;
 use App\Services\CacheService;
+use Illuminate\Http\Request;
 
 class SupplierController extends Controller
 {
@@ -73,7 +74,7 @@ class SupplierController extends Controller
     {
         $request->validate([
             "name" => "required|string|max:255",
-            "rif" => "required|string|max:20|unique:suppliers,rif",
+            "tax_id" => "required|string|max:20|unique:suppliers,tax_id",
             "email" => "nullable|email|max:255",
             "phone" => "nullable|string|max:50",
             "address" => "nullable|string|max:500",
@@ -81,12 +82,11 @@ class SupplierController extends Controller
 
         $supplier = Supplier::create([
             "name" => $request->name,
-            "rif" => $request->rif,
+            "tax_id" => $request->tax_id,
             "email" => $request->email,
             "phone" => $request->phone,
             "address" => $request->address,
             "contact_person" => $request->contact_person ?? null,
-            "is_active" => true,
             "user_id" => auth()->id(),
         ]);
 

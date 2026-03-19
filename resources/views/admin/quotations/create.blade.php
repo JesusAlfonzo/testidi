@@ -17,60 +17,6 @@
         $brands = \App\Models\Brand::orderBy('name')->get();
     @endphp
 
-    
-
-
-    <div class="modal fade" id="supplierModal" tabindex="-1" role="dialog" aria-labelledby="supplierModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg" role="document">
-            <div class="modal-content">
-                <div class="modal-header" style="background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);">
-                    <h5 class="modal-title text-white" id="supplierModalLabel"><i class="fas fa-building"></i> Crear Nuevo Proveedor</h5>
-                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <form id="supplierForm">
-                    <div class="modal-body">
-                        <div class="row">
-                            <div class="col-12 col-md-6">
-                                <div class="form-group">
-                                    <label for="supplier_name">Nombre (*)</label>
-                                    <input type="text" name="name" id="supplier_name" class="form-control" required>
-                                </div>
-                            </div>
-                            <div class="col-12 col-md-6">
-                                <div class="form-group">
-                                    <label for="supplier_rif">RIF (*)</label>
-                                    <input type="text" name="rif" id="supplier_rif" class="form-control" required>
-                                    <small class="text-danger" id="supplierRifError" style="display:none;">El RIF ya existe</small>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-12 col-md-6">
-                                <div class="form-group">
-                                    <label for="supplier_email">Email</label>
-                                    <input type="email" name="email" id="supplier_email" class="form-control">
-                                </div>
-                            </div>
-                            <div class="col-12 col-md-6">
-                                <div class="form-group">
-                                    <label for="supplier_phone">Teléfono</label>
-                                    <input type="text" name="phone" id="supplier_phone" class="form-control">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-12">
-                                <div class="form-group">
-                                    <label for="supplier_address">Dirección</label>
-                                    <textarea name="address" id="supplier_address" rows="2" class="form-control"></textarea>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-
     <form action="{{ route('admin.quotations.store') }}" method="POST" id="quotationForm">
         @csrf
         
@@ -136,77 +82,25 @@
                         </h3>
                     </div>
                     <div class="card-body">
-                        <div class="row mb-3">
-                            <div class="col-12">
-                                <div class="btn-group w-100" role="group">
-                                    <input type="radio" class="btn-check" name="supplier_type" id="supplierRegistered" value="registered" {{ old('supplier_type') != 'temp' ? 'checked' : '' }}>
-                                    <label class="btn btn-outline-dark" for="supplierRegistered">
-                                        <i class="fas fa-building"></i> Proveedor Registrado
-                                    </label>
-
-                                    <input type="radio" class="btn-check" name="supplier_type" id="supplierTemp" value="temp" {{ old('supplier_type') == 'temp' ? 'checked' : '' }}>
-                                    <label class="btn btn-outline-warning" for="supplierTemp">
-                                        <i class="fas fa-user-plus"></i> Proveedor Temporal
-                                    </label>
+                        <div class="row">
+                            <div class="col-12 col-md-10">
+                                <div class="form-group">
+                                    <label for="supplier_id">Seleccionar Proveedor (*)</label>
+                                    <select name="supplier_id" id="supplier_id" class="form-control select2" data-placeholder="Buscar proveedor..." required>
+                                        <option value="">Seleccione...</option>
+                                        @foreach($suppliers as $supplier)
+                                            <option value="{{ $supplier->id }}" {{ old('supplier_id') == $supplier->id ? 'selected' : '' }}>
+                                                {{ $supplier->name }} | {{ $supplier->email }} | {{ $supplier->phone ?? 'Sin teléfono' }}
+                                            </option>
+                                        @endforeach
+                                    </select>
                                 </div>
                             </div>
-                        </div>
-
-                        <div id="registeredSupplierBlock" class="{{ old('supplier_type') == 'temp' ? 'd-none' : '' }}">
-                            <div class="row">
-                                <div class="col-12">
-                                    <div class="form-group">
-                                        <label for="supplier_id">Seleccionar Proveedor (*)</label>
-                                        <select name="supplier_id" id="supplier_id" class="form-control select2" data-placeholder="Buscar proveedor...">
-                                            <option value="">Seleccione...</option>
-                                            @foreach($suppliers as $supplier)
-                                                <option value="{{ $supplier->id }}" {{ old('supplier_id') == $supplier->id ? 'selected' : '' }}>
-                                                    {{ $supplier->name }} | {{ $supplier->email }} | {{ $supplier->phone ?? 'Sin teléfono' }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div id="tempSupplierBlock" class="{{ old('supplier_type') != 'temp' ? 'd-none' : '' }}">
-                            <div class="alert alert-warning mb-3">
-                                <i class="fas fa-info-circle"></i> Use esta opción si el proveedor aún no está registrado. Podrá registrarlo después.
-                            </div>
-                            <div class="row">
-                                <div class="col-12 col-md-4">
-                                    <div class="form-group">
-                                        <label for="supplier_name_temp">Nombre (*)</label>
-                                        <div class="input-group">
-                                            <div class="input-group-prepend">
-                                                <span class="input-group-text"><i class="fas fa-user"></i></span>
-                                            </div>
-                                            <input type="text" name="supplier_name_temp" class="form-control" value="{{ old('supplier_name_temp') }}">
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-12 col-md-4">
-                                    <div class="form-group">
-                                        <label for="supplier_email_temp">Email</label>
-                                        <div class="input-group">
-                                            <div class="input-group-prepend">
-                                                <span class="input-group-text"><i class="fas fa-envelope"></i></span>
-                                            </div>
-                                            <input type="email" name="supplier_email_temp" class="form-control" value="{{ old('supplier_email_temp') }}">
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-12 col-md-4">
-                                    <div class="form-group">
-                                        <label for="supplier_phone_temp">Teléfono</label>
-                                        <div class="input-group">
-                                            <div class="input-group-prepend">
-                                                <span class="input-group-text"><i class="fas fa-phone"></i></span>
-                                            </div>
-                                            <input type="text" name="supplier_phone_temp" class="form-control" value="{{ old('supplier_phone_temp') }}">
-                                        </div>
-                                    </div>
+                            <div class="col-12 col-md-2 d-flex align-items-end">
+                                <div class="form-group w-100">
+                                    <button type="button" id="addSupplierBtn" class="btn btn-warning btn-block text-dark">
+                                        <i class="fas fa-plus"></i> Crear Proveedor
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -308,9 +202,14 @@
                             <h3 class="card-title text-white">
                                 <i class="fas fa-boxes"></i> Items de la Cotización
                             </h3>
-                            <button type="button" id="addItem" class="btn btn-sm btn-light text-danger">
-                                <i class="fas fa-plus"></i> Agregar Item
-                            </button>
+                            <div class="d-flex">
+                                <button type="button" class="btn btn-sm btn-outline-light text-light mr-2 create-product-btn" data-toggle="modal" data-target="#productModal">
+                                    <i class="fas fa-plus"></i> Crear Producto
+                                </button>
+                                <button type="button" id="addItem" class="btn btn-sm btn-light text-danger">
+                                    <i class="fas fa-plus"></i> Agregar Item
+                                </button>
+                            </div>
                         </div>
                     </div>
                     <div class="card-body p-0">
@@ -332,7 +231,7 @@
                                                 <td>
                                                     <select name="items[{{ $index }}][product_id]" class="form-control select2-product" required>
                                                         @foreach($products as $product)
-                                                            <option value="{{ $product->id }}" {{ $item->product_id == $product->id ? 'selected' : '' }}>
+                                                            <option value="{{ $product->id }}" data-cost="{{ $product->cost ?? 0 }}" {{ $item->product_id == $product->id ? 'selected' : '' }}>
                                                                 {{ $product->name }} ({{ $product->code ?? 'S/C' }})
                                                             </option>
                                                         @endforeach
@@ -342,10 +241,10 @@
                                                     <input type="number" name="items[{{ $index }}][quantity]" class="form-control item-qty" min="1" value="{{ $item->quantity }}" required>
                                                 </td>
                                                 <td>
-                                                    <input type="number" step="0.01" name="items[{{ $index }}][unit_cost]" class="form-control item-cost" min="0" value="0" required>
+                                                    <input type="number" step="0.01" name="items[{{ $index }}][unit_cost]" class="form-control item-cost" min="0" value="{{ $item->unit_cost ?? 0 }}" required>
                                                 </td>
                                                 <td class="text-right">
-                                                    <span class="item-total font-weight-bold">0.00</span>
+                                                    <span class="item-total font-weight-bold">{{ number_format(($item->quantity * ($item->unit_cost ?? 0)), 2) }}</span>
                                                 </td>
                                                 <td class="text-center">
                                                     <button type="button" class="btn btn-sm btn-danger remove-item" {{ $selectedRfq->items->count() <= 1 ? 'style=display:none' : '' }}>
@@ -360,7 +259,7 @@
                                                 <select name="items[0][product_id]" class="form-control select2-product" required>
                                                     <option value="">Seleccione...</option>
                                                     @foreach($products as $product)
-                                                        <option value="{{ $product->id }}">
+                                                        <option value="{{ $product->id }}" data-cost="{{ $product->cost ?? 0 }}">
                                                             {{ $product->name }} ({{ $product->code ?? 'S/C' }})
                                                         </option>
                                                     @endforeach
@@ -434,8 +333,8 @@
         <div class="row">
             <div class="col-12">
                 <div class="card">
-                    <div class="card-body d-flex justify-content-between">
-                        <a href="{{ route('admin.quotations.index') }}" class="btn btn-secondary btn-lg">
+                    <div class="card-body d-flex justify-content-end">
+                        <a href="{{ route('admin.quotations.index') }}" class="btn btn-secondary btn-lg mr-2">
                             <i class="fas fa-times"></i> Cancelar
                         </a>
                         <button type="button" class="btn btn-primary btn-lg" id="saveQuotationBtn">
@@ -446,6 +345,67 @@
             </div>
         </div>
     </form>
+
+    <!-- Modal para crear Proveedor rápido -->
+    <div class="modal fade" id="supplierModal" tabindex="-1" role="dialog" aria-labelledby="supplierModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header" style="background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);">
+                    <h5 class="modal-title text-white" id="supplierModalLabel"><i class="fas fa-building"></i> Crear Nuevo Proveedor</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form id="supplierForm">
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-12 col-md-6">
+                                <div class="form-group">
+                                    <label for="supplier_name">Nombre (*)</label>
+                                    <input type="text" name="name" id="supplier_name" class="form-control" required>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <div class="form-group">
+                                    <label for="supplier_tax_id">RIF / Tax ID (*)</label>
+                                    <input type="text" name="tax_id" id="supplier_tax_id" class="form-control" required>
+                                    <small class="text-danger" id="supplierTaxIdError" style="display:none;">El RIF ya existe</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12 col-md-6">
+                                <div class="form-group">
+                                    <label for="supplier_email">Email</label>
+                                    <input type="email" name="email" id="supplier_email" class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <div class="form-group">
+                                    <label for="supplier_phone">Teléfono</label>
+                                    <input type="text" name="phone" id="supplier_phone" class="form-control">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="form-group">
+                                    <label for="supplier_address">Dirección</label>
+                                    <textarea name="address" id="supplier_address" rows="2" class="form-control"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-warning text-dark" id="saveSupplierBtn">
+                            <i class="fas fa-save"></i> Guardar Proveedor
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
     <!-- Modal para crear producto -->
     <div class="modal fade" id="productModal" tabindex="-1" role="dialog" aria-labelledby="productModalLabel" aria-hidden="true">
@@ -560,15 +520,6 @@
                 </form>
             </div>
         </div>
-    </div><div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
-                        <button type="submit" class="btn btn-primary" id="saveSupplierBtn">
-                            <i class="fas fa-save"></i> Guardar Proveedor
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
     </div>
 @stop
 
@@ -602,46 +553,38 @@
 
 @section('js')
     <script>
+        console.log('Test at start of script');
+        
         let itemIndex = {{ $selectedRfq ? $selectedRfq->items->count() : 1 }};
         let currentProductSelect = null;
 
-        function toggleSupplierBlocks() {
-            const type = $('input[name="supplier_type"]:checked').val();
-            if (type === 'registered') {
-                $('#registeredSupplierBlock').removeClass('d-none');
-                $('#tempSupplierBlock').addClass('d-none');
-                $('#supplier_id').prop('required', true);
-                $('#supplier_name_temp').prop('required', false);
-            } else {
-                $('#registeredSupplierBlock').addClass('d-none');
-                $('#tempSupplierBlock').removeClass('d-none');
-                $('#supplier_id').prop('required', false);
-                $('#supplier_name_temp').prop('required', true);
-            }
+        function updateRemoveButtons() {
+            const rows = $('#itemsBody tr').length;
+            $('#itemsBody .remove-item').toggle(rows > 1);
         }
 
-        function getCurrencySymbol(currency) {
-            switch(currency) {
-                case 'USD': return '$';
-                case 'EUR': return '€';
-                case 'Bs': return 'Bs ';
-                default: return currency + ' ';
-            }
+        function initSelect2() {
+            $('.select2').select2({
+                theme: 'bootstrap4',
+                width: '100%',
+                allowClear: true
+            });
         }
 
         function calculateTotals() {
             const currency = $('select[name="currency"]').val();
             const exchangeRate = parseFloat($('input[name="exchange_rate"]').val()) || 0;
-            const symbol = getCurrencySymbol(currency);
+            const symbol = currency === 'USD' ? '$' : (currency === 'EUR' ? '€' : 'Bs ');
+            const isBs = currency === 'Bs';
             
             let grandTotal = 0;
             let grandTotalBs = 0;
             
-            $('#itemsBody tr').each(function() {
+            $('#itemsBody > tr').each(function() {
                 const qty = parseFloat($(this).find('.item-qty').val()) || 0;
                 const cost = parseFloat($(this).find('.item-cost').val()) || 0;
                 const total = qty * cost;
-                const totalBs = total * exchangeRate;
+                const totalBs = isBs ? total : (total * exchangeRate);
                 
                 $(this).find('.item-total').text(symbol + total.toFixed(2));
                 grandTotal += total;
@@ -650,44 +593,15 @@
             
             $('#grandTotal').text(symbol + grandTotal.toFixed(2));
             
-            // Calcular IVA y total en Bs
             const ivaBs = grandTotalBs * 0.16;
-            const totalBs = grandTotalBs + ivaBs;
+            const totalBsFinal = grandTotalBs + ivaBs;
             
             $('#grandTotalBs').text('Bs ' + grandTotalBs.toFixed(2));
             $('#ivaBs').text('Bs ' + ivaBs.toFixed(2));
-            $('#totalBs').text('Bs ' + totalBs.toFixed(2));
+            $('#totalBs').text('Bs ' + totalBsFinal.toFixed(2));
         }
 
-        // Cambiar exchange_rate según la moneda seleccionada
-        $('select[name="currency"]').change(function() {
-            const currency = $(this).val();
-            const exchangeInput = $('input[name="exchange_rate"]');
-            if (currency === 'Bs') {
-                exchangeInput.val(1).prop('readonly', true);
-            } else {
-                if (parseFloat(exchangeInput.val()) === 1 || exchangeInput.val() === '') {
-                    exchangeInput.val('').prop('readonly', false);
-                }
-            }
-            calculateTotals();
-        });
-
-        // Recalcular cuando cambia el exchange_rate
-        $('input[name="exchange_rate"]').on('input', calculateTotals);
-
-        function initSelect2() {
-            $('.select2, .select2-product').select2({
-                theme: 'bootstrap4',
-                width: '100%',
-                allowClear: true
-            });
-        }
-
-        function updateRemoveButtons() {
-            const rows = $('#itemsBody tr').length;
-            $('#itemsBody .remove-item').toggle(rows > 1);
-        }
+        const productOptions = `@foreach($products as $product)<option value="{{ $product->id }}" data-cost="{{ $product->cost ?? 0 }}">{{ $product->name }} ({{ $product->code ?? 'S/C' }})</option>@endforeach`;
 
         $('#addItem').click(function() {
             const row = `
@@ -695,9 +609,7 @@
                     <td>
                         <select name="items[${itemIndex}][product_id]" class="form-control select2-product" required>
                             <option value="">Seleccione...</option>
-                            @foreach($products as $product)
-                                <option value="{{ $product->id }}">{{ $product->name }} ({{ $product->code ?? 'S/C' }})</option>
-                            @endforeach
+                            ${productOptions}
                         </select>
                     </td>
                     <td>
@@ -722,6 +634,12 @@
             updateRemoveButtons();
         });
 
+        $(document).on('select2:select', '.select2-product', function(e) {
+            const cost = $(this).find('option:selected').data('cost') || 0;
+            $(this).closest('tr').find('.item-cost').val(cost);
+            calculateTotals();
+        });
+
         $(document).on('click', '.remove-item', function() {
             $(this).closest('tr').remove();
             calculateTotals();
@@ -730,9 +648,22 @@
 
         $(document).on('input', '.item-qty, .item-cost', calculateTotals);
 
-        $('input[name="supplier_type"]').change(toggleSupplierBlocks);
+        $('select[name="currency"]').change(function() {
+            const currency = $(this).val();
+            const exchangeInput = $('input[name="exchange_rate"]');
+            if (currency === 'Bs') {
+                exchangeInput.val(1).prop('readonly', true);
+            } else {
+                if (parseFloat(exchangeInput.val()) === 1 || exchangeInput.val() === '') {
+                    exchangeInput.val('').prop('readonly', false);
+                }
+            }
+            calculateTotals();
+        });
 
-        $('#productForm').on('submit', function(e) {
+        $('input[name="exchange_rate"]').on('input', calculateTotals);
+
+        $(document).on('submit', '#productForm', function(e) {
             e.preventDefault();
             
             const btn = $('#saveProductBtn');
@@ -750,15 +681,18 @@
                     $('#productForm')[0].reset();
                     $('#productModal .select2').val('').trigger('change');
                     
-                    if (currentProductSelect) {
-                        const newOption = new Option(
-                            `${response.product.name} (${response.product.code})`, 
-                            response.product.id, 
-                            true, 
-                            true
-                        );
-                        currentProductSelect.append(newOption).trigger('change');
-                    }
+                    const newOption = new Option(
+                        `${response.product.name} (${response.product.code})`, 
+                        response.product.id, 
+                        false, 
+                        false
+                    );
+                    
+                    $('.select2-product').each(function() {
+                        $(this).append(newOption.cloneNode(true));
+                    });
+                    
+                    $('.select2-product').last().val(response.product.id).trigger('change');
                     
                     Swal.fire({
                         icon: 'success',
@@ -774,6 +708,11 @@
                         if (errors.code) {
                             $('#codeError').show();
                         }
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error de validación',
+                            text: Object.values(xhr.responseJSON.errors).flat().join(', ')
+                        });
                     } else {
                         Swal.fire({
                             icon: 'error',
@@ -786,6 +725,13 @@
                     btn.prop('disabled', false).html('<i class="fas fa-save"></i> Guardar Producto');
                 }
             });
+        });
+
+        // Botón para crear producto rápido
+        $(document).on('click', '.create-product-btn', function(e) {
+            e.preventDefault();
+            currentProductSelect = null;
+            $('#productModal').modal('show');
         });
 
         $('#productModal').on('hidden.bs.modal', function() {
@@ -806,34 +752,42 @@
 
         
         // Botón para abrir modal de proveedor
-        $("#addSupplierBtn").click(function() {
+        $(document).on('click', '#addSupplierBtn', function() {
+            console.log('addSupplierBtn clicked');
             $("#supplierModal").modal("show");
         });
 
-        // Formulario de Proveedor rápido
-        $("#supplierForm").on("submit", function(e) {
+        // Click en botón guardar proveedor (alternativa al submit)
+        $(document).on('click', '#saveSupplierBtn', function(e) {
             e.preventDefault();
-            const btn = $("#saveSupplierBtn");
+            e.stopPropagation();
+            console.log('Save supplier button clicked');
+            const btn = $(this);
             btn.prop("disabled", true).html("<i class=\"fas fa-spinner fa-spin\"></i> Guardando...");
+            
+            const formData = $("#supplierForm").serialize();
+            console.log('Form data:', formData);
+            
             $.ajax({
                 url: "/admin/suppliers/quick-store",
                 method: "POST",
-                data: $(this).serialize(),
+                data: formData,
                 headers: {"X-CSRF-TOKEN": $("meta[name=\"csrf-token\"]").attr("content")},
                 success: function(response) {
+                    console.log('Supplier created:', response);
                     $("#supplierModal").modal("hide");
                     $("#supplierForm")[0].reset();
-                    // Agregar el nuevo proveedor al select
+                    
                     const newOption = new Option(
                         response.supplier.name + " | " + (response.supplier.email || "Sin email") + " | " + (response.supplier.phone || "Sin teléfono"),
                         response.supplier.id,
-                        true,
-                        true
+                        false,
+                        false
                     );
-                    $("#supplier_id").append(newOption).trigger("change");
                     
-                    // Cambiar a proveedor registrado
-                    $("#supplierRegistered").prop("checked", true).trigger("change");
+                    const $supplierSelect = $("#supplier_id");
+                    $supplierSelect.append(newOption);
+                    $supplierSelect.val(response.supplier.id).trigger('change.select2');
                     
                     Swal.fire({
                         icon: "success",
@@ -844,16 +798,29 @@
                     });
                 },
                 error: function(xhr) {
+                    console.log('Supplier error status:', xhr.status);
+                    console.log('Supplier error response:', xhr.responseText);
                     if(xhr.status === 422) {
-                        const errors = xhr.responseJSON.errors;
-                        if(errors.rif) {
-                            $("#supplierRifError").show();
+                        const errors = xhr.responseJSON ? xhr.responseJSON.errors : {};
+                        if(errors.tax_id) {
+                            $("#supplierTaxIdError").show();
                         }
+                        Swal.fire({
+                            icon: "error",
+                            title: "Error de validación",
+                            text: Object.values(errors).flat().join(', ')
+                        });
+                    } else if(xhr.status === 419) {
+                        Swal.fire({
+                            icon: "error",
+                            title: "Error de seguridad",
+                            text: "La sesión expiró. Por favor recargue la página."
+                        });
                     } else {
                         Swal.fire({
                             icon: "error",
                             title: "Error",
-                            text: "Hubo un error al guardar el proveedor"
+                            text: "Error " + xhr.status + ": No se pudo guardar el proveedor"
                         });
                     }
                 },
@@ -863,26 +830,28 @@
             });
         });
 
-        $("#supplierModal").on("hidden.bs.modal", function() {
-            $("#supplierForm")[0].reset();
-            $("#supplierRifError").hide();
+        // Prevenir submit normal del formulario de proveedor
+        $(document).on("submit", "#supplierForm", function(e) {
+            e.preventDefault();
+            $("#saveSupplierBtn").click();
         });
 
-        $("#supplier_rif").on("blur", function() {
-            const rif = $(this).val();
-            if(rif) {
-                $.get("/admin/suppliers", { search: rif }, function(data) {
-                    // Asumiendo que hay un endpoint de búsqueda
-                    // Por simplicidad, verificamos localmente si hay proveedores con ese rif
-                    const exists = false; // Implementar según sea necesario
-                    $("#supplierRifError").hide();
+        $("#supplierModal").on("hidden.bs.modal", function() {
+            $("#supplierForm")[0].reset();
+            $("#supplierTaxIdError").hide();
+        });
+
+        $("#supplier_tax_id").on("blur", function() {
+            const taxId = $(this).val();
+            if(taxId) {
+                $.get("/admin/suppliers", { search: taxId }, function(data) {
+                    $("#supplierTaxIdError").hide();
                 });
             }
         });
 
 $(document).ready(function() {
             initSelect2();
-            toggleSupplierBlocks();
             updateRemoveButtons();
             calculateTotals();
 

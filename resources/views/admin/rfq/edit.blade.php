@@ -196,12 +196,17 @@
                             <h3 class="card-title text-white">
                                 <i class="fas fa-boxes"></i> Productos a Cotizar
                             </h3>
-                            <button type="button" id="addKitItem" class="btn btn-sm btn-warning text-dark mr-2">
-                                <i class="fas fa-plus"></i> Agregar Kit
-                            </button>
-                            <button type="button" id="addItem" class="btn btn-sm btn-light text-danger">
-                                <i class="fas fa-plus"></i> Agregar Producto
-                            </button>
+                            <div class="d-flex">
+                                <button type="button" class="btn btn-sm btn-warning text-dark mr-2 create-product-btn" data-toggle="modal" data-target="#productModal">
+                                    <i class="fas fa-plus"></i> Crear Producto
+                                </button>
+                                <button type="button" id="addKitItem" class="btn btn-sm btn-warning text-dark mr-2">
+                                    <i class="fas fa-plus"></i> Agregar Kit
+                                </button>
+                                <button type="button" id="addItem" class="btn btn-sm btn-light text-danger">
+                                    <i class="fas fa-plus"></i> Agregar Producto
+                                </button>
+                            </div>
                         </div>
                     </div>
                     <div class="card-body p-0">
@@ -272,8 +277,8 @@
         <div class="row">
             <div class="col-12">
                 <div class="card">
-                    <div class="card-body d-flex justify-content-between">
-                        <a href="{{ route('admin.rfq.index') }}" class="btn btn-secondary btn-lg">
+                    <div class="card-body d-flex justify-content-end">
+                        <a href="{{ route('admin.rfq.index') }}" class="btn btn-secondary btn-lg mr-2">
                             <i class="fas fa-times"></i> Cancelar
                         </a>
                         <button type="button" class="btn btn-primary btn-lg" id="saveRfqBtn">
@@ -414,6 +419,21 @@
                 });
             });
         }
+        
+        $(document).on('select2:open', function() {
+            setTimeout(function() {
+                var dropdown = document.querySelector('.select2-dropdown');
+                if (dropdown) {
+                    dropdown.style.maxHeight = '350px';
+                    dropdown.style.overflow = 'hidden';
+                    var results = dropdown.querySelector('.select2-results');
+                    if (results) {
+                        results.style.maxHeight = '350px';
+                        results.style.overflowY = 'auto';
+                    }
+                }
+            }, 10);
+        });
 
         function updateRemoveButtons() {
             const rows = $('#itemsBody tr').length;
@@ -447,7 +467,7 @@
         function attachProductButtonEvents() {
             $('.create-product-btn').off('click').on('click', function(e) {
                 e.preventDefault();
-                currentProductSelect = $(this).closest('.input-group').find('.select2-product');
+                currentProductSelect = null;
                 $('#productModal').modal('show');
             });
         }
@@ -512,17 +532,18 @@
                     $('#productForm')[0].reset();
                     $('#productModal .select2').val('').trigger('change');
                     
-                    if (currentProductSelect) {
-                        const newOption = new Option(
-                            `${response.product.name} (${response.product.code})`, 
-                            response.product.id, 
-                            true, 
-                            true
-                        );
-                        currentProductSelect.append(newOption).trigger('change');
-                    }
+                    const newOption = new Option(
+                        `${response.product.name} (${response.product.code})`, 
+                        response.product.id, 
+                        false, 
+                        false
+                    );
                     
-                    refreshProductSelects();
+                    $('.select2-product').each(function() {
+                        $(this).append(newOption.cloneNode(true));
+                    });
+                    
+                    $('.select2-product').last().val(response.product.id).trigger('change');
                     
                     Swal.fire({
                         icon: 'success',

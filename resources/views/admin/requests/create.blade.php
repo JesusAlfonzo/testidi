@@ -181,8 +181,8 @@
         {{-- Botones de Acción --}}
         <div class="row mt-3">
             <div class="col-md-12">
-                <div class="d-flex justify-content-between">
-                    <a href="{{ route('admin.requests.index') }}" class="btn btn-secondary">
+                <div class="d-flex justify-content-end">
+                    <a href="{{ route('admin.requests.index') }}" class="btn btn-secondary mr-2">
                         <i class="fas fa-times"></i> Cancelar
                     </a>
                     <button type="submit" class="btn btn-success">
@@ -350,6 +350,21 @@
         }
 
         initSelect2();
+        
+        $(document).on('select2:open', function() {
+            setTimeout(function() {
+                var dropdown = document.querySelector('.select2-dropdown');
+                if (dropdown) {
+                    dropdown.style.maxHeight = '350px';
+                    dropdown.style.overflow = 'hidden';
+                    var results = dropdown.querySelector('.select2-results');
+                    if (results) {
+                        results.style.maxHeight = '350px';
+                        results.style.overflowY = 'auto';
+                    }
+                }
+            }, 10);
+        });
 
         // Evento para select2 - usar select2:select que es el evento específico de select2
         $(document).on('select2:select', '.select2-product', function(e) {

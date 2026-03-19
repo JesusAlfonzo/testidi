@@ -166,7 +166,7 @@ class QuotationController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'supplier_type' => 'required|in:registered,temp',
+            'supplier_id' => 'required|exists:suppliers,id',
             'date_issued' => 'required|date',
             'valid_until' => 'nullable|date|after_or_equal:date_issued',
             'delivery_date' => 'nullable|date|after_or_equal:date_issued',
@@ -178,25 +178,8 @@ class QuotationController extends Controller
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.unit_cost' => 'required|numeric|min:0',
         ], [
-            'supplier_type.required' => 'Debe seleccionar el tipo de proveedor.',
-            'supplier_type.in' => 'El tipo de proveedor debe ser registrado o temporal.',
+            'supplier_id.required' => 'Debe seleccionar un proveedor.',
         ]);
-
-        if ($request->supplier_type === 'registered') {
-            $request->validate([
-                'supplier_id' => 'required|exists:suppliers,id',
-            ], [
-                'supplier_id.required' => 'Debe seleccionar un proveedor registrado.',
-            ]);
-        } else {
-            $request->validate([
-                'supplier_name_temp' => 'required|string|max:255',
-                'supplier_email_temp' => 'nullable|email|max:255',
-                'supplier_phone_temp' => 'nullable|string|max:50',
-            ], [
-                'supplier_name_temp.required' => 'Debe ingresar el nombre del proveedor temporal.',
-            ]);
-        }
 
         try {
             DB::beginTransaction();
@@ -210,8 +193,6 @@ class QuotationController extends Controller
                 $itemTotal = $item['quantity'] * $item['unit_cost'];
                 $subtotal += $itemTotal;
                 
-                // Si es Bs, el equivalente es el mismo valor
-                // Si es USD/EUR, calcula el equivalente en Bs
                 if ($isBs) {
                     $equivalentBs = $item['unit_cost'];
                 } else {
@@ -242,15 +223,8 @@ class QuotationController extends Controller
                 'total_bs' => $totalBs,
                 'notes' => $request->notes,
                 'status' => 'pending',
+                'supplier_id' => $request->supplier_id,
             ];
-
-            if ($request->supplier_type === 'registered') {
-                $quoteData['supplier_id'] = $request->supplier_id;
-            } else {
-                $quoteData['supplier_name_temp'] = $request->supplier_name_temp;
-                $quoteData['supplier_email_temp'] = $request->supplier_email_temp;
-                $quoteData['supplier_phone_temp'] = $request->supplier_phone_temp;
-            }
 
             if ($request->filled('rfq_id')) {
                 $quoteData['rfq_id'] = $request->rfq_id;
