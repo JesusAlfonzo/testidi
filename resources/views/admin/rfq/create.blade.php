@@ -503,7 +503,6 @@
                     itemIndex++;
                     initSelect2();
                     updateRemoveButtons();
-                    refreshProductSelects();
                     Swal.fire({icon: "success", title: "¡Éxito!", text: response.message, timer: 2000, showConfirmButton: false});
                 },
                 error: function(xhr) { if(xhr.status===422){if(xhr.responseJSON.errors.code){$("#kitCodeError").show();}} else {Swal.fire({icon:"error",title:"Error",text:"Hubo un error al guardar el kit"});} },
@@ -577,18 +576,11 @@
                     $('#productForm')[0].reset();
                     $('#productModal .select2').val('').trigger('change');
                     
-                    const newOption = new Option(
-                        `${response.product.name} (${response.product.code})`, 
-                        response.product.id, 
-                        false, 
-                        false
-                    );
-                    
-                    $('.select2-product').each(function() {
-                        $(this).append(newOption.cloneNode(true));
-                    });
-                    
-                    $('.select2-product').last().val(response.product.id).trigger('change');
+                    const row = `<tr><td><select name="items[${itemIndex}][product_id]" class="form-control select2-product form-control-sm" required><option value="${response.product.id}" selected>${response.product.name} (${response.product.code})</option></select></td><td><input type="number" name="items[${itemIndex}][quantity]" class="form-control form-control-sm" min="1" value="1" required></td><td><input type="text" name="items[${itemIndex}][notes]" class="form-control form-control-sm" placeholder="Opcional"></td><td class="text-center"><button type="button" class="btn btn-sm btn-danger remove-item"><i class="fas fa-times"></i></button></td></tr>`;
+                    $("#itemsBody").append(row);
+                    itemIndex++;
+                    initSelect2();
+                    updateRemoveButtons();
                     
                     Swal.fire({
                         icon: 'success',

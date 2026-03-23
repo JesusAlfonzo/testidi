@@ -19,18 +19,9 @@ class SupplierController extends Controller
 
     public function index(\Illuminate\Http\Request $request)
     {
-        $perPage = $request->get('per_page', 15);
-        if (!in_array($perPage, [15, 25, 50, 100])) {
-            $perPage = 15;
-        }
-
-        if ($request->get('view_all') === 'true') {
-            $suppliers = Supplier::with('user')->paginate(Supplier::count())->appends($request->except('page'));
-        } else {
-            $suppliers = Supplier::with('user')->paginate($perPage);
-        }
+        $suppliers = Supplier::with('user')->orderBy('name')->get();
         
-        return view('admin.suppliers.index', compact('suppliers', 'perPage'));
+        return view('admin.suppliers.index', compact('suppliers'));
     }
 
     public function create()
@@ -74,10 +65,12 @@ class SupplierController extends Controller
     {
         $request->validate([
             "name" => "required|string|max:255",
-            "tax_id" => "required|string|max:20|unique:suppliers,tax_id",
+            "tax_id" => "required|string|max:50|unique:suppliers,tax_id",
             "email" => "nullable|email|max:255",
             "phone" => "nullable|string|max:50",
             "address" => "nullable|string|max:500",
+            "fiscal_address" => "nullable|string|max:500",
+            "contact_person" => "nullable|string|max:100",
         ]);
 
         $supplier = Supplier::create([
@@ -86,7 +79,9 @@ class SupplierController extends Controller
             "email" => $request->email,
             "phone" => $request->phone,
             "address" => $request->address,
+            "fiscal_address" => $request->fiscal_address,
             "contact_person" => $request->contact_person ?? null,
+            "is_active" => true,
             "user_id" => auth()->id(),
         ]);
 

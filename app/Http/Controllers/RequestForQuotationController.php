@@ -50,25 +50,29 @@ class RequestForQuotationController extends Controller
     {
         $query = RequestForQuotation::with(['creator', 'items']);
 
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-
         $start = $request->input('start', 0);
         $length = $request->input('length', 15);
         $search = $request->input('search.value', '');
+        $statusSearch = $request->input('columns.status.search.value', '');
+
+        if ($statusSearch) {
+            $query->where('status', $statusSearch);
+        }
+
+        $orderColumn = $request->input('order.0.column', 4);
+        $orderDir = $request->input('order.0.dir', 'desc');
+        $columns = ['code', 'title', 'status', 'date_required', 'items_count'];
         
-        $isInitialLoad = !$search && !$request->filled('status');
-        
-        if ($isInitialLoad) {
-            $query->orderBy('created_at', 'desc');
-        } else {
-            $orderColumn = $request->input('order.0.column', 4);
-            $orderDir = $request->input('order.0.dir', 'desc');
-            $columns = ['code', 'title', 'status', 'date_required', 'created_at'];
-            if (isset($columns[$orderColumn])) {
-                $query->orderBy($columns[$orderColumn], $orderDir);
+        if (isset($columns[$orderColumn])) {
+            $orderCol = $columns[$orderColumn];
+            if ($orderCol === 'items_count') {
+                $query->withCount('items');
+                $query->orderBy('items_count', $orderDir);
+            } else {
+                $query->orderBy($orderCol, $orderDir);
             }
+        } else {
+            $query->orderBy('created_at', 'desc');
         }
 
         if ($search) {

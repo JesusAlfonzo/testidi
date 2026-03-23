@@ -114,14 +114,23 @@
                 ]
             });
 
+            function applyFilters() {
+                table.columns().search('');
+                var status = $('select[name="status"]').val();
+                if (status) {
+                    table.column('status:name').search('^' + status + '$', true, false);
+                }
+                table.draw();
+            }
+
             $('#filterForm').on('submit', function(e) {
                 e.preventDefault();
-                table.draw();
+                applyFilters();
             });
 
             $('#clearFilters').on('click', function() {
                 $('#filterForm')[0].reset();
-                table.draw();
+                applyFilters();
             });
         });
     </script>

@@ -53,9 +53,12 @@
                                 <div class="form-group mb-2">
                                     <label for="supplier_id" class="mb-1">Proveedor (*)</label>
                                     <select name="supplier_id" id="supplier_id" class="form-control form-control-sm select2-ajax" data-placeholder="Buscar proveedor..." data-url="{{ route('admin.purchaseOrders.searchSuppliers') }}" required>
-                                        @if($quote && $quote->supplier)
-                                            <option value="{{ $quote->supplier->id }}" selected>{{ $quote->supplier->name }} | {{ $quote->supplier->email ?? 'Sin email' }}</option>
-                                        @endif
+                                        <option value="">Seleccione un proveedor...</option>
+                                        @foreach($suppliers as $supplier)
+                                            <option value="{{ $supplier->id }}" {{ ($quote && $quote->supplier && $quote->supplier->id == $supplier->id) ? 'selected' : '' }}>
+                                                {{ $supplier->name }} | {{ $supplier->email ?? 'Sin email' }}
+                                            </option>
+                                        @endforeach
                                     </select>
                                 </div>
                             </div>
@@ -679,27 +682,24 @@
             });
 
             // Select2 AJAX para proveedores
-            $('.select2-ajax').each(function() {
-                if (!$(this).hasClass('select2initialized')) {
-                if (!$(this).hasClass('select2initialized')) {
-                    $(this).select2({
-                        theme: 'bootstrap4',
-                        width: '100%',
-                        allowClear: true,
-                        minimumInputLength: 0,
-                        ajax: {
-                            url: $(this).data('url'),
-                            dataType: 'json',
-                            delay: 250,
-                            processResults: function(data) {
-                                return {
-                                    results: data.results
-                                };
-                            },
-                            cache: true
-                        }
-                    }).addClass('select2initialized');
-                }
+            $('.select2-ajax').not('.select2initialized').each(function() {
+                $(this).addClass('select2initialized').select2({
+                    theme: 'bootstrap4',
+                    width: '100%',
+                    allowClear: true,
+                    minimumInputLength: 0,
+                    ajax: {
+                        url: $(this).data('url'),
+                        dataType: 'json',
+                        delay: 250,
+                        processResults: function(data) {
+                            return {
+                                results: data.results
+                            };
+                        },
+                        cache: true
+                    }
+                });
             });
             
             // Select2 normal para productos - solo los no inicializados

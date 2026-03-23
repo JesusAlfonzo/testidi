@@ -17,9 +17,18 @@ class Supplier extends Model
         'tax_id',
         'contact_person',
         'phone',
+        'phones',
         'email',
         'address',
+        'fiscal_address',
+        'representative_cedula',
+        'is_active',
         'user_id',
+    ];
+
+    protected $casts = [
+        'phones' => 'array',
+        'is_active' => 'boolean',
     ];
 
     public function user(): BelongsTo

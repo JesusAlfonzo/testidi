@@ -42,7 +42,10 @@
 
             <div class="card card-outline card-info">
                 <div class="card-header">
-                    <h3 class="card-title">Listado de Proveedores</h3>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h3 class="card-title">Listado de Proveedores</h3>
+                        <span class="badge badge-info">{{ $suppliers->count() }} registros</span>
+                    </div>
                 </div>
 
                 <div class="card-body p-4">
@@ -54,19 +57,27 @@
                                     {{-- Prioridad Alta (Visible en Móvil) --}}
                                     <th style="width: 5%">ID</th>
                                     <th style="width: 25%">Nombre</th>
+                                    <th style="width: 10%">Estado</th>
                                     <th style="width: 15%">Acciones</th>
                                     
                                     {{-- Prioridad Baja (Oculto en Móvil) --}}
-                                    <th style="width: 20%">Contacto / Teléfono</th>
+                                    <th style="width: 15%">Contacto / Teléfono</th>
                                     <th style="width: 15%">ID Fiscal</th>
-                                    <th style="width: 20%">Email</th>
+                                    <th style="width: 15%">Email</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @forelse ($suppliers as $supplier)
+                                @forelse($suppliers as $supplier)
                                     <tr>
                                         <td>{{ $supplier->id }}</td>
                                         <td><strong>{{ $supplier->name }}</strong></td>
+                                        <td>
+                                            @if(isset($supplier->is_active) && $supplier->is_active)
+                                                <span class="badge badge-success">Activo</span>
+                                            @else
+                                                <span class="badge badge-secondary">Inactivo</span>
+                                            @endif
+                                        </td>
                                         <td>
                                             <div class="btn-group btn-group-sm" role="group">
                                                 @can('proveedores_editar')

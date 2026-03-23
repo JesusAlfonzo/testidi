@@ -15,8 +15,6 @@ class StoreUpdateSupplierRequest extends FormRequest
             'nullable',
             'string',
             'max:50',
-            // Rule::unique verifica que sea único, excluyendo el ID actual si estamos editando.
-            // La cláusula 'whereNotNull' evita que los nulos causen errores.
             Rule::unique('suppliers')->ignore($supplierId)->where(fn ($query) => $query->whereNotNull('tax_id')),
         ];
 
@@ -25,8 +23,13 @@ class StoreUpdateSupplierRequest extends FormRequest
             'tax_id' => $taxIdRules,
             'contact_person' => ['nullable', 'string', 'max:100'],
             'phone' => ['nullable', 'string', 'max:20'],
+            'phones' => ['nullable', 'array'],
+            'phones.*' => ['nullable', 'string', 'max:20'],
             'email' => ['nullable', 'email', 'max:100'],
             'address' => ['nullable', 'string', 'max:255'],
+            'fiscal_address' => ['nullable', 'string', 'max:500'],
+            'representative_cedula' => ['nullable', 'string', 'max:20'],
+            'is_active' => ['nullable', 'boolean'],
         ];
     }
 }

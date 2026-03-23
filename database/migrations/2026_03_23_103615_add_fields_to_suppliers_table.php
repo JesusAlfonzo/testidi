@@ -1,0 +1,31 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::table('suppliers', function (Blueprint $table) {
+            $table->boolean('is_active')->default(true)->after('address');
+            $table->text('fiscal_address')->nullable()->after('is_active');
+            $table->string('representative_cedula', 20)->nullable()->after('fiscal_address');
+            $table->json('phones')->nullable()->after('phone');
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::table('suppliers', function (Blueprint $table) {
+            $table->dropColumn(['is_active', 'fiscal_address', 'representative_cedula', 'phones']);
+        });
+    }
+};
