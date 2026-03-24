@@ -104,6 +104,20 @@
 
 @section('js')
     <script>
+        function removeAccents(str) {
+            if (!str) return '';
+            return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+        }
+
+        // Sobrescribir función de búsqueda de DataTables
+        var originalSearch = $.fn.dataTable.ext.type.search.string;
+        $.fn.dataTable.ext.type.search.string = function(data) {
+            if (typeof data === 'string') {
+                return removeAccents(data);
+            }
+            return data;
+        };
+
         $(document).ready(function() {
             const locationsTable = $('#locationsTable').DataTable({
                 "responsive": true, 
@@ -113,7 +127,7 @@
                 "ordering": true, 
                 "info": true, 
                 "autoWidth": false, 
-                "order": [[ 1, "asc" ]], // Ordenar por Nombre
+                "order": [[ 1, "asc" ]],
                 
                 // 🔑 Traducción Nativa
                 "language": {
@@ -152,7 +166,9 @@
             });
             
             // Ajuste de renderizado
-            setTimeout(function() { locationsTable.columns.adjust().responsive.recalc(); }, 500);
+            if (locationsTable.responsive) {
+                setTimeout(function() { locationsTable.columns.adjust().responsive.recalc(); }, 500);
+            }
         });
     </script>
     @include('admin.partials.delete-confirm')

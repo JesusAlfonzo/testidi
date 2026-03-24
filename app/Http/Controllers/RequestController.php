@@ -10,6 +10,7 @@ use App\Models\RequestItem;
 use App\Models\User;
 use App\Http\Requests\StoreRequestRequest;
 use App\Services\CacheService;
+use App\Services\InventoryRequestService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request as HttpRequest;
 use Illuminate\Support\Str;
@@ -157,7 +158,7 @@ class RequestController extends Controller
                 'status' => '<span class="badge badge-' . $statusClass . '">' . $statusLabel . '</span>',
                 'approver' => $item->approver->name ?? '-',
                 'processed' => $item->processed_at ? $item->processed_at->format('d/m/Y') : '-',
-                'actions' => $this->getActionsColumn($item),
+                'actions' => view('admin.requests.partials.actions', ['item' => $item])->render(),
             ];
         });
 
@@ -246,7 +247,8 @@ class RequestController extends Controller
 
         } catch (\Exception $e) {
             DB::rollback();
-            return redirect()->back()->withInput()->with('error', '❌ Error al guardar la solicitud: ' . $e->getMessage());
+            \Log::error('Error al guardar solicitud: ' . $e->getMessage());
+            return redirect()->back()->withInput()->with('error', 'Error al guardar la solicitud. Por favor, intente de nuevo.');
         }
     }
 
@@ -269,128 +271,33 @@ class RequestController extends Controller
     public function process(HttpRequest $httpRequest, RequestModel $request)
     {
         if (!$request || $request->status !== 'Pending') {
-            return redirect()->back()->with('error', '❌ Esta solicitud ya fue procesada o no existe.');
+            return redirect()->back()->with('error', 'Esta solicitud ya fue procesada o no existe.');
         }
 
         $action = $httpRequest->input('action');
         $reason = $httpRequest->input('rejection_reason');
 
+        $service = new InventoryRequestService();
+
         DB::beginTransaction();
         try {
             if ($action === 'approve') {
-                $request->status = 'Approved';
-                $request->approver_id = auth()->id();
-                $request->processed_at = Carbon::now();
-
-                // Cargar relaciones necesarias para descontar stock
-                $request->load('items.product', 'items.kit.components');
-
-                foreach ($request->items as $item) {
-                    if ($item->item_type === 'product') {
-                        // --- Lógica para PRODUCTO SIMPLE ---
-                        $product = Product::lockForUpdate()->find($item->product_id);
-
-                        if (!$product || $product->stock < $item->quantity_requested) {
-                             throw new \Exception('Stock insuficiente para el producto: ' . ($product->name ?? 'Desconocido'));
-                        }
-
-                        $product->stock -= $item->quantity_requested;
-                        $product->save();
-
-                        event(new StockUpdated(
-                            product: $product,
-                            quantity: $item->quantity_requested,
-                            type: 'out',
-                            referenceId: $request->id,
-                            referenceType: RequestModel::class,
-                            notes: 'Solicitud de salida approved'
-                        ));
-
-                    } elseif ($item->item_type === 'kit') {
-                        // --- Lógica para KIT (Descontar componentes) ---
-                        $kit = $item->kit;
-                        $qtyKit = $item->quantity_requested;
-                        
-                        if (!$kit) throw new \Exception("Kit ID {$item->kit_id} no encontrado.");
-
-                        foreach ($kit->components as $component) {
-                            // Cantidad total = Cantidad Kits * Cantidad componente por kit
-                            $totalConsumption = $qtyKit * $component->pivot->quantity_required;
-
-                            $prodComponent = Product::lockForUpdate()->find($component->id);
-                            
-                            if (!$prodComponent || $prodComponent->stock < $totalConsumption) {
-                                throw new \Exception("Stock insuficiente para componente '{$component->name}' del Kit '{$kit->name}'.");
-                            }
-                            
-                            $prodComponent->stock -= $totalConsumption;
-                            $prodComponent->save();
-
-                            event(new StockUpdated(
-                                product: $prodComponent,
-                                quantity: $totalConsumption,
-                                type: 'out',
-                                referenceId: $request->id,
-                                referenceType: RequestModel::class,
-                                notes: "Salida por Kit: {$kit->name}"
-                            ));
-                        }
-                    }
-                }
-
-                $request->save();
+                $service->approve($request);
                 DB::commit();
-                return redirect()->route('admin.requests.index')->with('success', '✅ Solicitud APROBADA y stock actualizado correctamente.');
+                return redirect()->route('admin.requests.index')->with('success', 'Solicitud APROBADA y stock actualizado correctamente.');
 
             } elseif ($action === 'reject') {
-                $request->status = 'Rejected';
-                $request->approver_id = auth()->id();
-                $request->processed_at = Carbon::now();
-                $request->rejection_reason = $reason;
-                $request->save();
-
+                $service->reject($request, $reason);
                 DB::commit();
-                return redirect()->route('admin.requests.index')->with('warning', '🛑 Solicitud RECHAZADA.');
+                return redirect()->route('admin.requests.index')->with('warning', 'Solicitud RECHAZADA.');
             } 
             
-            return redirect()->back()->with('error', 'Acción no válida.');
+            return redirect()->back()->with('error', 'Accion no valida.');
             
         } catch (\Exception $e) {
             DB::rollback();
-            return redirect()->back()->with('error', '❌ Error al procesar: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error al procesar la solicitud.');
         }
-    }
-
-    protected function getActionsColumn($item)
-    {
-        $user = auth()->user();
-        $actions = '';
-
-        // Botón Ver
-        $actions .= '<a href="' . route('admin.requests.show', $item->id) . '" class="btn btn-sm btn-info" title="Ver detalles"><i class="fas fa-eye"></i></a> ';
-
-        // Botón PDF
-        $actions .= '<a href="' . route('admin.requests.pdf', $item->id) . '" class="btn btn-sm btn-secondary" title="Ver PDF" target="_blank"><i class="fas fa-file-pdf"></i></a> ';
-
-        // Botones Aprobar/Rechazar (solo si está pendiente y tiene permiso)
-        if ($item->status === 'Pending' && ($user->can('solicitudes_aprobar') || $user->isSuperAdmin())) {
-            $processUrl = route('admin.requests.process', $item->id);
-            $csrf = csrf_token();
-            
-            $actions .= '<form method="POST" action="' . $processUrl . '" style="display:inline;">';
-            $actions .= '<input type="hidden" name="_token" value="' . $csrf . '">';
-            $actions .= '<input type="hidden" name="action" value="approve">';
-            $actions .= '<button type="submit" class="btn btn-sm btn-success" title="Aprobar" onclick="return confirm(\'¿Está seguro de APROBAR esta solicitud?\');">';
-            $actions .= '<i class="fas fa-check"></i></button></form> ';
-
-            $actions .= '<form method="POST" action="' . $processUrl . '" style="display:inline;">';
-            $actions .= '<input type="hidden" name="_token" value="' . $csrf . '">';
-            $actions .= '<input type="hidden" name="action" value="reject">';
-            $actions .= '<button type="submit" class="btn btn-sm btn-danger" title="Rechazar" onclick="return confirm(\'¿Está seguro de RECHAZAR esta solicitud?\');">';
-            $actions .= '<i class="fas fa-times"></i></button></form>';
-        }
-
-        return $actions;
     }
 
     public function pdf(RequestModel $request)

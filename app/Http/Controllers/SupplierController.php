@@ -19,9 +19,19 @@ class SupplierController extends Controller
 
     public function index(\Illuminate\Http\Request $request)
     {
-        $suppliers = Supplier::with('user')->orderBy('name')->get();
+        $status = $request->get('status', 'all');
         
-        return view('admin.suppliers.index', compact('suppliers'));
+        $query = Supplier::with('user');
+        
+        if ($status === 'active') {
+            $query->where('is_active', true);
+        } elseif ($status === 'inactive') {
+            $query->where('is_active', false);
+        }
+        
+        $suppliers = $query->orderBy('name')->get();
+        
+        return view('admin.suppliers.index', compact('suppliers', 'status'));
     }
 
     public function create()

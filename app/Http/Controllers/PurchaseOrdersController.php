@@ -7,6 +7,7 @@ use App\Models\PurchaseOrderItem;
 use App\Models\PurchaseQuote;
 use App\Models\Supplier;
 use App\Models\Product;
+use App\Services\OrderCalculationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -205,26 +206,8 @@ class PurchaseOrdersController extends Controller
         try {
             DB::beginTransaction();
 
-            $subtotal = 0;
-            $subtotalBs = 0;
-            $ivaRate = 0.16;
-            $isBs = $request->currency === 'Bs';
-
-            foreach ($request->items as $item) {
-                $itemTotal = $item['quantity'] * $item['unit_cost'];
-                $subtotal += $itemTotal;
-                
-                if ($isBs) {
-                    $equivalentBs = $item['unit_cost'];
-                } else {
-                    $equivalentBs = $item['unit_cost'] * $request->exchange_rate;
-                }
-                $subtotalBs += $equivalentBs * $item['quantity'];
-            }
-
-            $taxAmountBs = $subtotalBs * $ivaRate;
-            $totalBs = $subtotalBs + $taxAmountBs;
-            $total = $subtotal;
+            $calc = new OrderCalculationService();
+            $totals = $calc->calculate($request->items, $request->currency, $request->exchange_rate);
 
             $order = PurchaseOrder::create([
                 'code' => $request->code ?? PurchaseOrder::generateCode(),
@@ -234,27 +217,25 @@ class PurchaseOrdersController extends Controller
                 'delivery_date' => $request->delivery_date,
                 'delivery_address' => $request->delivery_address,
                 'currency' => $request->currency,
-                'exchange_rate' => $isBs ? 1 : $request->exchange_rate,
-                'subtotal' => $subtotal,
-                'tax_amount' => 0,
-                'total' => $total,
-                'subtotal_bs' => $subtotalBs,
-                'tax_amount_bs' => $taxAmountBs,
-                'total_bs' => $totalBs,
+                'exchange_rate' => $totals['exchange_rate'],
+                'subtotal' => $totals['subtotal'],
+                'tax_amount' => $totals['tax_amount'],
+                'total' => $totals['total'],
+                'subtotal_bs' => $totals['subtotal_bs'],
+                'tax_amount_bs' => $totals['tax_amount_bs'],
+                'total_bs' => $totals['total_bs'],
                 'terms' => $request->terms,
                 'notes' => $request->notes,
                 'status' => 'draft',
                 'created_by' => auth()->id(),
             ]);
 
+            $productIds = array_column($request->items, 'product_id');
+            $products = Product::whereIn('id', $productIds)->get()->keyBy('id');
+
             foreach ($request->items as $item) {
-                $product = Product::find($item['product_id']);
-                
-                if ($isBs) {
-                    $equivalentBs = $item['unit_cost'];
-                } else {
-                    $equivalentBs = $item['unit_cost'] * $request->exchange_rate;
-                }
+                $product = $products->get($item['product_id']);
+                $equivalentBs = $calc->calculateItemEquivalentBs($item['unit_cost'], $request->currency, $request->exchange_rate);
 
                 PurchaseOrderItem::create([
                     'purchase_order_id' => $order->id,
@@ -277,12 +258,12 @@ class PurchaseOrdersController extends Controller
             DB::commit();
 
             return redirect()->route('admin.purchaseOrders.show', $order)
-                ->with('success', 'Orden de compra creada exitosamente.');
-
+                ->with('success', 'Orden de compra creada correctamente.');
         } catch (\Exception $e) {
-            DB::rollback();
-            return back()->withInput()
-                ->with('error', 'Error al crear la orden: ' . $e->getMessage());
+            DB::rollBack();
+            \Log::error('Error al crear orden de compra: ' . $e->getMessage());
+            return redirect()->route('admin.purchaseOrders.create')
+                ->with('error', 'Error al crear la orden. Por favor, intente de nuevo.');
         }
     }
 
@@ -329,26 +310,8 @@ class PurchaseOrdersController extends Controller
 
             $purchaseOrder->items()->delete();
 
-            $subtotal = 0;
-            $subtotalBs = 0;
-            $ivaRate = 0.16;
-            $isBs = $request->currency === 'Bs';
-
-            foreach ($request->items as $item) {
-                $itemTotal = $item['quantity'] * $item['unit_cost'];
-                $subtotal += $itemTotal;
-                
-                if ($isBs) {
-                    $equivalentBs = $item['unit_cost'];
-                } else {
-                    $equivalentBs = $item['unit_cost'] * $request->exchange_rate;
-                }
-                $subtotalBs += $equivalentBs * $item['quantity'];
-            }
-
-            $taxAmountBs = $subtotalBs * $ivaRate;
-            $totalBs = $subtotalBs + $taxAmountBs;
-            $total = $subtotal;
+            $calc = new OrderCalculationService();
+            $totals = $calc->calculate($request->items, $request->currency, $request->exchange_rate);
 
             $purchaseOrder->update([
                 'supplier_id' => $request->supplier_id,
@@ -356,25 +319,23 @@ class PurchaseOrdersController extends Controller
                 'delivery_date' => $request->delivery_date,
                 'delivery_address' => $request->delivery_address,
                 'currency' => $request->currency,
-                'exchange_rate' => $isBs ? 1 : $request->exchange_rate,
-                'subtotal' => $subtotal,
-                'tax_amount' => 0,
-                'total' => $total,
-                'subtotal_bs' => $subtotalBs,
-                'tax_amount_bs' => $taxAmountBs,
-                'total_bs' => $totalBs,
+                'exchange_rate' => $totals['exchange_rate'],
+                'subtotal' => $totals['subtotal'],
+                'tax_amount' => $totals['tax_amount'],
+                'total' => $totals['total'],
+                'subtotal_bs' => $totals['subtotal_bs'],
+                'tax_amount_bs' => $totals['tax_amount_bs'],
+                'total_bs' => $totals['total_bs'],
                 'terms' => $request->terms,
                 'notes' => $request->notes,
             ]);
 
+            $productIds = array_column($request->items, 'product_id');
+            $products = Product::whereIn('id', $productIds)->get()->keyBy('id');
+
             foreach ($request->items as $item) {
-                $product = Product::find($item['product_id']);
-                
-                if ($isBs) {
-                    $equivalentBs = $item['unit_cost'];
-                } else {
-                    $equivalentBs = $item['unit_cost'] * $request->exchange_rate;
-                }
+                $product = $products->get($item['product_id']);
+                $equivalentBs = $calc->calculateItemEquivalentBs($item['unit_cost'], $request->currency, $request->exchange_rate);
 
                 PurchaseOrderItem::create([
                     'purchase_order_id' => $purchaseOrder->id,
@@ -392,12 +353,11 @@ class PurchaseOrdersController extends Controller
             DB::commit();
 
             return redirect()->route('admin.purchaseOrders.show', $purchaseOrder)
-                ->with('success', 'Orden de compra actualizada exitosamente.');
-
+                ->with('success', 'Orden de compra actualizada correctamente.');
         } catch (\Exception $e) {
-            DB::rollback();
-            return back()->withInput()
-                ->with('error', 'Error al actualizar la orden: ' . $e->getMessage());
+            DB::rollBack();
+            \Log::error('Error al actualizar orden de compra: ' . $e->getMessage());
+            return back()->with('error', 'Error al actualizar la orden. Por favor, intente de nuevo.');
         }
     }
 
@@ -419,7 +379,8 @@ class PurchaseOrdersController extends Controller
                 ->with('success', 'Orden de compra eliminada exitosamente.');
 
         } catch (\Exception $e) {
-            return back()->with('error', 'Error al eliminar la orden: ' . $e->getMessage());
+            \Log::error('Error al eliminar orden de compra: ' . $e->getMessage());
+            return back()->with('error', 'Error al eliminar la orden. Por favor, intente de nuevo.');
         }
     }
 

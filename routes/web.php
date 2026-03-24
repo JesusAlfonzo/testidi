@@ -146,22 +146,4 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     });
 });
 
-// Ruta de prueba directa para cotizaciones (sin authorizeResource)
-Route::prefix('admin')->middleware(['auth'])->group(function () {
-    Route::get('/test-cotizacion-create', function () {
-        $user = auth()->user();
-        
-        // Verificar directamente con can()
-        $puede = $user->can('cotizaciones_crear');
-        
-        // Verificar con el Policy directamente
-        $policy = new \App\Policies\PurchaseQuotePolicy();
-        $desdePolicy = $policy->create($user);
-        
-        return response()->json([
-            'user' => $user->name,
-            'can_cotizaciones_crear' => $puede,
-            'policy_create' => $desdePolicy,
-        ]);
-    });
-});
+

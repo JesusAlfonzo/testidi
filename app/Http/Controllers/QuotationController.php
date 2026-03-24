@@ -4,11 +4,13 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use App\Models\PurchaseQuote;
 use App\Models\PurchaseQuoteItem;
 use App\Models\RequestForQuotation;
 use App\Models\Supplier;
 use App\Models\Product;
+use App\Services\OrderCalculationService;
 
 class QuotationController extends Controller
 {
@@ -165,8 +167,23 @@ class QuotationController extends Controller
 
     public function store(Request $request)
     {
+        $isTempSupplier = $request->filled('supplier_type') && $request->supplier_type === 'temp';
+
+        if ($isTempSupplier) {
+            $request->validate([
+                'temp_supplier_name' => 'required|string|max:255',
+            ], [
+                'temp_supplier_name.required' => 'Debe ingresar el nombre del proveedor temporal.',
+            ]);
+        } else {
+            $request->validate([
+                'supplier_id' => 'required|exists:suppliers,id',
+            ], [
+                'supplier_id.required' => 'Debe seleccionar un proveedor registrado.',
+            ]);
+        }
+
         $request->validate([
-            'supplier_id' => 'required|exists:suppliers,id',
             'date_issued' => 'required|date',
             'valid_until' => 'nullable|date|after_or_equal:date_issued',
             'delivery_date' => 'nullable|date|after_or_equal:date_issued',
@@ -177,33 +194,16 @@ class QuotationController extends Controller
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.unit_cost' => 'required|numeric|min:0',
-        ], [
-            'supplier_id.required' => 'Debe seleccionar un proveedor.',
         ]);
 
         try {
             DB::beginTransaction();
 
-            $subtotal = 0;
-            $subtotalBs = 0;
-            $ivaRate = 0.16;
-            $isBs = $request->currency === 'Bs';
+            $calc = new OrderCalculationService();
+            $totals = $calc->calculate($request->items, $request->currency, $request->exchange_rate);
 
-            foreach ($request->items as $item) {
-                $itemTotal = $item['quantity'] * $item['unit_cost'];
-                $subtotal += $itemTotal;
-                
-                if ($isBs) {
-                    $equivalentBs = $item['unit_cost'];
-                } else {
-                    $equivalentBs = $item['unit_cost'] * $request->exchange_rate;
-                }
-                $subtotalBs += $equivalentBs * $item['quantity'];
-            }
-
-            $taxAmountBs = $subtotalBs * $ivaRate;
-            $totalBs = $subtotalBs + $taxAmountBs;
-            $total = $subtotal;
+            \Log::info('Creating quotation with isTempSupplier: ' . ($isTempSupplier ? 'true' : 'false'));
+            \Log::info('Request data: ', $request->all());
 
             $quoteData = [
                 'rfq_id' => $request->rfq_id ?: null,
@@ -214,32 +214,42 @@ class QuotationController extends Controller
                 'valid_until' => $request->valid_until,
                 'delivery_date' => $request->delivery_date,
                 'currency' => $request->currency,
-                'exchange_rate' => $isBs ? 1 : $request->exchange_rate,
-                'subtotal' => $subtotal,
-                'tax_amount' => 0,
-                'total' => $total,
-                'subtotal_bs' => $subtotalBs,
-                'tax_amount_bs' => $taxAmountBs,
-                'total_bs' => $totalBs,
+                'exchange_rate' => $totals['exchange_rate'],
+                'subtotal' => $totals['subtotal'],
+                'tax_amount' => $totals['tax_amount'],
+                'total' => $totals['total'],
+                'subtotal_bs' => $totals['subtotal_bs'],
+                'tax_amount_bs' => $totals['tax_amount_bs'],
+                'total_bs' => $totals['total_bs'],
                 'notes' => $request->notes,
                 'status' => 'pending',
-                'supplier_id' => $request->supplier_id,
             ];
+
+            if ($isTempSupplier) {
+                $quoteData['supplier_id'] = null;
+                $quoteData['supplier_name_temp'] = $request->temp_supplier_name;
+                $quoteData['supplier_email_temp'] = $request->temp_supplier_email;
+                $quoteData['supplier_phone_temp'] = $request->temp_supplier_phone;
+            } else {
+                $quoteData['supplier_id'] = $request->supplier_id;
+            }
 
             if ($request->filled('rfq_id')) {
                 $quoteData['rfq_id'] = $request->rfq_id;
             }
 
+            \Log::info('Quote data to create: ', $quoteData);
+
             $quote = PurchaseQuote::create($quoteData);
 
+            \Log::info('Quote created successfully with ID: ' . $quote->id);
+
+            $productIds = array_column($request->items, 'product_id');
+            $products = Product::whereIn('id', $productIds)->get()->keyBy('id');
+
             foreach ($request->items as $item) {
-                $product = Product::find($item['product_id']);
-                
-                if ($isBs) {
-                    $equivalentBs = $item['unit_cost'];
-                } else {
-                    $equivalentBs = $item['unit_cost'] * $request->exchange_rate;
-                }
+                $product = $products->get($item['product_id']);
+                $equivalentBs = $calc->calculateItemEquivalentBs($item['unit_cost'], $request->currency, $request->exchange_rate);
 
                 PurchaseQuoteItem::create([
                     'purchase_quote_id' => $quote->id,
@@ -259,6 +269,9 @@ class QuotationController extends Controller
 
         } catch (\Exception $e) {
             DB::rollback();
+            \Log::error('Error creating quote: ' . $e->getMessage());
+            \Log::error('Stack trace: ' . $e->getTraceAsString());
+            \Log::error('Quote data that failed: ', $quoteData ?? []);
             return back()->withInput()
                 ->with('error', 'Error al crear la cotización: ' . $e->getMessage());
         }
@@ -377,8 +390,11 @@ class QuotationController extends Controller
 
             $quotation->update($updateData);
 
+            $productIds = array_column($request->items, 'product_id');
+            $products = Product::whereIn('id', $productIds)->get()->keyBy('id');
+
             foreach ($request->items as $item) {
-                $product = Product::find($item['product_id']);
+                $product = $products->get($item['product_id']);
                 
                 if ($isBs) {
                     $equivalentBs = $item['unit_cost'];

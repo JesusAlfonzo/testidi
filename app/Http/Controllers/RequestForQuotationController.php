@@ -175,8 +175,9 @@ class RequestForQuotationController extends Controller
 
         } catch (\Exception $e) {
             DB::rollback();
+            \Log::error('Error al crear RFQ: ' . $e->getMessage());
             return back()->withInput()
-                ->with('error', 'Error al crear la solicitud: ' . $e->getMessage());
+                ->with('error', 'Error al crear la solicitud. Por favor, intente de nuevo.');
         }
     }
 
@@ -248,8 +249,9 @@ class RequestForQuotationController extends Controller
 
         } catch (\Exception $e) {
             DB::rollback();
+            \Log::error('Error al actualizar RFQ: ' . $e->getMessage());
             return back()->withInput()
-                ->with('error', 'Error al actualizar la solicitud: ' . $e->getMessage());
+                ->with('error', 'Error al actualizar la solicitud. Por favor, intente de nuevo.');
         }
     }
 
@@ -264,7 +266,8 @@ class RequestForQuotationController extends Controller
             return redirect()->route('admin.rfq.index')
                 ->with('success', 'Solicitud de cotización eliminada exitosamente.');
         } catch (\Exception $e) {
-            return back()->with('error', 'Error al eliminar la solicitud: ' . $e->getMessage());
+            \Log::error('Error al eliminar RFQ: ' . $e->getMessage());
+            return back()->with('error', 'Error al eliminar la solicitud. Por favor, intente de nuevo.');
         }
     }
 
@@ -274,8 +277,15 @@ class RequestForQuotationController extends Controller
             return back()->with('error', 'Solo se pueden enviar solicitudes en estado borrador.');
         }
 
-        $rfq->update(['status' => 'sent']);
-        return back()->with('success', 'Solicitud marcada como enviada.');
+        try {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($rfq) {
+                $rfq->update(['status' => 'sent']);
+            });
+            return back()->with('success', 'Solicitud marcada como enviada.');
+        } catch (\Exception $e) {
+            \Log::error('Error al enviar RFQ: ' . $e->getMessage());
+            return back()->with('error', 'Error al enviar la solicitud. Por favor, intente de nuevo.');
+        }
     }
 
     public function markAsClosed(RequestForQuotation $rfq)
@@ -284,8 +294,15 @@ class RequestForQuotationController extends Controller
             return back()->with('error', 'Solo se pueden cerrar solicitudes enviadas.');
         }
 
-        $rfq->update(['status' => 'closed']);
-        return back()->with('success', 'Solicitud cerrada exitosamente.');
+        try {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($rfq) {
+                $rfq->update(['status' => 'closed']);
+            });
+            return back()->with('success', 'Solicitud cerrada exitosamente.');
+        } catch (\Exception $e) {
+            \Log::error('Error al cerrar RFQ: ' . $e->getMessage());
+            return back()->with('error', 'Error al cerrar la solicitud. Por favor, intente de nuevo.');
+        }
     }
 
     public function cancel(RequestForQuotation $rfq)
@@ -294,8 +311,15 @@ class RequestForQuotationController extends Controller
             return back()->with('error', 'Solo se pueden cancelar solicitudes en borrador o enviadas.');
         }
 
-        $rfq->update(['status' => 'cancelled']);
-        return back()->with('success', 'Solicitud cancelada.');
+        try {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($rfq) {
+                $rfq->update(['status' => 'cancelled']);
+            });
+            return back()->with('success', 'Solicitud cancelada.');
+        } catch (\Exception $e) {
+            \Log::error('Error al cancelar RFQ: ' . $e->getMessage());
+            return back()->with('error', 'Error al cancelar la solicitud. Por favor, intente de nuevo.');
+        }
     }
 
     public function pdf(RequestForQuotation $rfq)

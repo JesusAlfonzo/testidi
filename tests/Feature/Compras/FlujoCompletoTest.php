@@ -151,7 +151,30 @@ describe('Cotizaciones', function () {
     });
 
     test('crear cotizacion con proveedor temporal', function () {
-        $this->markTestSkipped('Requiere depuración adicional - el formulario requiere supplier_id incluso para proveedores temporales');
+        $product = Product::factory()->create();
+
+        $response = $this->post(route('admin.quotations.store'), [
+            'supplier_type' => 'temp',
+            'temp_supplier_name' => 'Proveedor Temporal CA',
+            'temp_supplier_email' => 'temp@test.com',
+            'temp_supplier_phone' => '04141234567',
+            'date_issued' => now()->format('Y-m-d'),
+            'valid_until' => now()->addDays(30)->format('Y-m-d'),
+            'currency' => 'USD',
+            'exchange_rate' => 17.15,
+            'items' => [
+                ['product_id' => $product->id, 'quantity' => 10, 'unit_cost' => 100.50],
+            ],
+        ]);
+
+        $response->assertRedirect();
+        
+        $this->assertDatabaseHas('purchase_quotes', [
+            'supplier_name_temp' => 'Proveedor Temporal CA',
+            'supplier_email_temp' => 'temp@test.com',
+            'supplier_id' => null,
+            'status' => 'pending',
+        ]);
     });
 
     test('seleccionar cotizacion cambia estado a selected', function () {

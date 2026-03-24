@@ -44,7 +44,16 @@
                 <div class="card-header">
                     <div class="d-flex justify-content-between align-items-center">
                         <h3 class="card-title">Listado de Proveedores</h3>
-                        <span class="badge badge-info">{{ $suppliers->count() }} registros</span>
+                        <div class="d-flex align-items-center">
+                            <form method="GET" action="{{ route('admin.suppliers.index') }}" class="d-flex align-items-center">
+                                <label for="statusFilter" class="mr-2 mb-0" style="font-size: 0.875rem;">Estado:</label>
+                                <select name="status" id="statusFilter" class="form-control form-control-sm" style="width: auto;" onchange="this.form.submit()">
+                                    <option value="all" {{ $status ?? 'all' === 'all' ? 'selected' : '' }}>Todos</option>
+                                    <option value="active" {{ ($status ?? 'all') === 'active' ? 'selected' : '' }}>Activos</option>
+                                    <option value="inactive" {{ ($status ?? 'all') === 'inactive' ? 'selected' : '' }}>Inactivos</option>
+                                </select>
+                            </form>
+                        </div>
                     </div>
                 </div>
 
