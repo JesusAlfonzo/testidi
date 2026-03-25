@@ -46,7 +46,7 @@ class QuotationController extends Controller
         }
 
         if ($request->get('view_all') === 'true') {
-            $quotations = $query->latest()->paginate($query->count())->appends($request->except('page'));
+            $quotations = $query->latest()->paginate($perPage)->appends($request->except('page'));
         } else {
             $quotations = $query->latest()->paginate($perPage)->appends($request->except('per_page'));
         }

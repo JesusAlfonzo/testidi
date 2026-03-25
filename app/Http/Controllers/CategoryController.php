@@ -24,7 +24,7 @@ class CategoryController extends Controller
         }
 
         if ($request->get('view_all') === 'true') {
-            $categories = Category::with('user')->paginate(Category::count())->appends($request->except('page'));
+            $categories = Category::with('user')->paginate($perPage)->appends($request->except('page'));
         } else {
             $categories = Category::with('user')->paginate($perPage);
         }
@@ -62,6 +62,13 @@ class CategoryController extends Controller
 
     public function destroy(Category $category)
     {
+        $productsCount = \App\Models\Product::where('category_id', $category->id)->count();
+        
+        if ($productsCount > 0) {
+            return redirect()->route('admin.categories.index')
+                             ->with('error', 'No se puede eliminar la categoría porque tiene ' . $productsCount . ' producto(s) asociado(s).');
+        }
+        
         $category->delete();
         $this->cacheService->invalidateCategories();
         

@@ -14,10 +14,10 @@
                     <h3 class="card-title">Historial de Movimientos</h3>
                     <div class="card-tools">
                         {{-- 🟢 BOTONES DE EXPORTACIÓN --}}
-                        <a href="{{ route('admin.reports.kardex.excel', $product->id) }}" class="btn btn-success btn-sm" title="Descargar Excel">
+                        <a href="{{ route('admin.reports.kardex.excel', $product) }}" class="btn btn-success btn-sm" title="Descargar Excel">
                             <i class="fas fa-file-excel"></i> Excel
                         </a>
-                        <a href="{{ route('admin.reports.kardex.pdf', $product->id) }}" class="btn btn-danger btn-sm" target="_blank" title="Ver PDF">
+                        <a href="{{ route('admin.reports.kardex.pdf', $product) }}" class="btn btn-danger btn-sm" target="_blank" title="Ver PDF">
                             <i class="fas fa-file-pdf"></i> PDF
                         </a>
                     </div>

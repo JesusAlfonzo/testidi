@@ -38,7 +38,7 @@ class RequestForQuotationController extends Controller
         }
 
         if ($request->get('view_all') === 'true') {
-            $rfqs = $query->latest()->paginate(RequestForQuotation::count())->appends($request->except('page'));
+            $rfqs = $query->latest()->paginate($perPage)->appends($request->except('page'));
         } else {
             $rfqs = $query->latest()->paginate($perPage);
         }

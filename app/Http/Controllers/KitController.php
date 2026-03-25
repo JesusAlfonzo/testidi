@@ -24,7 +24,7 @@ class KitController extends Controller
         }
 
         if ($request->get('view_all') === 'true') {
-            $kits = Kit::orderBy('name')->paginate(Kit::count())->appends($request->except('page'));
+            $kits = Kit::orderBy('name')->paginate($perPage)->appends($request->except('page'));
         } else {
             $kits = Kit::orderBy('name')->paginate($perPage);
         }

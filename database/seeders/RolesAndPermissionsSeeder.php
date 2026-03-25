@@ -176,13 +176,13 @@ class RolesAndPermissionsSeeder extends Seeder
         ]);
 
 
-        // 4. Crear un usuario inicial (Super Administrador)
+        // 4. Crear un usuario inicial (Superadmin)
         // Esto es crucial para poder acceder al sistema y asignar roles.
         $superAdmin = User::firstOrCreate(
             ['email' => 'admin@inmuno.local'],
             [
                 'name' => 'Super Admin',
-                'password' => bcrypt('password'), // Usa una contraseña segura en producción
+                'password' => bcrypt(env('ADMIN_PASSWORD', 'SuperAdmin@2024')),
             ]
         );
         $superAdmin->assignRole($superAdminRole);

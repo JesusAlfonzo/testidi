@@ -41,8 +41,16 @@ class InventoryRequestService
     {
         $product = Product::lockForUpdate()->find($item->product_id);
 
-        if (!$product || $product->stock < $item->quantity_requested) {
-            throw new \Exception('Stock insuficiente para el producto: ' . ($product->name ?? 'Desconocido'));
+        if (!$product) {
+            throw new \Exception('Producto no encontrado con ID: ' . $item->product_id);
+        }
+
+        if (!$product->is_active) {
+            throw new \Exception('El producto "' . $product->name . '" está inactivo y no puede ser aprobado.');
+        }
+
+        if ($product->stock < $item->quantity_requested) {
+            throw new \Exception('Stock insuficiente para el producto: ' . $product->name);
         }
 
         $product->stock -= $item->quantity_requested;
@@ -67,12 +75,24 @@ class InventoryRequestService
             throw new \Exception("Kit ID {$item->kit_id} no encontrado.");
         }
 
+        if (!$kit->is_active) {
+            throw new \Exception("El kit '{$kit->name}' está inactivo y no puede ser aprobado.");
+        }
+
         foreach ($kit->components as $component) {
             $totalConsumption = $qtyKit * $component->pivot->quantity_required;
 
             $prodComponent = Product::lockForUpdate()->find($component->id);
             
-            if (!$prodComponent || $prodComponent->stock < $totalConsumption) {
+            if (!$prodComponent) {
+                throw new \Exception("Componente con ID {$component->id} no encontrado.");
+            }
+
+            if (!$prodComponent->is_active) {
+                throw new \Exception("El producto componente '{$prodComponent->name}' está inactivo.");
+            }
+            
+            if ($prodComponent->stock < $totalConsumption) {
                 throw new \Exception("Stock insuficiente para componente '{$component->name}' del Kit '{$kit->name}'.");
             }
             

@@ -22,8 +22,9 @@ class ReportController extends Controller
     public function __construct(KardexService $kardexService)
     {
         $this->kardexService = $kardexService;
-        $this->middleware('can:reportes_ver')->only(['stockReport', 'requestsReport']);
-        $this->middleware('can:reportes_kardex')->only('kardexReport');
+        $this->middleware('can:reportes_stock')->only(['stockReport', 'exportStockExcel', 'exportStockPdf']);
+        $this->middleware('can:reportes_movimientos')->only(['requestsReport', 'exportRequestsExcel', 'exportRequestsPdf']);
+        $this->middleware('can:reportes_kardex')->only(['kardexReport', 'exportKardexExcel', 'exportKardexPdf']);
     }
 
     // =========================================================================
@@ -32,6 +33,14 @@ class ReportController extends Controller
 
     public function stockReport(Request $request)
     {
+        $request->validate([
+            'search' => 'nullable|string|max:255',
+            'category_id' => 'nullable|integer|exists:categories,id',
+            'location_id' => 'nullable|integer|exists:locations,id',
+            'brand_id' => 'nullable|integer|exists:brands,id',
+            'stock_status' => 'nullable|string|in:low,ok,zero,with_stock',
+        ]);
+
         $categories = Category::pluck('name', 'id');
         $locations = Location::pluck('name', 'id');
         $brands = Brand::pluck('name', 'id');
@@ -137,30 +146,34 @@ class ReportController extends Controller
 
     public function exportStockPdf(Request $request)
     {
-        $query = Product::with(['unit', 'category', 'location', 'brand'])
-            ->where('is_active', true)
-            ->orderBy('name', 'asc');
+        try {
+            $query = Product::with(['unit', 'category', 'location', 'brand'])
+                ->where('is_active', true)
+                ->orderBy('name', 'asc');
 
-        if ($request->filled('search')) {
-            $search = strtolower($request->search);
-            $query->where(function($q) use ($search) {
-                $q->whereRaw('LOWER(name) LIKE ?', ["%{$search}%"])
-                  ->orWhereRaw('LOWER(code) LIKE ?', ["%{$search}%"]);
-            });
-        }
-        if ($request->filled('category_id')) $query->where('category_id', $request->category_id);
-        if ($request->filled('location_id')) $query->where('location_id', $request->location_id);
-        if ($request->filled('brand_id')) $query->where('brand_id', $request->brand_id);
-        if ($request->filled('stock_status')) {
-            if ($request->stock_status === 'low') $query->whereColumn('stock', '<=', 'min_stock');
-            elseif ($request->stock_status === 'ok') $query->whereColumn('stock', '>', 'min_stock');
-            elseif ($request->stock_status === 'zero') $query->where('stock', 0);
-            elseif ($request->stock_status === 'with_stock') $query->where('stock', '>', 0);
-        }
+            if ($request->filled('search')) {
+                $search = strtolower($request->search);
+                $query->where(function($q) use ($search) {
+                    $q->whereRaw('LOWER(name) LIKE ?', ["%{$search}%"])
+                      ->orWhereRaw('LOWER(code) LIKE ?', ["%{$search}%"]);
+                });
+            }
+            if ($request->filled('category_id')) $query->where('category_id', $request->category_id);
+            if ($request->filled('location_id')) $query->where('location_id', $request->location_id);
+            if ($request->filled('brand_id')) $query->where('brand_id', $request->brand_id);
+            if ($request->filled('stock_status')) {
+                if ($request->stock_status === 'low') $query->whereColumn('stock', '<=', 'min_stock');
+                elseif ($request->stock_status === 'ok') $query->whereColumn('stock', '>', 'min_stock');
+                elseif ($request->stock_status === 'zero') $query->where('stock', 0);
+                elseif ($request->stock_status === 'with_stock') $query->where('stock', '>', 0);
+            }
 
-        $products = $query->get();
-        $pdf = Pdf::loadView('admin.reports.pdf.stock', compact('products'));
-        return $pdf->stream('reporte_stock_' . date('Y-m-d') . '.pdf');
+            $products = $query->get();
+            $pdf = Pdf::loadView('admin.reports.pdf.stock', compact('products'));
+            return $pdf->stream('reporte_stock_' . date('Y-m-d') . '.pdf');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Error al generar el PDF: ' . $e->getMessage());
+        }
     }
 
     // =========================================================================
@@ -169,7 +182,13 @@ class ReportController extends Controller
 
     public function requestsReport(Request $request)
     {
-        // 🔑 CORRECCIÓN: Cargar lista de usuarios para el filtro
+        $request->validate([
+            'date_from' => 'nullable|date',
+            'date_to' => 'nullable|date|after_or_equal:date_from',
+            'status' => 'nullable|string|in:Pending,Approved,Rejected',
+            'requester_id' => 'nullable|integer|exists:users,id',
+        ]);
+
         $requesters = User::pluck('name', 'id');
 
         $query = SolicitudModel::with(['requester', 'approver'])
@@ -243,18 +262,21 @@ class ReportController extends Controller
 
     public function exportRequestsPdf(Request $request)
     {
-        $query = SolicitudModel::with(['requester', 'approver'])
-            ->orderBy('requested_at', 'desc');
+        try {
+            $query = SolicitudModel::with(['requester', 'approver'])
+                ->orderBy('requested_at', 'desc');
 
-        if ($request->filled('date_from')) $query->whereDate('requested_at', '>=', $request->date_from);
-        if ($request->filled('date_to')) $query->whereDate('requested_at', '<=', $request->date_to);
-        if ($request->filled('status')) $query->where('status', $request->status);
-        // 🔑 CORRECCIÓN: Filtro de solicitante en exportación
-        if ($request->filled('requester_id')) $query->where('requester_id', $request->requester_id);
+            if ($request->filled('date_from')) $query->whereDate('requested_at', '>=', $request->date_from);
+            if ($request->filled('date_to')) $query->whereDate('requested_at', '<=', $request->date_to);
+            if ($request->filled('status')) $query->where('status', $request->status);
+            if ($request->filled('requester_id')) $query->where('requester_id', $request->requester_id);
 
-        $requests = $query->get();
-        $pdf = Pdf::loadView('admin.reports.pdf.requests', compact('requests'))->setPaper('a4', 'landscape');
-        return $pdf->stream('reporte_solicitudes_' . date('Y-m-d') . '.pdf');
+            $requests = $query->get();
+            $pdf = Pdf::loadView('admin.reports.pdf.requests', compact('requests'))->setPaper('a4', 'landscape');
+            return $pdf->stream('reporte_solicitudes_' . date('Y-m-d') . '.pdf');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Error al generar el PDF: ' . $e->getMessage());
+        }
     }
 
     // =========================================================================

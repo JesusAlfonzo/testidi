@@ -69,7 +69,7 @@ class RequestController extends Controller
 
         // 5. Obtener resultados con paginación
         if ($request->get('view_all') === 'true') {
-            $requests = $query->paginate($query->count())->appends($request->except('page'));
+            $requests = $query->paginate($perPage)->appends($request->except('page'));
         } else {
             $requests = $query->paginate($perPage)->appends($request->except('per_page'));
         }

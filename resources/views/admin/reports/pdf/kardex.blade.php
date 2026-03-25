@@ -274,11 +274,11 @@
     <div class="summary-section">
         <div class="summary-box">
             <div class="summary-label">Total Entradas</div>
-            <div class="summary-value" style="color: #155724;">+{{ abs($totalSalidas) }}</div>
+            <div class="summary-value" style="color: #155724;">+{{ abs($totalEntradas) }}</div>
         </div>
         <div class="summary-box">
             <div class="summary-label">Total Salidas</div>
-            <div class="summary-value" style="color: #721c24;">{{ $totalSalidas }}</div>
+            <div class="summary-value" style="color: #721c24;">{{ abs($totalSalidas) }}</div>
         </div>
         <div class="summary-box">
             <div class="summary-label">Stock Final</div>

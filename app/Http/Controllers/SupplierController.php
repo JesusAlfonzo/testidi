@@ -64,6 +64,13 @@ class SupplierController extends Controller
 
     public function destroy(Supplier $supplier)
     {
+        $productsCount = \App\Models\Product::where('supplier_id', $supplier->id)->count();
+        
+        if ($productsCount > 0) {
+            return redirect()->route('admin.suppliers.index')
+                             ->with('error', 'No se puede eliminar el proveedor porque tiene ' . $productsCount . ' producto(s) asociado(s).');
+        }
+        
         $supplier->delete();
         $this->cacheService->invalidateSuppliers();
         

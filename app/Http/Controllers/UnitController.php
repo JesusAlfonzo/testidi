@@ -24,7 +24,7 @@ class UnitController extends Controller
         }
 
         if ($request->get('view_all') === 'true') {
-            $units = Unit::with('user')->paginate(Unit::count())->appends($request->except('page'));
+            $units = Unit::with('user')->paginate($perPage)->appends($request->except('page'));
         } else {
             $units = Unit::with('user')->paginate($perPage);
         }

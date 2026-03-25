@@ -31,14 +31,14 @@ class UserController extends Controller
             $perPage = 15;
         }
 
-        // Obtiene todos los usuarios paginados, excluyendo al Super-Admin (por seguridad)
+        // Obtiene todos los usuarios paginados, excluyendo al Superadmin (por seguridad)
         $query = User::with('roles')
             ->whereDoesntHave('roles', function ($query) {
-                $query->where('name', 'Super-Admin');
+                $query->where('name', 'Superadmin');
             });
 
         if ($request->get('view_all') === 'true') {
-            $users = $query->paginate($query->count())->appends($request->except('page'));
+            $users = $query->paginate($perPage)->appends($request->except('page'));
         } else {
             $users = $query->paginate($perPage);
         }
@@ -51,7 +51,7 @@ class UserController extends Controller
      */
     public function create()
     {
-        $roles = Role::where('name', '!=', 'Super-Admin')->pluck('name', 'id');
+        $roles = Role::where('name', '!=', 'Superadmin')->pluck('name', 'id');
 
         // La vista es 'admin.users.create'
         return view('admin.users.create', compact('roles'));
@@ -90,13 +90,13 @@ class UserController extends Controller
      */
     public function edit(User $user)
     {
-        // Seguridad: Evitar que se edite a sí mismo o a otro Super-Admin
-        if ($user->hasRole('Super-Admin')) {
+        // Seguridad: Evitar que se edite a sí mismo o a otro Superadmin
+        if ($user->hasRole('Superadmin')) {
             return redirect()->route('admin.users.index')
-                             ->with('error', '🛑 No puedes editar al Super Administrador desde esta interfaz.');
+                             ->with('error', '🛑 No puedes editar al Superadmin desde esta interfaz.');
         }
 
-        $roles = Role::where('name', '!=', 'Super-Admin')->pluck('name', 'id');
+        $roles = Role::where('name', '!=', 'Superadmin')->pluck('name', 'id');
 
         // Obtener el ID del rol actual
         $currentRole = $user->roles->first() ? $user->roles->first()->id : null;
@@ -139,10 +139,17 @@ class UserController extends Controller
      */
     public function destroy(User $user)
     {
-        // Seguridad: Prohibir la eliminación del Super-Admin
-        if ($user->hasRole('Super-Admin')) {
+        // Seguridad: Prohibir la eliminación del Superadmin
+        if ($user->hasRole('Superadmin')) {
             return redirect()->route('admin.users.index')
-                             ->with('error', '🛑 No puedes eliminar al Super Administrador.');
+                             ->with('error', '🛑 No puedes eliminar al Superadmin.');
+        }
+
+        // Verificar datos asociados
+        $requestsCount = \App\Models\InventoryRequest::where('requester_id', $user->id)->count();
+        if ($requestsCount > 0) {
+            return redirect()->route('admin.users.index')
+                             ->with('error', '🛑 No se puede eliminar el usuario porque tiene ' . $requestsCount . ' solicitud(es) asociada(s).');
         }
 
         $user->delete();

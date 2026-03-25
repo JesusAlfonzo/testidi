@@ -56,7 +56,7 @@ class StockInController extends Controller
         }
 
         if ($request->get('view_all') === 'true') {
-            $stockIns = $query->paginate($query->count())->appends($request->except('page'));
+            $stockIns = $query->paginate($perPage)->appends($request->except('page'));
         } else {
             $stockIns = $query->paginate($perPage)->appends($request->except('per_page'));
         }
@@ -323,13 +323,21 @@ class StockInController extends Controller
             foreach ($items as $item) {
                 $product = Product::lockForUpdate()->find($item->product_id);
 
-                if ($product->stock < $item->quantity) {
+                if (!$product) {
                     DB::rollback();
                     return redirect()->route('admin.stock-in.index')
-                        ->with('error', "No se puede eliminar la entrada: El stock actual del producto {$product->name} es menor a la cantidad ingresada.");
+                        ->with('error', 'Producto no encontrado.');
                 }
 
-                $product->stock -= $item->quantity;
+                $newStock = $product->stock - $item->quantity;
+                
+                if ($newStock < 0) {
+                    DB::rollback();
+                    return redirect()->route('admin.stock-in.index')
+                        ->with('error', "No se puede eliminar la entrada: El stock del producto {$product->name} (actual: {$product->stock}) quedaría negativo ({$newStock}) tras eliminar {$item->quantity} unidades.");
+                }
+
+                $product->stock = $newStock;
                 $product->save();
 
                 if (!empty($item->batch_number) || !empty($item->serial_number)) {

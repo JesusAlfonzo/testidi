@@ -24,7 +24,7 @@ class BrandController extends Controller
         }
 
         if ($request->get('view_all') === 'true') {
-            $brands = Brand::with('user')->paginate(Brand::count())->appends($request->except('page'));
+            $brands = Brand::with('user')->paginate($perPage)->appends($request->except('page'));
         } else {
             $brands = Brand::with('user')->paginate($perPage);
         }
@@ -62,6 +62,13 @@ class BrandController extends Controller
 
     public function destroy(Brand $brand)
     {
+        $productsCount = \App\Models\Product::where('brand_id', $brand->id)->count();
+        
+        if ($productsCount > 0) {
+            return redirect()->route('admin.brands.index')
+                             ->with('error', 'No se puede eliminar la marca porque tiene ' . $productsCount . ' producto(s) asociado(s).');
+        }
+        
         $brand->delete();
         $this->cacheService->invalidateBrands();
         

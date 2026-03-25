@@ -28,8 +28,8 @@ class OrderCalculationService
 
         return [
             'subtotal' => $subtotal,
-            'tax_amount' => 0,
-            'total' => $total,
+            'tax_amount' => $subtotal * $this->ivaRate,
+            'total' => $subtotal + ($subtotal * $this->ivaRate),
             'subtotal_bs' => $subtotalBs,
             'tax_amount_bs' => $taxAmountBs,
             'total_bs' => $totalBs,

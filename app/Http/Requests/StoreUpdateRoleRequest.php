@@ -9,7 +9,17 @@ class StoreUpdateRoleRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        $user = auth()->user();
+        
+        if (!$user) {
+            return false;
+        }
+        
+        if ($this->isMethod('POST')) {
+            return $user->can('roles_crear');
+        }
+        
+        return $user->can('roles_editar');
     }
 
     public function rules(): array

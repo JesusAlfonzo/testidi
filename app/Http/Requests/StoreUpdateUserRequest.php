@@ -8,7 +8,17 @@ class StoreUpdateUserRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        $user = auth()->user();
+        
+        if (!$user) {
+            return false;
+        }
+        
+        if ($this->isMethod('POST')) {
+            return $user->can('usuarios_crear');
+        }
+        
+        return $user->can('usuarios_editar');
     }
 
     public function rules(): array
@@ -35,11 +45,24 @@ class StoreUpdateUserRequest extends FormRequest
 
         // ... resto de las reglas de password ...
         if ($this->isMethod('POST')) {
-            $rules['password'] = ['required', 'string', 'min:8', 'confirmed'];
+            $rules['password'] = [
+                'required', 
+                'string', 
+                'min:8', 
+                'confirmed',
+                'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/',
+            ];
         } else {
             $rules['password'] = ['nullable', 'string', 'min:8', 'confirmed'];
         }
 
         return $rules;
+    }
+    
+    public function messages(): array
+    {
+        return [
+            'password.regex' => 'La contraseña debe contener al menos: una letra mayúscula, una minúscula, un número y un carácter especial (@$!%*?&)',
+        ];
     }
 }

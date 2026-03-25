@@ -58,7 +58,7 @@ class ProductController extends Controller
         }
 
         if ($request->get('view_all') === 'true') {
-            $products = $query->paginate($query->count())->appends($request->except('page'));
+            $products = $query->paginate($perPage)->appends($request->except('page'));
         } else {
             $products = $query->paginate($perPage)->appends($request->except('per_page'));
         }

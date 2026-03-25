@@ -49,6 +49,57 @@ class StoreRequestRequest extends FormRequest
         ];
     }
 
+    /**
+     * Validaciones adicionales que requieren acceso a la DB
+     */
+    public function withValidator($validator)
+    {
+        $validator->after(function ($validator) {
+            $items = $validator->getData()['items'] ?? [];
+            
+            $kitIds = collect($items)->where('item_type', 'kit')->pluck('kit_id')->filter()->toArray();
+            $kitsDict = \App\Models\Kit::with('components')->whereIn('id', $kitIds)->get()->keyBy('id');
+            
+            foreach ($items as $index => $item) {
+                if (($item['item_type'] ?? '') === 'product' && !empty($item['product_id'])) {
+                    $product = \App\Models\Product::find($item['product_id']);
+                    if (!$product) {
+                        $validator->errors()->add("items.{$index}.product_id", 'El producto no existe.');
+                    } elseif (!$product->is_active) {
+                        $validator->errors()->add("items.{$index}.product_id", 'El producto está inactivo.');
+                    } elseif (($item['quantity'] ?? 0) > $product->stock) {
+                        $validator->errors()->add("items.{$index}.quantity", "Stock insuficiente. Stock actual: {$product->stock}");
+                    }
+                }
+                
+                if (($item['item_type'] ?? '') === 'kit' && !empty($item['kit_id'])) {
+                    $kit = $kitsDict->get($item['kit_id']);
+                    if (!$kit) {
+                        $validator->errors()->add("items.{$index}.kit_id", 'El kit no existe.');
+                    } elseif (!$kit->is_active) {
+                        $validator->errors()->add("items.{$index}.kit_id", 'El kit está inactivo.');
+                    } else {
+                        $requestedQty = $item['quantity'] ?? 0;
+                        $canAssemble = true;
+                        $insufficientComponents = [];
+                        
+                        foreach ($kit->components as $component) {
+                            $required = $component->pivot->quantity_required * $requestedQty;
+                            if ($component->stock < $required) {
+                                $canAssemble = false;
+                                $insufficientComponents[] = $component->name;
+                            }
+                        }
+                        
+                        if (!$canAssemble) {
+                            $validator->errors()->add("items.{$index}.quantity", "No hay stock suficiente para ensamblar el kit. Faltan: " . implode(', ', $insufficientComponents));
+                        }
+                    }
+                }
+            }
+        });
+    }
+
     public function messages()
     {
         return [

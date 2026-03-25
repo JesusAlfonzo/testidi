@@ -68,7 +68,7 @@ class ActivityLogController extends Controller
         }
 
         if ($request->get('view_all') === 'true') {
-            $activities = $query->paginate($query->count())->appends($request->except('page'));
+            $activities = $query->paginate($perPage)->appends($request->except('page'));
         } else {
             $activities = $query->paginate($perPage)->appends($request->except('per_page'));
         }

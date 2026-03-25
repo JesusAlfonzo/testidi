@@ -24,7 +24,7 @@ class LocationController extends Controller
         }
 
         if ($request->get('view_all') === 'true') {
-            $locations = Location::with('user')->paginate(Location::count())->appends($request->except('page'));
+            $locations = Location::with('user')->paginate($perPage)->appends($request->except('page'));
         } else {
             $locations = Location::with('user')->paginate($perPage);
         }

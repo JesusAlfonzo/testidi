@@ -217,7 +217,7 @@
                         <span class="{{ $statusClass }}">{{ $statusLabel }}</span>
                     </td>
                     <td>{{ $req->requester->name ?? 'N/A' }}</td>
-                    <td>{{ $req->requested_at->format('d/m/Y H:i') }}</td>
+                    <td>{{ $req->requested_at ? $req->requested_at->format('d/m/Y H:i') : '-' }}</td>
                     <td>{{ $req->approver->name ?? '-' }}</td>
                     <td>{{ Str::limit($req->justification, 60) }}</td>
                 </tr>
