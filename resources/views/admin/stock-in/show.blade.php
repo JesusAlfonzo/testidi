@@ -13,10 +13,12 @@
 
 @section('content')
     <div class="row">
-        <div class="col-md-4">
-            <div class="card card-primary">
-                <div class="card-header">
-                    <h3 class="card-title">Información General</h3>
+        <div class="col-12 col-md-4">
+            <div class="card" style="border-left: 4px solid #3b82f6;">
+                <div class="card-header" style="background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);">
+                    <h3 class="card-title text-white">
+                        <i class="fas fa-info-circle"></i> Información General
+                    </h3>
                 </div>
                 <div class="card-body">
                     <table class="table table-sm">
@@ -45,10 +47,12 @@
             </div>
         </div>
 
-        <div class="col-md-4">
-            <div class="card card-info">
-                <div class="card-header">
-                    <h3 class="card-title">Proveedor</h3>
+        <div class="col-12 col-md-4">
+            <div class="card" style="border-left: 4px solid #f59e0b;">
+                <div class="card-header" style="background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);">
+                    <h3 class="card-title text-white">
+                        <i class="fas fa-building"></i> Proveedor
+                    </h3>
                 </div>
                 <div class="card-body">
                     @if($stockIn->supplier)
@@ -77,10 +81,12 @@
             </div>
         </div>
 
-        <div class="col-md-4">
-            <div class="card card-secondary">
-                <div class="card-header">
-                    <h3 class="card-title">Documentación</h3>
+        <div class="col-12 col-md-4">
+            <div class="card" style="border-left: 4px solid #6c757d;">
+                <div class="card-header" style="background: linear-gradient(135deg, #6c757d 0%, #8a939d 100%);">
+                    <h3 class="card-title text-white">
+                        <i class="fas fa-file-alt"></i> Documentación
+                    </h3>
                 </div>
                 <div class="card-body">
                     <table class="table table-sm">
@@ -108,10 +114,12 @@
 
     @if($stockIn->purchaseOrder)
     <div class="row mt-3">
-        <div class="col-md-12">
-            <div class="card card-dark">
-                <div class="card-header">
-                    <h3 class="card-title"><i class="fas fa-file-contract"></i> Orden de Compra Relacionada</h3>
+        <div class="col-12">
+            <div class="card" style="border-left: 4px solid #8b5cf6;">
+                <div class="card-header" style="background: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%);">
+                    <h3 class="card-title text-white">
+                        <i class="fas fa-file-contract"></i> Orden de Compra Relacionada
+                    </h3>
                 </div>
                 <div class="card-body">
                     <a href="{{ route('admin.purchaseOrders.show', $stockIn->purchaseOrder) }}">
@@ -125,14 +133,16 @@
     @endif
 
     <div class="row mt-3">
-        <div class="col-md-12">
-            <div class="card card-success">
-                <div class="card-header">
-                    <h3 class="card-title"><i class="fas fa-boxes"></i> Productos Ingresados</h3>
+        <div class="col-12">
+            <div class="card" style="border-left: 4px solid #10b981;">
+                <div class="card-header" style="background: linear-gradient(135deg, #10b981 0%, #34d399 100%);">
+                    <h3 class="card-title text-white">
+                        <i class="fas fa-boxes"></i> Productos Ingresados
+                    </h3>
                 </div>
                 <div class="card-body table-responsive p-0">
-                    <table class="table table-striped table-bordered">
-                        <thead class="thead-light">
+                    <table class="table table-striped table-bordered mb-0">
+                        <thead class="bg-success text-white">
                             <tr>
                                 <th>Producto</th>
                                 <th>Código</th>
@@ -184,7 +194,7 @@
     </div>
 
     <div class="row mt-3">
-        <div class="col-md-12">
+        <div class="col-12">
             <div class="form-group">
                 @can('entradas_eliminar')
                     <button type="button" class="btn btn-danger float-right" onclick="confirmDelete('{{ route('admin.stock-in.destroy', $stockIn) }}', 'Entrada de Stock #{{ $stockIn->id }}')">

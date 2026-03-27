@@ -97,13 +97,13 @@
                         <table id="productsTable" class="table table-striped table-bordered display nowrap" style="width:100%">
                             <thead>
                                 <tr>
+                                    <th>ID</th>
                                     <th>Nombre</th>
                                     <th>Stock</th>
                                     <th>Acciones</th> 
                                     <th>Código</th>
                                     <th>Categoría</th>
                                     <th>Ubicación</th>
-                                    <th>Costo/Precio</th>
                                     <th>Estado</th>
                                     <th>Origen</th>
                                 </tr>
@@ -165,6 +165,7 @@
                 },
 
                 "columns": [
+                    { "data": "id", "name": "id" },
                     { "data": "name", "name": "name" },
                     { 
                         "data": "stock", 
@@ -177,13 +178,6 @@
                     { "data": "code", "name": "code" },
                     { "data": "category", "name": "category" },
                     { "data": "location", "name": "location" },
-                    { 
-                        "data": "cost", 
-                        "name": "cost",
-                        "render": function(data, type, row) {
-                            return '<small class="d-block text-muted">C: $' + data + '</small>P: <strong>$' + row.price + '</strong>';
-                        }
-                    },
                     { 
                         "data": "is_active", 
                         "name": "is_active",
@@ -226,7 +220,7 @@
                 },
 
                 "columnDefs": [
-                    { "orderable": false, "targets": [2, 6] },
+                    { "orderable": false, "targets": [2] },
                     { "responsivePriority": 1, "targets": 0 },
                     { "responsivePriority": 2, "targets": 2 },
                     { "responsivePriority": 3, "targets": 1 },

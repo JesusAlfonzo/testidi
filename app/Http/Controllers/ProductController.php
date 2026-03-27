@@ -107,7 +107,7 @@ class ProductController extends Controller
         $totalFiltered = $query->count();
 
         // Ordenamiento
-        $columns = ['name', 'stock', 'code', 'category_id', 'location_id', 'is_active', 'created_on_the_fly'];
+        $columns = ['id', 'name', 'stock', 'code', 'category_id', 'location_id', 'is_active', 'created_on_the_fly'];
         if (isset($columns[$orderColumn])) {
             $query->orderBy($columns[$orderColumn], $orderDir);
         }
@@ -117,6 +117,7 @@ class ProductController extends Controller
 
         $data = $products->map(function ($product) {
             return [
+                'id' => $product->id,
                 'name' => $product->name,
                 'stock' => $product->stock,
                 'stock_class' => $product->stock <= $product->min_stock ? 'badge-danger' : 'badge-success',

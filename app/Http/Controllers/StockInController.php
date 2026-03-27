@@ -8,6 +8,7 @@ use App\Models\StockInItem;
 use App\Models\ProductBatch;
 use App\Models\Product;
 use App\Models\Supplier;
+use App\Models\Location;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use App\Http\Requests\StoreStockInRequest;
@@ -174,6 +175,7 @@ class StockInController extends Controller
         
         $products = Product::where('is_active', true)->orderBy('name')->pluck('name', 'id');
         $suppliers = Supplier::orderBy('name')->pluck('name', 'id');
+        $locations = Location::orderBy('name')->pluck('name', 'id');
 
         $order = null;
         $orderItem = null;
@@ -187,7 +189,7 @@ class StockInController extends Controller
             }
         }
 
-        return view('admin.stock-in.create', compact('products', 'suppliers', 'order', 'orderItem'));
+        return view('admin.stock-in.create', compact('products', 'suppliers', 'locations', 'order', 'orderItem'));
     }
 
     public function store(StoreStockInRequest $request)

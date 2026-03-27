@@ -19,6 +19,7 @@ use App\Http\Controllers\PurchaseOrdersController;
 use App\Http\Controllers\QuotationController;
 use App\Http\Controllers\RequestForQuotationController;
 use App\Http\Controllers\RoleController;
+use App\Http\Controllers\HelpController;
 
 
 /*
@@ -144,6 +145,17 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
             ->name('kardex.pdf')
             ->middleware('can:reportes_kardex');
     });
+
+    // RUTAS DE AYUDA (fuera del grupo de reportes)
+    Route::get('ayuda', [HelpController::class, 'index'])
+        ->name('help.index')
+        ->middleware('auth');
+    Route::get('ayuda/{section}', [HelpController::class, 'show'])
+        ->name('help.show')
+        ->middleware('auth');
+    Route::get('ayuda/pdf/{section}', [HelpController::class, 'downloadPdf'])
+        ->name('help.download')
+        ->middleware('auth');
 });
 
 

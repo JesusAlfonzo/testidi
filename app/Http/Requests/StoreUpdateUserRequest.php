@@ -48,9 +48,8 @@ class StoreUpdateUserRequest extends FormRequest
             $rules['password'] = [
                 'required', 
                 'string', 
-                'min:8', 
+                'min:8',
                 'confirmed',
-                'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/',
             ];
         } else {
             $rules['password'] = ['nullable', 'string', 'min:8', 'confirmed'];
@@ -62,7 +61,7 @@ class StoreUpdateUserRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'password.regex' => 'La contraseña debe contener al menos: una letra mayúscula, una minúscula, un número y un carácter especial (@$!%*?&)',
+            'password.min' => 'La contraseña debe tener al menos 8 caracteres',
         ];
     }
 }

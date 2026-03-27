@@ -9,72 +9,99 @@
 @section('content')
     <div class="row">
         <div class="col-12">
-            <x-adminlte-card title="Detalles del Kit" icon="fas fa-cube" class="card-primary">
-                <form action="{{ route('admin.kits.store') }}" method="POST">
-                    @csrf
+            <form action="{{ route('admin.kits.store') }}" method="POST">
+                @csrf
 
-                    <div class="row">
-                        {{-- Nombre --}}
-                        <div class="col-md-6">
-                            <x-adminlte-input name="name" label="Nombre del Kit" placeholder="Ej: Kit de Limpieza Avanzado" value="{{ old('name') }}" required/>
+                <div class="card" style="border-left: 4px solid #8b5cf6;">
+                    <div class="card-header" style="background: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%);">
+                        <h3 class="card-title text-white">
+                            <i class="fas fa-cubes"></i> Detalles del Kit
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-12 col-md-6">
+                                <div class="form-group">
+                                    <label for="name">Nombre del Kit (*)</label>
+                                    <div class="input-group input-group-sm">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text bg-purple text-white"><i class="fas fa-cube"></i></span>
+                                        </div>
+                                        <input type="text" name="name" class="form-control @error('name') is-invalid @enderror" placeholder="Ej: Kit de Limpieza Avanzado" value="{{ old('name') }}" required>
+                                    </div>
+                                    @error('name')<span class="invalid-feedback">{{ $message }}</span>@enderror
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <div class="form-group mt-4">
+                                    <label for="is_active">Estado</label>
+                                    <div class="custom-control custom-switch">
+                                        <input type="checkbox" name="is_active" class="custom-control-input" id="is_active" checked>
+                                        <label class="custom-control-label" for="is_active">Activo</label>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
-                        {{-- Precio --}}
-                        <div class="col-md-3">
-                            <x-adminlte-input name="unit_price" type="number" label="Precio Unitario" placeholder="0.00" value="{{ old('unit_price') }}" min="0" step="0.01"/>
-                        </div>
-                        
-                        {{-- Activo --}}
-                        <div class="col-md-3 mt-4">
-                            <div class="form-group">
-                                <label for="is_active">Estado</label>
-                                <div class="custom-control custom-switch">
-                                    <input type="checkbox" name="is_active" class="custom-control-input" id="is_active" checked>
-                                    <label class="custom-control-label" for="is_active">Activo</label>
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="form-group mb-0">
+                                    <label for="description">Descripción</label>
+                                    <textarea name="description" class="form-control @error('description') is-invalid @enderror" rows="3" placeholder="Detalles del kit...">{{ old('description') }}</textarea>
+                                    @error('description')<span class="invalid-feedback">{{ $message }}</span>@enderror
                                 </div>
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    {{-- Descripción --}}
-                    <x-adminlte-textarea name="description" label="Descripción" placeholder="Detalles del kit..." rows="3">{{ old('description') }}</x-adminlte-textarea>
-
-                    {{-- -------------------------- COMPONENTES DEL KIT -------------------------- --}}
-                    <h5 class="mt-4"><i class="fas fa-list"></i> Componentes</h5>
-                    <div id="components-container">
-                        {{-- Aquí se agregarán dinámicamente los componentes --}}
-                        @if (old('components'))
-                            @foreach (old('components') as $index => $component)
-                                @include('admin.kits.partials.component_row', ['index' => $index, 'products' => $products, 'oldComponent' => $component])
-                            @endforeach
-                        @endif
+                <div class="card" style="border-left: 4px solid #06b6d4;">
+                    <div class="card-header" style="background: linear-gradient(135deg, #06b6d4 0%, #22d3ee 100%);">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h3 class="card-title text-white">
+                                <i class="fas fa-list"></i> Componentes
+                            </h3>
+                            <button type="button" class="btn btn-sm btn-outline-light text-light" id="add-component-btn">
+                                <i class="fas fa-plus"></i> Agregar Componente
+                            </button>
+                        </div>
                     </div>
+                    <div class="card-body p-0">
+                        <div id="components-container">
+                            @if (old('components'))
+                                @foreach (old('components') as $index => $component)
+                                    @include('admin.kits.partials.component_row', ['index' => $index, 'products' => $products, 'oldComponent' => $component])
+                                @endforeach
+                            @endif
+                        </div>
+                    </div>
+                </div>
 
-                    <button type="button" class="btn btn-sm btn-info mt-2" id="add-component-btn"><i class="fas fa-plus"></i> Agregar Componente</button>
-                    
-                    <hr>
-
-                    <x-adminlte-button class="btn-flat" type="submit" label="Guardar Kit" theme="success" icon="fas fa-lg fa-save"/>
-                    <a href="{{ route('admin.kits.index') }}" class="btn btn-flat btn-default">Cancelar</a>
-                </form>
-            </x-adminlte-card>
+                <div class="card">
+                    <div class="card-footer d-flex justify-content-end">
+                        <a href="{{ route('admin.kits.index') }}" class="btn btn-secondary mr-2">
+                            <i class="fas fa-arrow-left"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-save"></i> Guardar Kit
+                        </button>
+                    </div>
+                </div>
+            </form>
         </div>
     </div>
 @stop
 
-{{-- Archivo parcial para la fila del componente (Lo crearemos a continuación) --}}
 @include('admin.kits.partials.component_row_template', ['products' => $products])
 
 @push('js')
 <script>
     let componentIndex = {{ count(old('components', [])) }};
     
-    // Función para agregar una fila de componente
     function addComponentRow(data = null) {
         const template = $('#component-row-template').html();
         let newRow = template.replace(/__INDEX__/g, componentIndex);
 
-        // Si hay datos, precargar valores (útil para errores de validación)
         if (data) {
             newRow = $(newRow);
             newRow.find('select[name="components[' + componentIndex + '][product_id]"]').val(data.product_id);
@@ -87,17 +114,14 @@
         componentIndex++;
     }
 
-    // Listener para el botón de agregar
     $('#add-component-btn').on('click', function() {
         addComponentRow();
     });
 
-    // Listener para el botón de eliminar (delegado)
     $('#components-container').on('click', '.remove-component-btn', function() {
         $(this).closest('.component-row').remove();
     });
 
-    // Inicializar con al menos una fila si no hay datos previos
     if (componentIndex === 0) {
         addComponentRow();
     }

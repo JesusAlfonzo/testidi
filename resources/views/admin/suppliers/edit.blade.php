@@ -26,14 +26,24 @@
                             <div class="col-12 col-md-6">
                                 <div class="form-group">
                                     <label for="name">Nombre / Razón Social (*)</label>
-                                    <input type="text" name="name" class="form-control @error('name') is-invalid @enderror" value="{{ old('name', $supplier->name) }}" required>
+                                    <div class="input-group input-group-sm">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text bg-warning text-dark"><i class="fas fa-building"></i></span>
+                                        </div>
+                                        <input type="text" name="name" class="form-control @error('name') is-invalid @enderror" value="{{ old('name', $supplier->name) }}" required>
+                                    </div>
                                     @error('name')<span class="invalid-feedback">{{ $message }}</span>@enderror
                                 </div>
                             </div>
                             <div class="col-12 col-md-6">
                                 <div class="form-group">
                                     <label for="tax_id">RIF / ID Fiscal (*)</label>
-                                    <input type="text" name="tax_id" class="form-control @error('tax_id') is-invalid @enderror" value="{{ old('tax_id', $supplier->tax_id) }}" placeholder="J-00000000-0">
+                                    <div class="input-group input-group-sm">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text bg-warning text-dark"><i class="fas fa-id-card"></i></span>
+                                        </div>
+                                        <input type="text" name="tax_id" class="form-control @error('tax_id') is-invalid @enderror" value="{{ old('tax_id', $supplier->tax_id) }}" placeholder="J-00000000-0">
+                                    </div>
                                     @error('tax_id')<span class="invalid-feedback">{{ $message }}</span>@enderror
                                 </div>
                             </div>
@@ -43,14 +53,24 @@
                             <div class="col-12 col-md-6">
                                 <div class="form-group">
                                     <label for="contact_person">Persona de Contacto</label>
-                                    <input type="text" name="contact_person" class="form-control @error('contact_person') is-invalid @enderror" value="{{ old('contact_person', $supplier->contact_person) }}">
+                                    <div class="input-group input-group-sm">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text bg-warning text-dark"><i class="fas fa-user"></i></span>
+                                        </div>
+                                        <input type="text" name="contact_person" class="form-control @error('contact_person') is-invalid @enderror" value="{{ old('contact_person', $supplier->contact_person) }}">
+                                    </div>
                                     @error('contact_person')<span class="invalid-feedback">{{ $message }}</span>@enderror
                                 </div>
                             </div>
                             <div class="col-12 col-md-6">
                                 <div class="form-group">
                                     <label for="representative_cedula">Cédula del Representante Legal</label>
-                                    <input type="text" name="representative_cedula" class="form-control @error('representative_cedula') is-invalid @enderror" value="{{ old('representative_cedula', $supplier->representative_cedula) }}" placeholder="V-00000000">
+                                    <div class="input-group input-group-sm">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text bg-warning text-dark"><i class="fas fa-id-badge"></i></span>
+                                        </div>
+                                        <input type="text" name="representative_cedula" class="form-control @error('representative_cedula') is-invalid @enderror" value="{{ old('representative_cedula', $supplier->representative_cedula) }}" placeholder="V-00000000">
+                                    </div>
                                     @error('representative_cedula')<span class="invalid-feedback">{{ $message }}</span>@enderror
                                 </div>
                             </div>
@@ -60,9 +80,9 @@
                             <div class="col-12 col-md-6">
                                 <div class="form-group">
                                     <label for="email">Email</label>
-                                    <div class="input-group">
+                                    <div class="input-group input-group-sm">
                                         <div class="input-group-prepend">
-                                            <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                                            <span class="input-group-text bg-info text-white"><i class="fas fa-envelope"></i></span>
                                         </div>
                                         <input type="email" name="email" class="form-control @error('email') is-invalid @enderror" value="{{ old('email', $supplier->email) }}">
                                     </div>
@@ -72,9 +92,9 @@
                             <div class="col-12 col-md-6">
                                 <div class="form-group">
                                     <label for="phone">Teléfono Principal</label>
-                                    <div class="input-group">
+                                    <div class="input-group input-group-sm">
                                         <div class="input-group-prepend">
-                                            <span class="input-group-text"><i class="fas fa-phone"></i></span>
+                                            <span class="input-group-text bg-success text-white"><i class="fas fa-phone"></i></span>
                                         </div>
                                         <input type="text" name="phone" class="form-control @error('phone') is-invalid @enderror" value="{{ old('phone', $supplier->phone) }}">
                                     </div>
@@ -87,7 +107,12 @@
                             <div class="col-12">
                                 <div class="form-group">
                                     <label for="address">Dirección</label>
-                                    <textarea name="address" class="form-control @error('address') is-invalid @enderror" rows="2">{{ old('address', $supplier->address) }}</textarea>
+                                    <div class="input-group input-group-sm">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text bg-secondary text-white"><i class="fas fa-map-pin"></i></span>
+                                        </div>
+                                        <textarea name="address" class="form-control @error('address') is-invalid @enderror" rows="2">{{ old('address', $supplier->address) }}</textarea>
+                                    </div>
                                     @error('address')<span class="invalid-feedback">{{ $message }}</span>@enderror
                                 </div>
                             </div>
@@ -97,7 +122,12 @@
                             <div class="col-12">
                                 <div class="form-group">
                                     <label for="fiscal_address">Dirección Fiscal</label>
-                                    <textarea name="fiscal_address" class="form-control @error('fiscal_address') is-invalid @enderror" rows="2" placeholder="Dirección fiscal para facturación">{{ old('fiscal_address', $supplier->fiscal_address) }}</textarea>
+                                    <div class="input-group input-group-sm">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text bg-secondary text-white"><i class="fas fa-file-invoice"></i></span>
+                                        </div>
+                                        <textarea name="fiscal_address" class="form-control @error('fiscal_address') is-invalid @enderror" rows="2" placeholder="Dirección fiscal para facturación">{{ old('fiscal_address', $supplier->fiscal_address) }}</textarea>
+                                    </div>
                                     @error('fiscal_address')<span class="invalid-feedback">{{ $message }}</span>@enderror
                                 </div>
                             </div>
@@ -105,9 +135,9 @@
 
                         <div class="row">
                             <div class="col-12 col-md-6">
-                                <div class="form-group">
+                                <div class="form-group mb-0">
                                     <label for="is_active">Estado</label>
-                                    <select name="is_active" class="form-control">
+                                    <select name="is_active" class="form-control form-control-sm">
                                         <option value="1" {{ old('is_active', $supplier->is_active ?? true) == '1' || old('is_active', $supplier->is_active ?? true) === true ? 'selected' : '' }}>Activo</option>
                                         <option value="0" {{ old('is_active', $supplier->is_active ?? true) == '0' || old('is_active', $supplier->is_active ?? true) === false ? 'selected' : '' }}>Inactivo</option>
                                     </select>
