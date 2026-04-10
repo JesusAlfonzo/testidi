@@ -19,6 +19,10 @@ class SupplierController extends Controller
 
     public function index(\Illuminate\Http\Request $request)
     {
+        if ($request->ajax()) {
+            return $this->indexDataTables($request);
+        }
+
         $status = $request->get('status', 'all');
         
         $query = Supplier::with('user');
@@ -32,6 +36,66 @@ class SupplierController extends Controller
         $suppliers = $query->orderBy('name')->get();
         
         return view('admin.suppliers.index', compact('suppliers', 'status'));
+    }
+
+    protected function indexDataTables(\Illuminate\Http\Request $request)
+    {
+        $query = Supplier::with(['user']);
+
+        if ($request->filled('status')) {
+            if ($request->status === 'active') {
+                $query->where('is_active', true);
+            } elseif ($request->status === 'inactive') {
+                $query->where('is_active', false);
+            }
+        }
+
+        $start = $request->input('start', 0);
+        $length = $request->input('length', 15);
+        $search = $request->input('search.value', '');
+
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->whereRaw('LOWER(name) LIKE ?', [strtolower("%{$search}%")])
+                  ->orWhereRaw('LOWER(contact_person) LIKE ?', [strtolower("%{$search}%")])
+                  ->orWhereRaw('LOWER(email) LIKE ?', [strtolower("%{$search}%")])
+                  ->orWhereRaw('LOWER(tax_id) LIKE ?', [strtolower("%{$search}%")]);
+            });
+        }
+
+        $totalRecords = Supplier::count();
+        $totalFiltered = $query->count();
+
+        $orderColumn = $request->input('order.0.column', 1);
+        $orderDir = $request->input('order.0.dir', 'asc');
+        $columns = ['id', 'name', 'is_active', 'contact_person', 'tax_id', 'email'];
+        
+        if (isset($columns[$orderColumn])) {
+            $query->orderBy($columns[$orderColumn], $orderDir);
+        }
+
+        $suppliers = $query->offset($start)->limit($length)->get();
+
+        $data = $suppliers->map(function ($supplier) {
+            $actions = view('admin.suppliers.partials.actions', ['supplier' => $supplier])->render();
+            
+            return [
+                'id' => $supplier->id,
+                'name' => $supplier->name,
+                'is_active' => $supplier->is_active,
+                'contact' => $supplier->contact_person . ($supplier->phone ? '<br><small class="text-muted"><i class="fas fa-phone-alt"></i> ' . $supplier->phone . '</small>' : ''),
+                'tax_id' => $supplier->tax_id ?? 'N/A',
+                'email' => $supplier->email ? '<a href="mailto:' . $supplier->email . '">' . $supplier->email . '</a>' : 'N/A',
+                'actions' => $actions,
+            ];
+        });
+
+        return response()->json([
+            'draw' => intval($request->input('draw')),
+            'recordsTotal' => $totalRecords,
+            'recordsFiltered' => $totalFiltered,
+            'data' => $data,
+        ]);
     }
 
     public function create()

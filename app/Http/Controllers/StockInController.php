@@ -29,7 +29,10 @@ class StockInController extends Controller
     {
         $this->authorize('entradas_ver');
         
-        if ($request->ajax()) {
+        // Usar server-side si es AJAX o si hay parámetros de DataTables
+        $isDataTables = $request->filled('draw') || $request->ajax();
+        
+        if ($isDataTables) {
             return $this->indexDataTables($request);
         }
 
@@ -88,18 +91,34 @@ class StockInController extends Controller
         $length = $request->input('length', 15);
         $search = $request->input('search.value', '');
         
-        $isInitialLoad = !$search && !$request->filled('date_from') && !$request->filled('date_to') 
-            && !$request->filled('supplier_id') && !$request->filled('product_id');
+        // Siempre permitir ordenamiento
+        $orderColumn = (int) $request->input('order.0.column', 0);
+        $orderDir = $request->input('order.0.dir', 'desc');
         
-        if ($isInitialLoad) {
-            $query->orderBy('created_at', 'desc');
-        } else {
-            $orderColumn = $request->input('order.0.column', 5);
-            $orderDir = $request->input('order.0.dir', 'desc');
-            $columns = ['entry_date', 'quantity', 'product_id', 'supplier_id', 'unit_cost', 'created_at'];
-            if (isset($columns[$orderColumn])) {
-                $query->orderBy($columns[$orderColumn], $orderDir);
+        // Mapear índice de DataTables al campo de ordenamiento
+        // 0: entry_date, 1: reference, 2: quantity, 3: unit_cost, 4: total, 5: supplier, 6: document
+        $columnMap = [
+            0 => 'entry_date',      // entry_date
+            1 => 'purchase_order_id', // reference
+            2 => 'quantity',     // quantity
+            3 => 'unit_cost',    // unit_cost
+            4 => 'total',       // total
+            5 => 'supplier',    // supplier_id - usar join
+            6 => 'document_type', // document
+        ];
+        $orderCol = $columnMap[$orderColumn] ?? 'id';
+
+        // Ordenar por relación supplier usando join
+        try {
+            if ($orderCol === 'supplier') {
+                $query->join('suppliers', 'stock_ins.supplier_id', '=', 'suppliers.id')
+                      ->orderBy('suppliers.name', $orderDir)
+                      ->select('stock_ins.*');
+            } else {
+                $query->orderBy($orderCol, $orderDir);
             }
+        } catch (\Exception $e) {
+            $query->orderBy('id', 'desc');
         }
 
         if ($search) {
@@ -139,6 +158,9 @@ class StockInController extends Controller
                 $totalCost += $stockItem->quantity * $stockItem->unit_cost;
             }
 
+            // Evitar división por cero
+            $avgUnitCost = $totalQty > 0 ? $totalCost / $totalQty : 0;
+
             $reference = '';
             if ($item->purchaseOrder) {
                 $reference = '<span class="badge badge-primary"><i class="fas fa-file-contract"></i> ' . $item->purchaseOrder->code . '</span>';
@@ -150,10 +172,10 @@ class StockInController extends Controller
             $reference .= ' <span class="badge badge-light">' . $itemCount . ' item' . ($itemCount > 1 ? 's' : '') . '</span>';
 
             return [
-                'date' => $item->entry_date->format('d/m/Y'),
+                'date' => $item->entry_date ? $item->entry_date->format('d/m/Y') : '',
                 'reference' => $reference,
                 'quantity' => '<span class="badge badge-success">+' . $totalQty . '</span>',
-                'unit_cost' => '$' . number_format($totalCost / $totalQty, 2),
+                'unit_cost' => '$' . number_format($avgUnitCost, 2),
                 'total' => '$' . number_format($totalCost, 2),
                 'supplier' => $item->supplier->name ?? 'Ajuste / N/A',
                 'document' => $doc,

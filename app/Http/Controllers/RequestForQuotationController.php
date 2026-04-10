@@ -53,7 +53,9 @@ class RequestForQuotationController extends Controller
         $start = $request->input('start', 0);
         $length = $request->input('length', 15);
         $search = $request->input('search.value', '');
-        $statusSearch = $request->input('columns.status.search.value', '');
+        
+        // Aceptar filtro de status desde form o desde DataTables column search
+        $statusSearch = $request->input('status', $request->input('columns.status.search.value', ''));
 
         if ($statusSearch) {
             $query->where('status', $statusSearch);
@@ -68,6 +70,9 @@ class RequestForQuotationController extends Controller
             if ($orderCol === 'items_count') {
                 $query->withCount('items');
                 $query->orderBy('items_count', $orderDir);
+            } elseif ($orderCol === 'status') {
+                // Ordenar por status alfabéticamente
+                $query->orderBy('status', $orderDir);
             } else {
                 $query->orderBy($orderCol, $orderDir);
             }
@@ -324,10 +329,15 @@ class RequestForQuotationController extends Controller
 
     public function pdf(RequestForQuotation $rfq)
     {
-        $rfq->load(['creator', 'items.product.category', 'items.product.unit']);
+        try {
+            $rfq->load(['creator', 'items.product.category', 'items.product.unit']);
 
-        $pdf = Pdf::loadView('admin.rfq.pdf', compact('rfq'));
-        
-        return $pdf->stream('RFQ-' . $rfq->code . '.pdf');
+            $pdf = Pdf::loadView('admin.rfq.pdf', compact('rfq'));
+            
+            return $pdf->stream('RFQ-' . $rfq->code . '.pdf');
+        } catch (\Exception $e) {
+            \Log::error('Error al generar PDF de RFQ: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error al generar el PDF. Por favor, contacte al administrador.');
+        }
     }
 }

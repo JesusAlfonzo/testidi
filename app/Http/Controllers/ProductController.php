@@ -147,12 +147,16 @@ class ProductController extends Controller
         $units = Unit::pluck('name', 'id');
         $locations = Location::pluck('name', 'id');
         $brands = Brand::pluck('name', 'id');
-        return view('admin.products.create', compact('categories', 'units', 'locations', 'brands'));
+        $defaultExpiryDays = 30;
+        return view('admin.products.create', compact('categories', 'units', 'locations', 'brands', 'defaultExpiryDays'));
     }
 
     public function store(StoreUpdateProductRequest $request) {
         $validatedData = $request->validated();
         if (empty($validatedData['brand_id'])) unset($validatedData['brand_id']);
+        
+        $validatedData['track_expiry'] = $request->has('track_expiry');
+        
         Product::create($validatedData + ['user_id' => auth()->id()]);
         $this->cacheService->invalidateProducts();
         return redirect()->route('admin.products.index')->with('success', 'Producto registrado con éxito.');
@@ -163,7 +167,8 @@ class ProductController extends Controller
         $units = $this->cacheService->units();
         $locations = $this->cacheService->locations();
         $brands = $this->cacheService->brands();
-        return view('admin.products.edit', compact('product', 'categories', 'units', 'locations', 'brands'));
+        $defaultExpiryDays = 30;
+        return view('admin.products.edit', compact('product', 'categories', 'units', 'locations', 'brands', 'defaultExpiryDays'));
     }
 
     public function update(StoreUpdateProductRequest $request, Product $product) {

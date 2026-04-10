@@ -21,14 +21,12 @@
 {{-- Estilos para corregir visualización --}}
 @section('css')
     <style>
-        /* Ajuste para el botón de expansión en móvil */
         table.dataTable.dtr-inline.collapsed > tbody > tr > td:first-child:before, 
         table.dataTable.dtr-inline.collapsed > tbody > tr > th:first-child:before { 
             left: 4px; 
             top: 50%;
             transform: translateY(-50%);
         }
-        /* Quitar padding extra en PC */
         .table.dataTable.dtr-inline.collapsed > tbody > tr > td:first-child { 
             padding-left: 10px !important; 
         }
@@ -36,97 +34,60 @@
 @stop
 
 @section('content')
+    
+    {{-- FILTROS --}}
+    <div class="card card-outline card-primary collapsed-card">
+        <div class="card-header">
+            <h3 class="card-title"><i class="fas fa-filter"></i> Filtros</h3>
+            <div class="card-tools">
+                <button type="button" class="btn btn-tool" data-card-widget="collapse"><i class="fas fa-plus"></i></button>
+            </div>
+        </div>
+        <div class="card-body">
+            <form id="filterForm" method="GET" action="{{ route('admin.suppliers.index') }}">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label>Estado</label>
+                            <select name="status" class="form-control">
+                                <option value="">Todos</option>
+                                <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>Activos</option>
+                                <option value="inactive" {{ request('status') == 'inactive' ? 'selected' : '' }}>Inactivos</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-search"></i> Filtrar</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div class="row">
         <div class="col-12">
             @include('admin.partials.session-messages')
 
             <div class="card card-outline card-info">
-                <div class="card-header">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h3 class="card-title">Listado de Proveedores</h3>
-                        <div class="d-flex align-items-center">
-                            <form method="GET" action="{{ route('admin.suppliers.index') }}" class="d-flex align-items-center">
-                                <label for="statusFilter" class="mr-2 mb-0" style="font-size: 0.875rem;">Estado:</label>
-                                <select name="status" id="statusFilter" class="form-control form-control-sm" style="width: auto;" onchange="this.form.submit()">
-                                    <option value="all" {{ $status ?? 'all' === 'all' ? 'selected' : '' }}>Todos</option>
-                                    <option value="active" {{ ($status ?? 'all') === 'active' ? 'selected' : '' }}>Activos</option>
-                                    <option value="inactive" {{ ($status ?? 'all') === 'inactive' ? 'selected' : '' }}>Inactivos</option>
-                                </select>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-
                 <div class="card-body p-4">
                     <div class="table-responsive">
-                        {{-- 🔑 ID 'suppliersTable', clases 'display nowrap' --}}
                         <table id="suppliersTable" class="table table-striped table-bordered display nowrap" style="width:100%">
                             <thead>
                                 <tr>
-                                    {{-- Prioridad Alta (Visible en Móvil) --}}
                                     <th style="width: 5%">ID</th>
                                     <th style="width: 25%">Nombre</th>
-                                    <th style="width: 10%">Estado</th>
-                                    <th style="width: 15%">Acciones</th>
-                                    
-                                    {{-- Prioridad Baja (Oculto en Móvil) --}}
+                                    <th style="width: 15%">Estado</th>
                                     <th style="width: 15%">Contacto / Teléfono</th>
                                     <th style="width: 15%">ID Fiscal</th>
                                     <th style="width: 15%">Email</th>
+                                    <th style="width: 10%">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @forelse($suppliers as $supplier)
-                                    <tr>
-                                        <td>{{ $supplier->id }}</td>
-                                        <td><strong>{{ $supplier->name }}</strong></td>
-                                        <td>
-                                            @if(isset($supplier->is_active) && $supplier->is_active)
-                                                <span class="badge badge-success">Activo</span>
-                                            @else
-                                                <span class="badge badge-secondary">Inactivo</span>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            <div class="btn-group btn-group-sm" role="group">
-                                                @can('proveedores_editar')
-                                                    <a href="{{ route('admin.suppliers.edit', $supplier) }}" class="btn btn-default text-primary" title="Editar">
-                                                        <i class="fas fa-edit"></i>
-                                                    </a>
-                                                @endcan
-
-                                                @can('proveedores_eliminar')
-                                                    <button type="button" class="btn btn-default text-danger" onclick="confirmDelete('{{ route('admin.suppliers.destroy', $supplier) }}', '{{ $supplier->name }}')" title="Eliminar">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                @endcan
-                                            </div>
-                                        </td>
-                                        
-                                        {{-- Columnas Secundarias --}}
-                                        <td>
-                                            {{ $supplier->contact_person }}
-                                            @if($supplier->phone)
-                                                <br><small class="text-muted"><i class="fas fa-phone-alt"></i> {{ $supplier->phone }}</small>
-                                            @endif
-                                        </td>
-                                        <td><span class="badge badge-secondary">{{ $supplier->tax_id ?? 'N/A' }}</span></td>
-                                        <td>
-                                            @if($supplier->email)
-                                                <a href="mailto:{{ $supplier->email }}">{{ $supplier->email }}</a>
-                                            @else
-                                                N/A
-                                            @endif
-                                        </td>
-                                    </tr>
-                                @empty
-                                    {{-- DataTables manejará el vacío --}}
-                                @endforelse
                             </tbody>
                         </table>
                     </div>
                 </div>
-                {{-- Eliminamos la paginación manual --}}
             </div>
         </div>
     </div>
@@ -135,53 +96,72 @@
 @section('js')
     <script>
         $(document).ready(function() {
-            const suppliersTable = $('#suppliersTable').DataTable({
-                "responsive": true, 
-                "paging": true, 
-                "lengthChange": true, 
-                "searching": true, 
-                "ordering": true, 
-                "info": true, 
-                "autoWidth": false,
-                "order": [[ 1, "asc" ]], // Ordenar por Nombre
-                
-                // 🔑 Traducción Nativa
-                "language": {
-                    "decimal": "",
-                    "emptyTable": "No hay información disponible",
-                    "info": "Mostrando _START_ a _END_ de _TOTAL_ registros",
-                    "infoEmpty": "Mostrando 0 a 0 de 0 registros",
-                    "infoFiltered": "(Filtrado de _MAX_ total registros)",
-                    "infoPostFix": "",
-                    "thousands": ",",
-                    "lengthMenu": "Mostrar _MENU_ registros",
-                    "loadingRecords": "Cargando...",
-                    "processing": "Procesando...",
-                    "search": "Buscar:",
-                    "zeroRecords": "Sin resultados encontrados",
-                    "paginate": {
-                        "first": "Primero",
-                        "last": "Último",
-                        "next": "Siguiente",
-                        "previous": "Anterior"
+            var table = $('#suppliersTable').DataTable({
+                responsive: true, 
+                processing: true,
+                serverSide: true,
+                paging: true, 
+                lengthChange: true, 
+                searching: true, 
+                ordering: true, 
+                info: true, 
+                autoWidth: false,
+                order: [[1, 'asc']],
+
+                ajax: {
+                    url: "{{ route('admin.suppliers.index') }}",
+                    type: "GET",
+                    data: function(d) {
+                        d.status = $('select[name="status"]').val();
                     }
                 },
 
-                "columnDefs": [
-                    { "orderable": false, "targets": [2] }, // Acciones no ordenables
-                    
-                    // 🔑 PRIORIDADES MÓVIL
-                    { "responsivePriority": 1, "targets": 1 }, // Nombre
-                    { "responsivePriority": 2, "targets": 2 }, // Acciones
-                    { "responsivePriority": 3, "targets": 0 }, // ID
-                    
-                    // Ocultar el resto
-                    { "responsivePriority": 100, "targets": [3, 4, 5] } 
+                columns: [
+                    { data: 'id', name: 'id', orderable: true },
+                    { data: 'name', name: 'name', orderable: true },
+                    { data: 'is_active', name: 'is_active', orderable: true },
+                    { data: 'contact', name: 'contact_person', orderable: false },
+                    { data: 'tax_id', name: 'tax_id', orderable: true },
+                    { data: 'email', name: 'email', orderable: true },
+                    { data: 'actions', name: 'actions', orderable: false, searchable: false }
+                ],
+
+                language: {
+                    decimal: '',
+                    emptyTable: 'No hay información disponible',
+                    info: 'Mostrando _START_ a _END_ de _TOTAL_ registros',
+                    infoEmpty: 'Mostrando 0 a 0 de 0 registros',
+                    infoFiltered: '(Filtrado de _MAX_ total registros)',
+                    lengthMenu: 'Mostrar _MENU_ registros',
+                    loadingRecords: 'Cargando...',
+                    processing: 'Procesando...',
+                    search: 'Buscar:',
+                    zeroRecords: 'Sin resultados encontrados',
+                    paginate: {
+                        first: 'Primero',
+                        last: 'Último',
+                        next: 'Siguiente',
+                        previous: 'Anterior'
+                    }
+                },
+
+                columnDefs: [
+                    { orderable: false, targets: [3, 6] },
+                    { responsivePriority: 1, targets: 1 },
+                    { responsivePriority: 2, targets: 6 },
+                    { responsivePriority: 3, targets: 0 },
+                    { responsivePriority: 100, targets: [2, 3, 4, 5] }
                 ]
             });
+
+            $('#filterForm').on('submit', function(e) {
+                e.preventDefault();
+                table.draw();
+            });
+
+            addClearFiltersButton('suppliersTable', 'filterForm');
             
-            // Ajuste de renderizado
-            setTimeout(function() { suppliersTable.columns.adjust().responsive.recalc(); }, 500);
+            setTimeout(function() { table.columns.adjust().responsive.recalc(); }, 500);
         });
     </script>
     @include('admin.partials.delete-confirm')

@@ -34,7 +34,7 @@
                     <div class="col-md-3">
                         <div class="form-group">
                             <label>Categoría</label>
-                            <select name="category_id" class="form-control select2">
+                            <select name="category_id" class="form-control select2" style="width: 100%">
                                 <option value="">Todas</option>
                                 @foreach($categories as $id => $name)
                                     <option value="{{ $id }}" {{ request('category_id') == $id ? 'selected' : '' }}>{{ $name }}</option>
@@ -45,7 +45,7 @@
                     <div class="col-md-3">
                         <div class="form-group">
                             <label>Ubicación</label>
-                            <select name="location_id" class="form-control select2">
+                            <select name="location_id" class="form-control select2" style="width: 100%">
                                 <option value="">Todas</option>
                                 @foreach($locations as $id => $name)
                                     <option value="{{ $id }}" {{ request('location_id') == $id ? 'selected' : '' }}>{{ $name }}</option>

@@ -254,11 +254,14 @@
                     }
                 },
 
-                "columnDefs": [{
-                        "targets": 2,
-                        "render": function(data, type, row) {
+                "columnDefs": [
+                    {
+                        targets: [0, 2],
+                        render: function(data, type, row) {
                             if (type === 'sort' || type === 'type') {
-                                return $('<div>').html(data).find('span').text().trim();
+                                var $div = $('<div>');
+                                $div.html(data);
+                                return $div.text().trim();
                             }
                             return data;
                         }

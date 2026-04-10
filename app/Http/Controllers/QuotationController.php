@@ -26,7 +26,10 @@ class QuotationController extends Controller
 
     public function index(Request $request)
     {
-        if ($request->ajax()) {
+        // Usar server-side si es AJAX o si hay parámetros de DataTables
+        $isDataTables = $request->filled('draw') || $request->ajax();
+        
+        if ($isDataTables) {
             return $this->indexDataTables($request);
         }
 
@@ -74,19 +77,37 @@ class QuotationController extends Controller
         $length = $request->input('length', 15);
         $search = $request->input('search.value', '');
         
-        // Determinar si es una carga inicial (sin filtros ni búsqueda)
-        $isInitialLoad = !$search && !$request->filled('rfq_id') && !$request->filled('supplier_id') && !$request->filled('status');
+        // Siempre permitir ordenamiento
+        $orderColumn = (int) $request->input('order.0.column', 5);
+        $orderDir = $request->input('order.0.dir', 'desc');
         
-        // Si es carga inicial, forzar orden por created_at
-        if ($isInitialLoad) {
-            $query->orderBy('created_at', 'desc');
-        } else {
-            $orderColumn = $request->input('order.0.column', 5);
-            $orderDir = $request->input('order.0.dir', 'desc');
-            $columns = ['code', 'supplier_id', 'total', 'status', 'date_issued', 'created_at'];
-            if (isset($columns[$orderColumn])) {
-                $query->orderBy($columns[$orderColumn], $orderDir);
+        // Mapear índice de DataTables al campo de ordenamiento
+        // 0: code, 1: supplier (supplier_id), 2: rfq (rfq_id), 3: total, 4: status, 5: date_issued
+        $columnMap = [
+            0 => 'code',           // code
+            1 => 'supplier',      // supplier_id - usar join
+            2 => 'rfq',         // rfq_id - usar join  
+            3 => 'total',         // total
+            4 => 'status',       // status
+            5 => 'created_at',  // date_issued -> usar created_at
+        ];
+        $orderCol = $columnMap[$orderColumn] ?? 'created_at';
+
+        // Ordenar por relaciones usando join
+        try {
+            if ($orderCol === 'supplier') {
+                $query->join('suppliers', 'purchase_quotes.supplier_id', '=', 'suppliers.id')
+                      ->orderBy('suppliers.name', $orderDir)
+                      ->select('purchase_quotes.*');
+            } elseif ($orderCol === 'rfq') {
+                $query->join('request_for_quotations', 'purchase_quotes.rfq_id', '=', 'request_for_quotations.id')
+                      ->orderBy('request_for_quotations.code', $orderDir)
+                      ->select('purchase_quotes.*');
+            } else {
+                $query->orderBy($orderCol, $orderDir);
             }
+        } catch (\Exception $e) {
+            $query->orderBy('created_at', 'desc');
         }
 
         $totalRecords = PurchaseQuote::count();
@@ -494,6 +515,23 @@ class QuotationController extends Controller
             return back()->with('error', 'Esta cotización ya tiene un proveedor registrado.');
         }
 
+        $supplierName = $quotation->supplier_name_temp;
+        $taxId = $request->tax_id;
+
+        $existingSupplier = Supplier::where(function ($query) use ($supplierName, $taxId) {
+            $query->where('name', $supplierName);
+            if ($taxId) {
+                $query->orWhere('tax_id', $taxId);
+            }
+        })->first();
+
+        if ($existingSupplier) {
+            $reason = $existingSupplier->name === $supplierName 
+                ? 'ya existe un proveedor con el mismo nombre' 
+                : 'ya existe un proveedor con el mismo RIF';
+            return back()->with('error', "No se puede crear: {$reason}.");
+        }
+
         $request->validate([
             'tax_id' => 'nullable|string|max:50',
             'contact_person' => 'nullable|string|max:255',
@@ -501,8 +539,8 @@ class QuotationController extends Controller
         ]);
 
         $supplier = Supplier::create([
-            'name' => $quotation->supplier_name_temp,
-            'tax_id' => $request->tax_id,
+            'name' => $supplierName,
+            'tax_id' => $taxId,
             'email' => $quotation->supplier_email_temp,
             'phone' => $quotation->supplier_phone_temp,
             'contact_person' => $request->contact_person,
@@ -522,10 +560,15 @@ class QuotationController extends Controller
 
     public function pdf(PurchaseQuote $quotation)
     {
-        $quotation->load(['supplier', 'user', 'items.product']);
+        try {
+            $quotation->load(['supplier', 'user', 'items.product']);
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.quotations.pdf', compact('quotation'));
+            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.quotations.pdf', compact('quotation'));
 
-        return $pdf->stream('COT-' . $quotation->code . '.pdf');
+            return $pdf->stream('COT-' . $quotation->code . '.pdf');
+        } catch (\Exception $e) {
+            \Log::error('Error al generar PDF de cotización: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error al generar el PDF. Por favor, contacte al administrador.');
+        }
     }
 }

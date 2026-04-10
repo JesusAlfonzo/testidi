@@ -55,4 +55,42 @@ class ProductBatch extends Model
         }
         return now()->diffInDays($this->expiry_date, false);
     }
+
+    public static function consumeFromOldestBatch(int $productId, int $quantityRequired): array
+    {
+        $batches = self::where('product_id', $productId)
+            ->where('quantity', '>', 0)
+            ->orderBy('expiry_date', 'asc')
+            ->orderBy('id', 'asc')
+            ->lockForUpdate()
+            ->get();
+
+        $consumed = [];
+        $remaining = $quantityRequired;
+
+        foreach ($batches as $batch) {
+            if ($remaining <= 0) {
+                break;
+            }
+
+            $takeFromBatch = min($batch->quantity, $remaining);
+            $batch->quantity -= $takeFromBatch;
+            $batch->save();
+
+            $consumed[] = [
+                'batch_id' => $batch->id,
+                'batch_number' => $batch->batch_number,
+                'quantity' => $takeFromBatch,
+                'expiry_date' => $batch->expiry_date,
+            ];
+
+            $remaining -= $takeFromBatch;
+        }
+
+        if ($remaining > 0) {
+            throw new \Exception("Stock insuficiente en lotes. Faltan {$remaining} unidades.");
+        }
+
+        return $consumed;
+    }
 }

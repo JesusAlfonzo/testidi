@@ -102,6 +102,30 @@ class Product extends Model
             ->get();
     }
 
+    public function hasActiveBatches(): bool
+    {
+        return $this->batches()->where('quantity', '>', 0)->exists();
+    }
+
+    public function shouldUseFifo(): bool
+    {
+        return $this->track_expiry && $this->hasActiveBatches();
+    }
+
+    public function consumeStock(int $quantity, ?string $reason = null): array
+    {
+        if ($this->shouldUseFifo()) {
+            $consumed = ProductBatch::consumeFromOldestBatch($this->id, $quantity);
+            $this->stock -= $quantity;
+            $this->save();
+            return $consumed;
+        }
+
+        $this->stock -= $quantity;
+        $this->save();
+        return [['type' => 'simple', 'quantity' => $quantity]];
+    }
+
     // Configuración del Log de Actividad de Spatie
     public function getActivitylogOptions(): LogOptions
     {

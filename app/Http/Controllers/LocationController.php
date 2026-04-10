@@ -62,6 +62,13 @@ class LocationController extends Controller
 
     public function destroy(Location $location)
     {
+        $productsCount = \App\Models\Product::where('location_id', $location->id)->count();
+        
+        if ($productsCount > 0) {
+            return redirect()->route('admin.locations.index')
+                             ->with('error', 'No se puede eliminar la ubicación porque tiene ' . $productsCount . ' producto(s) asociado(s).');
+        }
+        
         $location->delete();
         $this->cacheService->invalidateLocations();
         

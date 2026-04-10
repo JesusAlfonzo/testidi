@@ -30,7 +30,10 @@ class RequestController extends Controller
 
     public function index(HttpRequest $request)
     {
-        if ($request->ajax()) {
+        // Usar server-side si es AJAX o si hay parámetros de DataTables
+        $isDataTables = $request->filled('draw') || $request->ajax();
+        
+        if ($isDataTables) {
             return $this->indexDataTables($request);
         }
 
@@ -101,22 +104,42 @@ class RequestController extends Controller
             $query->where('requester_id', $request->requester_id);
         }
 
-        $start = $request->input('start', 0);
+$start = $request->input('start', 0);
         $length = $request->input('length', 15);
         $search = $request->input('search.value', '');
         
-        $isInitialLoad = !$search && !$request->filled('date_from') && !$request->filled('date_to') 
-            && !$request->filled('status') && !$request->filled('requester_id');
+        // Siempre permitir ordenamiento
+        $orderColumn = (int) $request->input('order.0.column', 4);
+        $orderDir = $request->input('order.0.dir', 'desc');
         
-        if ($isInitialLoad) {
-            $query->orderBy('created_at', 'desc');
-        } else {
-            $orderColumn = $request->input('order.0.column', 5);
-            $orderDir = $request->input('order.0.dir', 'desc');
-            $columns = ['id', 'requested_at', 'status', 'requester_id', 'processed_at', 'created_at'];
-            if (isset($columns[$orderColumn])) {
-                $query->orderBy($columns[$orderColumn], $orderDir);
+        // Mapear índice de DataTables al campo de ordenamiento
+        // 0: id, 1: requester, 2: justification, 3: status, 4: date, 5: approver, 6: processed
+        $columnMap = [
+            0 => 'id',              // id
+            1 => 'requester',      // requester_id - usar join
+            2 => 'justification',   // justification
+            3 => 'status',          // status
+            4 => 'requested_at',   // date
+            5 => 'approver',       // approver_id - usar join
+            6 => 'processed_at',    // processed
+        ];
+        $orderCol = $columnMap[$orderColumn] ?? 'requested_at';
+
+        // Ordenar por relaciones usando join
+        try {
+            if ($orderCol === 'requester') {
+                $query->join('users as requesters', 'solicitudes.requester_id', '=', 'requesters.id')
+                      ->orderBy('requesters.name', $orderDir)
+                      ->select('solicitudes.*');
+            } elseif ($orderCol === 'approver') {
+                $query->leftJoin('users as approvers', 'solicitudes.approver_id', '=', 'approvers.id')
+                      ->orderBy('approvers.name', $orderDir)
+                      ->select('solicitudes.*');
+            } else {
+                $query->orderBy($orderCol, $orderDir);
             }
+        } catch (\Exception $e) {
+            $query->orderBy('requested_at', 'desc');
         }
 
         if ($search) {
@@ -302,9 +325,14 @@ class RequestController extends Controller
 
     public function pdf(RequestModel $request)
     {
-        $request->load(['requester', 'items.product.unit', 'items.kit']);
-        
-        return \PDF::loadView('admin.requests.pdf', compact('request'))->stream('solicitud-' . $request->id . '.pdf');
+        try {
+            $request->load(['requester', 'items.product.unit', 'items.kit']);
+            
+            return \PDF::loadView('admin.requests.pdf', compact('request'))->stream('solicitud-' . $request->id . '.pdf');
+        } catch (\Exception $e) {
+            \Log::error('Error al generar PDF de solicitud: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error al generar el PDF. Por favor, contacte al administrador.');
+        }
     }
 
     public function destroy($id) { return abort(404); }

@@ -128,6 +128,7 @@ class CacheService
     {
         Cache::forget("products:stock:{$productId}");
         Cache::forget('inventory:summary');
+        Cache::forget('products:list');
     }
 
     public function invalidatePurchases()

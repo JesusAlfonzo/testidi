@@ -28,7 +28,7 @@
                 <div class="card-body">
                     <form id="filterForm" class="row">
                         <div class="col-md-4">
-                            <select name="supplier_id" class="form-control">
+                            <select name="supplier_id" class="form-control w-100">
                                 <option value="">Todos los proveedores</option>
                                 @foreach(\App\Models\Supplier::orderBy('name')->get() as $supplier)
                                     <option value="{{ $supplier->id }}" {{ request('supplier_id') == $supplier->id ? 'selected' : '' }}>
@@ -38,7 +38,7 @@
                             </select>
                         </div>
                         <div class="col-md-3">
-                            <select name="status" class="form-control">
+                            <select name="status" class="form-control w-100">
                                 <option value="">Todos los estados</option>
                                 <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>Borrador</option>
                                 <option value="issued" {{ request('status') == 'issued' ? 'selected' : '' }}>Emitida</option>
@@ -47,8 +47,10 @@
                             </select>
                         </div>
                         <div class="col-md-2">
-                            <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> Filtrar</button>
-                            <button type="button" class="btn btn-secondary" id="clearFilters"><i class="fas fa-eraser"></i> Limpiar</button>
+                            <button type="submit" class="btn btn-primary w-100"><i class="fas fa-search"></i> Filtrar</button>
+                        </div>
+                        <div class="col-md-2">
+                            <button type="button" class="btn btn-secondary w-100" id="clearFilters"><i class="fas fa-eraser"></i> Limpiar</button>
                         </div>
                     </form>
                 </div>
@@ -91,6 +93,7 @@
                 "ordering": true,
                 "info": true,
                 "autoWidth": false,
+                "order": [[4, "desc"]],
 
                 "ajax": {
                     "url": "{{ route('admin.purchaseOrders.index') }}",
@@ -98,15 +101,19 @@
                     "data": function(d) {
                         d.supplier_id = $('select[name="supplier_id"]').val();
                         d.status = $('select[name="status"]').val();
+                    },
+                    "error": function(xhr, error, thrown) {
+                        console.error('Ajax error:', xhr.responseText);
+                        alert('Error al cargar datos: ' + (xhr.responseJSON?.error || error));
                     }
                 },
 
                 "columns": [
-                    { "data": "code", "name": "code" },
-                    { "data": "supplier", "name": "supplier_id" },
-                    { "data": "total", "name": "total" },
-                    { "data": "status", "name": "status" },
-                    { "data": "date", "name": "date_issued" },
+                    { "data": "code", "name": "code", "orderable": true },
+                    { "data": "supplier", "name": "supplier_id", "orderable": true },
+                    { "data": "total", "name": "total", "orderable": true },
+                    { "data": "status", "name": "status", "orderable": true },
+                    { "data": "date", "name": "date_issued", "orderable": true },
                     { "data": "actions", "name": "actions", "orderable": false, "searchable": false }
                 ],
 
@@ -127,7 +134,18 @@
                 },
 
                 "columnDefs": [
-                    { "orderable": false, "targets": [2] }
+                    { "orderable": false, "targets": [2, 5] },
+                    {
+                        targets: [1, 3],
+                        render: function(data, type, row) {
+                            if (type === 'sort' || type === 'type') {
+                                var $div = $('<div>');
+                                $div.html(data);
+                                return $div.text().trim();
+                            }
+                            return data;
+                        }
+                    }
                 ]
             });
 

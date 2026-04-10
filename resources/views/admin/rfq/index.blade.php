@@ -28,7 +28,7 @@
                 <div class="card-body">
                     <form id="filterForm" class="row">
                         <div class="col-md-4">
-                            <select name="status" class="form-control">
+                            <select name="status" class="form-control w-100">
                                 <option value="">Todos los estados</option>
                                 <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>Borrador</option>
                                 <option value="sent" {{ request('status') == 'sent' ? 'selected' : '' }}>Enviada</option>
@@ -37,8 +37,10 @@
                             </select>
                         </div>
                         <div class="col-md-2">
-                            <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> Filtrar</button>
-                            <button type="button" class="btn btn-secondary" id="clearFilters"><i class="fas fa-eraser"></i> Limpiar</button>
+                            <button type="submit" class="btn btn-primary w-100"><i class="fas fa-search"></i> Filtrar</button>
+                        </div>
+                        <div class="col-md-2">
+                            <button type="button" class="btn btn-secondary w-100" id="clearFilters"><i class="fas fa-eraser"></i> Limpiar</button>
                         </div>
                     </form>
                 </div>
@@ -72,65 +74,77 @@
     <script>
         $(document).ready(function() {
             var table = $('#rfqTable').DataTable({
-                "responsive": true,
-                "processing": true,
-                "serverSide": true,
-                "paging": true,
-                "lengthChange": true,
-                "searching": true,
-                "ordering": true,
-                "info": true,
-                "autoWidth": false,
+                responsive: true,
+                processing: true,
+                serverSide: true,
+                paging: true,
+                lengthChange: true,
+                searching: true,
+                ordering: true,
+                info: true,
+                autoWidth: false,
+                order: [[4, 'desc']],
 
-                "columns": [
-                    { "data": "code", "name": "code" },
-                    { "data": "title", "name": "title" },
-                    { "data": "status", "name": "status" },
-                    { "data": "date_required", "name": "date_required" },
-                    { "data": "items_count", "name": "items_count" },
-                    { "data": "actions", "name": "actions", "orderable": false, "searchable": false }
-                ],
-
-                "language": {
-                    "decimal": "",
-                    "emptyTable": "No hay RFQ registradas",
-                    "info": "Mostrando _START_ a _END_ de _TOTAL_ registros",
-                    "infoEmpty": "Mostrando 0 a 0 de 0 registros",
-                    "infoFiltered": "(Filtrado de _MAX_ total registros)",
-                    "lengthMenu": "Mostrar _MENU_ registros",
-                    "loadingRecords": "Cargando...",
-                    "processing": "Procesando...",
-                    "search": "Buscar:",
-                    "zeroRecords": "Sin resultados encontrados",
-                    "paginate": {
-                        "first": "Primero",
-                        "last": "Último",
-                        "next": "Siguiente",
-                        "previous": "Anterior"
+                ajax: {
+                    url: "{{ route('admin.rfq.index') }}",
+                    type: "GET",
+                    data: function(d) {
+                        d.status = $('select[name="status"]').val();
                     }
                 },
-                "columnDefs": [
-                    { "orderable": false, "targets": [5] }
+
+                columns: [
+                    { data: 'code', name: 'code', orderable: true },
+                    { data: 'title', name: 'title', orderable: true },
+                    { data: 'status', name: 'status', orderable: true },
+                    { data: 'date_required', name: 'date_required', orderable: true },
+                    { data: 'items_count', name: 'items_count', orderable: true },
+                    { data: 'actions', name: 'actions', orderable: false, searchable: false }
+                ],
+
+                language: {
+                    decimal: "",
+                    emptyTable: "No hay RFQ registradas",
+                    info: "Mostrando _START_ a _END_ de _TOTAL_ registros",
+                    infoEmpty: "Mostrando 0 a 0 de 0 registros",
+                    infoFiltered: "(Filtrado de _MAX_ total registros)",
+                    lengthMenu: "Mostrar _MENU_ registros",
+                    loadingRecords: "Cargando...",
+                    processing: "Procesando...",
+                    search: "Buscar:",
+                    zeroRecords: "Sin resultados encontrados",
+                    paginate: {
+                        first: "Primero",
+                        last: "Último",
+                        next: "Siguiente",
+                        previous: "Anterior"
+                    }
+                },
+
+                columnDefs: [
+                    { orderable: false, targets: [5] },
+                    {
+                        targets: [2, 4],
+                        render: function(data, type, row) {
+                            if (type === 'sort' || type === 'type') {
+                                var $div = $('<div>');
+                                $div.html(data);
+                                return $div.text().trim();
+                            }
+                            return data;
+                        }
+                    }
                 ]
             });
 
-            function applyFilters() {
-                table.columns().search('');
-                var status = $('select[name="status"]').val();
-                if (status) {
-                    table.column('status:name').search('^' + status + '$', true, false);
-                }
-                table.draw();
-            }
-
             $('#filterForm').on('submit', function(e) {
                 e.preventDefault();
-                applyFilters();
+                table.draw();
             });
 
             $('#clearFilters').on('click', function() {
                 $('#filterForm')[0].reset();
-                applyFilters();
+                table.draw();
             });
         });
     </script>

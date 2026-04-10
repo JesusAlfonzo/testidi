@@ -191,6 +191,30 @@
                                     @error('description')<span class="invalid-feedback">{{ $message }}</span>@enderror
                                 </div>
 
+                                <div class="row">
+                                    <div class="col-12 col-md-6">
+                                        <div class="form-group">
+                                            <div class="custom-control custom-switch">
+                                                <input type="checkbox" class="custom-control-input" id="track_expiry" name="track_expiry" value="1" {{ old('track_expiry') ? 'checked' : '' }}>
+                                                <label class="custom-control-label" for="track_expiry">Rastrear vencimiento (FIFO)</label>
+                                            </div>
+                                            <small class="form-text text-muted">Activar para usar lote más antiguo primero al consumir stock.</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-12 col-md-6">
+                                        <div class="form-group">
+                                            <label for="expiry_warning_days">Días de alerta antes de vencer</label>
+                                            <div class="input-group input-group-sm">
+                                                <div class="input-group-prepend">
+                                                    <span class="input-group-text bg-warning text-dark"><i class="fas fa-calendar-exclamation"></i></span>
+                                                </div>
+                                                <input type="number" name="expiry_warning_days" class="form-control" value="{{ old('expiry_warning_days', $defaultExpiryDays) }}" min="1" max="365">
+                                            </div>
+                                            <small class="form-text text-muted">Días antes del vencimiento para mostrar alerta (default: 30).</small>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div class="form-group mb-0">
                                     <div class="custom-control custom-switch">
                                         <input type="checkbox" class="custom-control-input" id="is_active" name="is_active" value="1" {{ old('is_active', true) ? 'checked' : '' }}>

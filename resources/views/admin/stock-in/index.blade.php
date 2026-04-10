@@ -46,7 +46,7 @@
                     <div class="col-md-3">
                         <div class="form-group">
                             <label>Producto</label>
-                            <select name="product_id" class="form-control select2">
+                            <select name="product_id" class="form-control select2" style="width: 100%">
                                 <option value="">Todos</option>
                                 @foreach($products as $id => $name)
                                     <option value="{{ $id }}" {{ request('product_id') == $id ? 'selected' : '' }}>{{ $name }}</option>
@@ -97,69 +97,77 @@
 @section('js')
     <script>
         $(document).ready(function() {
-            $('.select2').select2({ theme: 'bootstrap4' });
-            
-            $(document).on('select2:open', function() {
-                setTimeout(function() {
-                    var dropdown = document.querySelector('.select2-dropdown');
-                    if (dropdown) {
-                        dropdown.style.maxHeight = '350px';
-                        dropdown.style.overflow = 'hidden';
-                        var results = dropdown.querySelector('.select2-results');
-                        if (results) {
-                            results.style.maxHeight = '350px';
-                            results.style.overflowY = 'auto';
-                        }
-                    }
-                }, 10);
+            // Inicializar Select2
+            $('.select2').select2({
+                theme: 'bootstrap4',
+                width: '100%'
             });
 
             var table = $('#stockInTable').DataTable({
-                "responsive": true, 
-                "processing": true,
-                "serverSide": true,
-                "paging": true, 
-                "lengthChange": true, 
-                "searching": true, 
-                "ordering": true, 
-                "info": true, 
-                "autoWidth": false,
+                responsive: true, 
+                processing: true,
+                serverSide: true,
+                paging: true, 
+                lengthChange: true, 
+                searching: true, 
+                ordering: true, 
+                info: true, 
+                autoWidth: false,
+                order: [[0, 'desc']],
 
-                "columns": [
-                    { "data": "date", "name": "entry_date" },
-                    { "data": "reference", "name": "purchase_order_id" },
-                    { "data": "quantity", "name": "quantity" },
-                    { "data": "unit_cost", "name": "unit_cost" },
-                    { "data": "total", "name": "quantity" },
-                    { "data": "supplier", "name": "supplier_id" },
-                    { "data": "document", "name": "document_type" },
-                    { "data": "actions", "name": "actions", "orderable": false, "searchable": false }
-                ],
-
-                "language": {
-                    "decimal": "",
-                    "emptyTable": "No hay entradas registradas",
-                    "info": "Mostrando _START_ a _END_ de _TOTAL_ registros",
-                    "infoEmpty": "Mostrando 0 a 0 de 0 registros",
-                    "infoFiltered": "(Filtrado de _MAX_ total registros)",
-                    "infoPostFix": "",
-                    "thousands": ",",
-                    "lengthMenu": "Mostrar _MENU_ registros",
-                    "loadingRecords": "Cargando...",
-                    "processing": "Procesando...",
-                    "search": "Buscar:",
-                    "zeroRecords": "Sin resultados encontrados",
-                    "paginate": {
-                        "first": "Primero",
-                        "last": "Último",
-                        "next": "Siguiente",
-                        "previous": "Anterior"
+                ajax: {
+                    url: "{{ route('admin.stock-in.index') }}",
+                    type: "GET",
+                    data: function(d) {
+                        d.date_from = $('input[name="date_from"]').val();
+                        d.date_to = $('input[name="date_to"]').val();
+                        d.product_id = $('select[name="product_id"]').val();
                     }
                 },
 
-                "columnDefs": [
-                    { "orderable": false, "targets": [2, 4, 6, 7] },
-                    { "type": "date", "targets": 0 }
+                columns: [
+                    { data: 'date', name: 'entry_date', orderable: true },
+                    { data: 'reference', name: 'purchase_order_id', orderable: true },
+                    { data: 'quantity', name: 'quantity', orderable: false },
+                    { data: 'unit_cost', name: 'unit_cost', orderable: false },
+                    { data: 'total', name: 'total', orderable: false },
+                    { data: 'supplier', name: 'supplier_id', orderable: true },
+                    { data: 'document', name: 'document_type', orderable: true },
+                    { data: 'actions', name: 'actions', orderable: false, searchable: false }
+                ],
+
+                language: {
+                    decimal: "",
+                    emptyTable: "No hay entradas registradas",
+                    info: "Mostrando _START_ a _END_ de _TOTAL_ registros",
+                    infoEmpty: "Mostrando 0 a 0 de 0 registros",
+                    infoFiltered: "(Filtrado de _MAX_ total registros)",
+                    lengthMenu: "Mostrar _MENU_ registros",
+                    loadingRecords: "Cargando...",
+                    processing: "Procesando...",
+                    search: "Buscar:",
+                    zeroRecords: "Sin resultados encontrados",
+                    paginate: {
+                        first: "Primero",
+                        last: "Último",
+                        next: "Siguiente",
+                        previous: "Anterior"
+                    }
+                },
+
+                columnDefs: [
+                    { orderable: false, targets: [2, 4, 6, 7] },
+                    {
+                        targets: [5],
+                        render: function(data, type, row) {
+                            if (type === 'sort' || type === 'type') {
+                                var $div = $('<div>');
+                                $div.html(data);
+                                return $div.text().trim();
+                            }
+                            return data;
+                        }
+                    }
                 ]
             });
 
@@ -167,10 +175,13 @@
                 e.preventDefault();
                 table.draw();
             });
+
+            addClearFiltersButton('stockInTable', 'filterForm');
             
             setTimeout(function() { 
                 table.columns.adjust().responsive.recalc(); 
             }, 500);
         });
     </script>
+    @include('admin.partials.delete-confirm')
 @endsection

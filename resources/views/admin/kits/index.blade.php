@@ -21,12 +21,10 @@
 {{-- Estilos para corregir visualización --}}
 @section('css')
     <style>
-        /* Ajuste para el botón de expansión en móvil */
         table.dataTable.dtr-inline.collapsed > tbody > tr > td:first-child:before, 
         table.dataTable.dtr-inline.collapsed > tbody > tr > th:first-child:before { 
             left: 4px; 
         }
-        /* Quitar padding extra en PC */
         .table.dataTable.dtr-inline.collapsed > tbody > tr > td:first-child { 
             padding-left: 10px !important; 
         }
@@ -35,14 +33,14 @@
 
 @section('content')
     
-    {{-- FILTROS (Opcional, si el controlador los soporta) --}}
+    {{-- FILTROS --}}
     <div class="card card-outline card-primary collapsed-card">
         <div class="card-header">
             <h3 class="card-title"><i class="fas fa-filter"></i> Filtros</h3>
             <div class="card-tools"><button type="button" class="btn btn-tool" data-card-widget="collapse"><i class="fas fa-plus"></i></button></div>
         </div>
         <div class="card-body">
-            <form method="GET" action="{{ route('admin.kits.index') }}">
+            <form id="filterForm" method="GET" action="{{ route('admin.kits.index') }}">
                 <div class="row">
                     <div class="col-md-4">
                         <div class="form-group">
@@ -69,46 +67,22 @@
             <div class="card card-outline card-info">
                 <div class="card-body p-4">
                     <div class="table-responsive">
-                        {{-- 🔑 ID 'kitsTable', clases 'display nowrap' --}}
                         <table id="kitsTable" class="table table-striped table-bordered display nowrap" style="width:100%">
                             <thead>
                                 <tr>
                                     <th style="width: 10%">ID</th>
                                     <th style="width: 40%">Nombre</th>
-                                    <th style="width: 15%">Acciones</th> 
-                                    <th style="width: 20%">Precio Unitario</th>
-                                    <th style="width: 15%">Activo</th>
+                                    <th style="width: 15%">Precio Unitario</th>
+                                    <th style="width: 10%">Componentes</th>
+                                    <th style="width: 10%">Activo</th>
+                                    <th style="width: 15%">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($kits as $kit)
-                                    <tr>
-                                        <td>{{ $kit->id }}</td>
-                                        <td><strong>{{ $kit->name }}</strong></td>
-                                        <td>
-                                            <div class="btn-group btn-group-sm" role="group">
-                                                @can('kits_editar')
-                                                    <a href="{{ route('admin.kits.edit', $kit) }}" class="btn btn-default text-primary" title="Editar"><i class="fas fa-edit"></i></a>
-                                                @endcan
-                                                
-                                                @can('kits_eliminar')
-                                                    <button type="button" class="btn btn-default text-danger" title="Eliminar" onclick="confirmDelete('{{ route('admin.kits.destroy', $kit) }}', '{{ $kit->name }}')">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                @endcan
-                                            </div>
-                                        </td>
-                                        <td data-order="{{ $kit->unit_price }}">${{ number_format($kit->unit_price, 2) }}</td>
-                                        <td>
-                                            @if($kit->is_active) <span class="badge badge-success">Sí</span> @else <span class="badge badge-danger">No</span> @endif
-                                        </td>
-                                    </tr>
-                                @endforeach
                             </tbody>
                         </table>
                     </div>
                 </div>
-                {{-- Se elimina la paginación manual de Laravel --}}
             </div>
         </div>
     </div>
@@ -117,53 +91,71 @@
 @section('js')
     <script>
         $(document).ready(function() {
-            const kitsTable = $('#kitsTable').DataTable({
-                "responsive": true, 
-                "paging": true, 
-                "lengthChange": true, 
-                "searching": true, 
-                "ordering": true, 
-                "info": true, 
-                "autoWidth": false,
-                "order": [[ 1, "asc" ]], // Ordenar por Nombre (índice 1)
-                
-                // 🔑 Traducción Nativa
-                "language": {
-                    "decimal": "",
-                    "emptyTable": "No hay información disponible",
-                    "info": "Mostrando _START_ a _END_ de _TOTAL_ registros",
-                    "infoEmpty": "Mostrando 0 a 0 de 0 registros",
-                    "infoFiltered": "(Filtrado de _MAX_ total registros)",
-                    "infoPostFix": "",
-                    "thousands": ",",
-                    "lengthMenu": "Mostrar _MENU_ registros",
-                    "loadingRecords": "Cargando...",
-                    "processing": "Procesando...",
-                    "search": "Buscar:",
-                    "zeroRecords": "Sin resultados encontrados",
-                    "paginate": {
-                        "first": "Primero",
-                        "last": "Último",
-                        "next": "Siguiente",
-                        "previous": "Anterior"
+            var table = $('#kitsTable').DataTable({
+                responsive: true, 
+                processing: true,
+                serverSide: true,
+                paging: true, 
+                lengthChange: true, 
+                searching: true, 
+                ordering: true, 
+                info: true, 
+                autoWidth: false,
+                order: [[1, 'asc']],
+
+                ajax: {
+                    url: "{{ route('admin.kits.index') }}",
+                    type: "GET",
+                    data: function(d) {
+                        d.status = $('select[name="status"]').val();
                     }
                 },
 
-                "columnDefs": [
-                    { "orderable": false, "targets": [2] }, // Acciones no ordenables
-                    
-                    // 🔑 PRIORIDADES MÓVIL
-                    { "responsivePriority": 1, "targets": 1 }, // Nombre
-                    { "responsivePriority": 2, "targets": 2 }, // Acciones
-                    { "responsivePriority": 3, "targets": 0 }, // ID
-                    
-                    // Ocultar resto en móvil
-                    { "responsivePriority": 100, "targets": [3, 4] } 
+                columns: [
+                    { data: 'id', name: 'id', orderable: true },
+                    { data: 'name', name: 'name', orderable: true },
+                    { data: 'unit_price', name: 'unit_price', orderable: true },
+                    { data: 'components_count', name: 'components_count', orderable: false },
+                    { data: 'is_active', name: 'is_active', orderable: true },
+                    { data: 'actions', name: 'actions', orderable: false, searchable: false }
+                ],
+
+                language: {
+                    decimal: '',
+                    emptyTable: 'No hay información disponible',
+                    info: 'Mostrando _START_ a _END_ de _TOTAL_ registros',
+                    infoEmpty: 'Mostrando 0 a 0 de 0 registros',
+                    infoFiltered: '(Filtrado de _MAX_ total registros)',
+                    lengthMenu: 'Mostrar _MENU_ registros',
+                    loadingRecords: 'Cargando...',
+                    processing: 'Procesando...',
+                    search: 'Buscar:',
+                    zeroRecords: 'Sin resultados encontrados',
+                    paginate: {
+                        first: 'Primero',
+                        last: 'Último',
+                        next: 'Siguiente',
+                        previous: 'Anterior'
+                    }
+                },
+
+                columnDefs: [
+                    { orderable: false, targets: [3, 5] },
+                    { responsivePriority: 1, targets: 1 },
+                    { responsivePriority: 2, targets: 5 },
+                    { responsivePriority: 3, targets: 0 },
+                    { responsivePriority: 100, targets: [2, 3, 4] }
                 ]
             });
+
+            $('#filterForm').on('submit', function(e) {
+                e.preventDefault();
+                table.draw();
+            });
+
+            addClearFiltersButton('kitsTable', 'filterForm');
             
-            // Ajuste de renderizado
-            setTimeout(function() { kitsTable.columns.adjust().responsive.recalc(); }, 500);
+            setTimeout(function() { table.columns.adjust().responsive.recalc(); }, 500);
         });
     </script>
     @include('admin.partials.delete-confirm')

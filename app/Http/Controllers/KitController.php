@@ -18,6 +18,10 @@ class KitController extends Controller
      */
     public function index(\Illuminate\Http\Request $request)
     {
+        if ($request->ajax()) {
+            return $this->indexDataTables($request);
+        }
+
         $perPage = $request->get('per_page', 15);
         if (!in_array($perPage, [15, 25, 50, 100])) {
             $perPage = 15;
@@ -30,6 +34,61 @@ class KitController extends Controller
         }
         
         return view('admin.kits.index', compact('kits', 'perPage'));
+    }
+
+    protected function indexDataTables(\Illuminate\Http\Request $request)
+    {
+        $query = Kit::with(['components']);
+
+        if ($request->filled('status')) {
+            if ($request->status === 'active') {
+                $query->where('is_active', true);
+            } elseif ($request->status === 'inactive') {
+                $query->where('is_active', false);
+            }
+        }
+
+        $start = $request->input('start', 0);
+        $length = $request->input('length', 15);
+        $search = $request->input('search.value', '');
+
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->whereRaw('LOWER(name) LIKE ?', [strtolower("%{$search}%")])
+                  ->orWhereRaw('LOWER(description) LIKE ?', [strtolower("%{$search}%")]);
+            });
+        }
+
+        $totalRecords = Kit::count();
+        $totalFiltered = $query->count();
+
+        $orderColumn = $request->input('order.0.column', 1);
+        $orderDir = $request->input('order.0.dir', 'asc');
+        $columns = ['id', 'name', 'unit_price', 'is_active'];
+        
+        if (isset($columns[$orderColumn])) {
+            $query->orderBy($columns[$orderColumn], $orderDir);
+        }
+
+        $kits = $query->offset($start)->limit($length)->get();
+
+        $data = $kits->map(function ($kit) {
+            return [
+                'id' => $kit->id,
+                'name' => $kit->name,
+                'unit_price' => number_format($kit->unit_price, 2),
+                'is_active' => $kit->is_active,
+                'components_count' => $kit->components->count(),
+                'actions' => view('admin.kits.partials.actions', ['kit' => $kit])->render(),
+            ];
+        });
+
+        return response()->json([
+            'draw' => intval($request->input('draw')),
+            'recordsTotal' => $totalRecords,
+            'recordsFiltered' => $totalFiltered,
+            'data' => $data,
+        ]);
     }
 
     /**

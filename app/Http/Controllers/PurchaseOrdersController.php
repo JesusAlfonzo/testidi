@@ -74,7 +74,10 @@ class PurchaseOrdersController extends Controller
 
     public function index(\Illuminate\Http\Request $request)
     {
-        if ($request->ajax()) {
+        // Usar server-side si es AJAX o si hay parámetros de DataTables
+        $isDataTables = $request->filled('draw') || $request->ajax();
+        
+        if ($isDataTables) {
             return $this->indexDataTables($request);
         }
 
@@ -113,17 +116,32 @@ class PurchaseOrdersController extends Controller
         $length = $request->input('length', 15);
         $search = $request->input('search.value', '');
         
-        $isInitialLoad = !$search && !$request->filled('supplier_id') && !$request->filled('status');
+        // Siempre permitir ordenamiento
+        $orderColumn = (int) $request->input('order.0.column', 5);
+        $orderDir = $request->input('order.0.dir', 'desc');
         
-        if ($isInitialLoad) {
-            $query->orderBy('created_at', 'desc');
-        } else {
-            $orderColumn = $request->input('order.0.column', 5);
-            $orderDir = $request->input('order.0.dir', 'desc');
-            $columns = ['code', 'supplier_id', 'total', 'status', 'date_issued', 'created_at'];
-            if (isset($columns[$orderColumn])) {
-                $query->orderBy($columns[$orderColumn], $orderDir);
+        // Mapear índice de DataTables al campo de ordenamiento
+        // 0: code, 1: supplier (supplier_id), 2: total, 3: status, 4: date_issued
+        $columnMap = [
+            0 => 'code',           // code
+            1 => 'supplier',      // supplier_id - usar join
+            2 => 'total',         // total
+            3 => 'status',        // status
+            4 => 'created_at',  // date_issued -> usar created_at que es más confiable
+        ];
+        $orderCol = $columnMap[$orderColumn] ?? 'created_at';
+
+        // Ordenar por relación supplier usando join
+        try {
+            if ($orderCol === 'supplier') {
+                $query->join('suppliers', 'purchase_orders.supplier_id', '=', 'suppliers.id')
+                      ->orderBy('suppliers.name', $orderDir)
+                      ->select('purchase_orders.*');
+            } else {
+                $query->orderBy($orderCol, $orderDir);
             }
+        } catch (\Exception $e) {
+            $query->orderBy('created_at', 'desc');
         }
 
         if ($search) {
@@ -427,10 +445,15 @@ class PurchaseOrdersController extends Controller
 
     public function pdf(PurchaseOrder $purchaseOrder)
     {
-        $purchaseOrder->load(['supplier', 'creator', 'items.product']);
+        try {
+            $purchaseOrder->load(['supplier', 'creator', 'items.product']);
 
-        $pdf = Pdf::loadView('admin.purchaseOrders.pdf', compact('purchaseOrder'));
+            $pdf = Pdf::loadView('admin.purchaseOrders.pdf', compact('purchaseOrder'));
 
-        return $pdf->stream('OC-' . $purchaseOrder->code . '.pdf');
+            return $pdf->stream('OC-' . $purchaseOrder->code . '.pdf');
+        } catch (\Exception $e) {
+            \Log::error('Error al generar PDF de orden de compra: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error al generar el PDF. Por favor, contacte al administrador.');
+        }
     }
 }

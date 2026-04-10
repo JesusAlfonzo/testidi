@@ -53,7 +53,7 @@
             </div>
         </div>
         <div class="card-body">
-            <form method="GET" action="{{ route('admin.requests.index') }}">
+            <form id="filterForm">
                 <div class="row">
                     <div class="col-md-3">
                         <div class="form-group">
@@ -96,7 +96,7 @@
                 </div>
                 <div class="row">
                     <div class="col-md-12 text-right">
-                        <a href="{{ route('admin.requests.index') }}" class="btn btn-default mr-2">Limpiar</a>
+                        <button type="button" class="btn btn-default mr-2" id="clearFilters">Limpiar</button>
                         <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> Filtrar
                             Resultados</button>
                     </div>
@@ -120,57 +120,12 @@
                                     <th style="width: 20%">Solicitante</th>
                                     <th style="width: 10%">Estado</th>
                                     <th style="width: 10%">Acciones</th>
-                                    <th>Justificación</th>
                                     <th>Fecha Solicitud</th>
+                                    <th>Justificación</th>
                                     <th>Aprobador</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @php
-                                    $badgeColors = [
-                                        'Pending' => 'warning',
-                                        'Approved' => 'success',
-                                        'Rejected' => 'danger',
-                                    ];
-                                @endphp
-
-                                @forelse ($requests as $request)
-                                    <tr>
-                                        <td>REQ-{{ $request->id }}</td>
-                                        <td>{{ $request->requester->name ?? 'N/A' }}</td>
-                                        <td>
-                                            <span class="badge badge-{{ $badgeColors[$request->status] ?? 'secondary' }}">
-                                                {{-- Usamos el accesor status_label si existe en el modelo, sino el valor raw --}}
-                                                {{ $request->status_label ?? $request->status }}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div class="btn-group btn-group-sm">
-                                                <a href="{{ route('admin.requests.show', $request) }}"
-                                                    class="btn btn-default text-info" title="Ver Detalle">
-                                                    <i class="fas fa-eye"></i>
-                                                </a>
-
-                                                @if ($request->status === 'Pending')
-                                                    @can('solicitudes_aprobar')
-                                                        <a href="{{ route('admin.requests.show', $request) }}"
-                                                            class="btn btn-default text-warning"
-                                                            title="Revisar y Aprobar/Rechazar">
-                                                            <i class="fas fa-check-circle"></i>
-                                                        </a>
-                                                    @endcan
-                                                @endif
-                                            </div>
-                                        </td>
-                                        <td>{{ Str::limit($request->justification, 50) }}</td>
-                                        <td data-order="{{ optional($request->requested_at)->timestamp }}">
-                                            {{ optional($request->requested_at)->format('d/m/Y H:i') }}
-                                        </td>
-                                        <td>{{ $request->approver->name ?? '---' }}</td>
-                                    </tr>
-                                @empty
-                                    {{-- DataTables manejará el vacío, pero dejamos esto por estructura --}}
-                                @endforelse
                             </tbody>
                         </table>
                     </div>
@@ -204,9 +159,11 @@
                 }, 10);
             });
 
-            // Inicializar DataTables
+            // Inicializar DataTables con AJAX server-side
             const requestsTable = $('#requestsTable').DataTable({
                 "responsive": true,
+                "processing": true,
+                "serverSide": true,
                 "paging": true,
                 "lengthChange": true,
                 "searching": true,
@@ -214,8 +171,28 @@
                 "info": true,
                 "autoWidth": false,
                 "order": [
-                    [5, "desc"]
-                ], // Ordenar por Fecha Solicitud (índice 5) descendente
+                    [4, "desc"]
+                ], // Ordenar por Fecha Solicitud (índice 4) descendente
+
+                "ajax": {
+                    "url": "{{ route('admin.requests.index') }}",
+                    "type": "GET",
+                    "data": function(d) {
+                        d.date_from = $('input[name="date_from"]').val();
+                        d.date_to = $('input[name="date_to"]').val();
+                        d.status = $('select[name="status"]').val();
+                        d.requester_id = $('select[name="requester_id"]').val();
+                    }
+                },
+
+                "columns": [
+                    { "data": "id", "name": "id", "orderable": true },
+                    { "data": "requester", "name": "requester_id", "orderable": true },
+                    { "data": "status", "name": "status", "orderable": true },
+                    { "data": "actions", "name": "actions", "orderable": false, "searchable": false },
+                    { "data": "date", "name": "requested_at", "orderable": true },
+                    { "data": "approver", "name": "approver_id", "orderable": true }
+                ],
 
                 // Traducción Nativa
                 "language": {
@@ -239,15 +216,26 @@
                     }
                 },
 
-                "columnDefs": [{
+                "columnDefs": [
+                    {
                         "orderable": false,
                         "targets": [3]
                     }, // Acciones no ordenables
                     {
                         "type": "date",
-                        "targets": 5
+                        "targets": 4
                     }, // Tipo fecha
-
+                    {
+                        targets: [1, 2, 5],
+                        render: function(data, type, row) {
+                            if (type === 'sort' || type === 'type') {
+                                var $div = $('<div>');
+                                $div.html(data);
+                                return $div.text().trim();
+                            }
+                            return data;
+                        }
+                    },
                     // Prioridades Responsive para Móvil
                     {
                         "responsivePriority": 1,
@@ -265,11 +253,10 @@
                         "responsivePriority": 4,
                         "targets": 1
                     }, // Solicitante
-
                     // Ocultar primero
                     {
                         "responsivePriority": 100,
-                        "targets": [4, 5, 6]
+                        "targets": [4, 5]
                     }
                 ]
             });
@@ -278,6 +265,18 @@
             setTimeout(function() {
                 requestsTable.columns.adjust().responsive.recalc();
             }, 500);
+
+            // Manejo de filtros
+            $('#filterForm').on('submit', function(e) {
+                e.preventDefault();
+                requestsTable.draw();
+            });
+
+            $('#clearFilters').on('click', function() {
+                $('#filterForm')[0].reset();
+                $('.select2').trigger('change');
+                requestsTable.draw();
+            });
         });
     </script>
 @endsection

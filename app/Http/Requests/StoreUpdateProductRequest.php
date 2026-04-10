@@ -36,6 +36,10 @@ class StoreUpdateProductRequest extends FormRequest
             'stock' => ['required', 'integer', 'min:0'],
             'min_stock' => ['required', 'integer', 'min:0'],
             'is_active' => ['required', 'boolean'],
+
+            // Vencimiento y FIFO
+            'track_expiry' => ['nullable', 'boolean'],
+            'expiry_warning_days' => ['nullable', 'integer', 'min:1', 'max:365'],
         ];
     }
 

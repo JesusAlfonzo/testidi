@@ -62,6 +62,13 @@ class UnitController extends Controller
 
     public function destroy(Unit $unit)
     {
+        $productsCount = \App\Models\Product::where('unit_id', $unit->id)->count();
+        
+        if ($productsCount > 0) {
+            return redirect()->route('admin.units.index')
+                             ->with('error', 'No se puede eliminar la unidad porque tiene ' . $productsCount . ' producto(s) asociado(s).');
+        }
+        
         $unit->delete();
         $this->cacheService->invalidateUnits();
         

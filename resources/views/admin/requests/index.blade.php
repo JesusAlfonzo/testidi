@@ -57,7 +57,7 @@
                     <div class="col-md-3">
                         <div class="form-group">
                             <label>Solicitante</label>
-                            <select name="requester_id" class="form-control select2">
+                            <select name="requester_id" class="form-control select2" style="width: 100%">
                                 <option value="">Todos</option>
                                 @foreach($requesters as $id => $name)
                                     <option value="{{ $id }}" {{ request('requester_id') == $id ? 'selected' : '' }}>{{ $name }}</option>
@@ -104,68 +104,78 @@
 @section('js')
     <script>
         $(document).ready(function() {
-            $('.select2').select2({ theme: 'bootstrap4' });
-            
-            $(document).on('select2:open', function() {
-                setTimeout(function() {
-                    var dropdown = document.querySelector('.select2-dropdown');
-                    if (dropdown) {
-                        dropdown.style.maxHeight = '350px';
-                        dropdown.style.overflow = 'hidden';
-                        var results = dropdown.querySelector('.select2-results');
-                        if (results) {
-                            results.style.maxHeight = '350px';
-                            results.style.overflowY = 'auto';
-                        }
-                    }
-                }, 10);
+            // Inicializar Select2
+            $('.select2').select2({
+                theme: 'bootstrap4',
+                width: '100%'
             });
 
             var table = $('#requestsTable').DataTable({
-                "responsive": true, 
-                "processing": true,
-                "serverSide": true,
-                "paging": true,
-                "lengthChange": true,
-                "searching": true,
-                "ordering": true,
-                "info": true,
-                "autoWidth": false,
+                responsive: true, 
+                processing: true,
+                serverSide: true,
+                paging: true,
+                lengthChange: true,
+                searching: true,
+                ordering: true,
+                info: true,
+                autoWidth: false,
+                order: [[4, 'desc']],
 
-                "columns": [
-                    { "data": "id", "name": "id" },
-                    { "data": "requester", "name": "requester_id" },
-                    { "data": "justification", "name": "justification" },
-                    { "data": "status", "name": "status" },
-                    { "data": "date", "name": "requested_at" },
-                    { "data": "approver", "name": "approver_id" },
-                    { "data": "processed", "name": "processed_at" },
-                    { "data": "actions", "name": "actions", "orderable": false, "searchable": false }
-                ],
-
-                "language": {
-                    "decimal": "",
-                    "emptyTable": "No hay información disponible",
-                    "info": "Mostrando _START_ a _END_ de _TOTAL_ registros",
-                    "infoEmpty": "Mostrando 0 a 0 de 0 registros",
-                    "infoFiltered": "(Filtrado de _MAX_ total registros)",
-                    "infoPostFix": "",
-                    "thousands": ",",
-                    "lengthMenu": "Mostrar _MENU_ registros",
-                    "loadingRecords": "Cargando...",
-                    "processing": "Procesando...",
-                    "search": "Buscar:",
-                    "zeroRecords": "Sin resultados encontrados",
-                    "paginate": {
-                        "first": "Primero",
-                        "last": "Último",
-                        "next": "Siguiente",
-                        "previous": "Anterior"
+                ajax: {
+                    url: "{{ route('admin.requests.index') }}",
+                    type: "GET",
+                    data: function(d) {
+                        d.date_from = $('input[name="date_from"]').val();
+                        d.date_to = $('input[name="date_to"]').val();
+                        d.status = $('select[name="status"]').val();
+                        d.requester_id = $('select[name="requester_id"]').val();
                     }
                 },
 
-                "columnDefs": [
-                    { "orderable": false, "targets": [2, 7] }
+                columns: [
+                    { data: 'id', name: 'id', orderable: true },
+                    { data: 'requester', name: 'requester_id', orderable: true },
+                    { data: 'justification', name: 'justification', orderable: true },
+                    { data: 'status', name: 'status', orderable: true },
+                    { data: 'date', name: 'requested_at', orderable: true },
+                    { data: 'approver', name: 'approver_id', orderable: true },
+                    { data: 'processed', name: 'processed_at', orderable: true },
+                    { data: 'actions', name: 'actions', orderable: false, searchable: false }
+                ],
+
+                language: {
+                    decimal: "",
+                    emptyTable: "No hay información disponible",
+                    info: "Mostrando _START_ a _END_ de _TOTAL_ registros",
+                    infoEmpty: "Mostrando 0 a 0 de 0 registros",
+                    infoFiltered: "(Filtrado de _MAX_ total registros)",
+                    lengthMenu: "Mostrar _MENU_ registros",
+                    loadingRecords: "Cargando...",
+                    processing: "Procesando...",
+                    search: "Buscar:",
+                    zeroRecords: "Sin resultados encontrados",
+                    paginate: {
+                        first: "Primero",
+                        last: "Último",
+                        next: "Siguiente",
+                        previous: "Anterior"
+                    }
+                },
+
+                columnDefs: [
+                    { orderable: false, targets: [2, 7] },
+                    {
+                        targets: [1, 3, 5],
+                        render: function(data, type, row) {
+                            if (type === 'sort' || type === 'type') {
+                                var $div = $('<div>');
+                                $div.html(data);
+                                return $div.text().trim();
+                            }
+                            return data;
+                        }
+                    }
                 ]
             });
 
@@ -173,6 +183,8 @@
                 e.preventDefault();
                 table.draw();
             });
+
+            addClearFiltersButton('requestsTable', 'filterForm');
             
             setTimeout(function() { 
                 table.columns.adjust().responsive.recalc(); 
