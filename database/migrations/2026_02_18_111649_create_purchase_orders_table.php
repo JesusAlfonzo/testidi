@@ -12,7 +12,6 @@ return new class extends Migration
             $table->id();
 
             $table->string('code')->unique();
-            $table->foreignId('purchase_quote_id')->nullable()->constrained('purchase_quotes')->onDelete('set null');
             $table->foreignId('supplier_id')->constrained('suppliers')->onDelete('restrict');
 
             $table->date('date_issued');

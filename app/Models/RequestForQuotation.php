@@ -38,11 +38,6 @@ class RequestForQuotation extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    public function quotations(): HasMany
-    {
-        return $this->hasMany(PurchaseQuote::class, 'rfq_id');
-    }
-
     public static function generateCode(): string
     {
         $lastRfq = self::withTrashed()->latest('id')->first();

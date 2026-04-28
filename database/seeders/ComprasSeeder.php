@@ -30,7 +30,6 @@ class ComprasSeeder extends Seeder
         // Módulo de compras
         $this->call([
             RequestForQuotationSeeder::class,
-            PurchaseQuoteSeeder::class,
             PurchaseOrderSeeder::class,
         ]);
 
@@ -40,7 +39,6 @@ class ComprasSeeder extends Seeder
         $this->command->info('===========================================');
         
         $rfq = \App\Models\RequestForQuotation::count();
-        $quotes = \App\Models\PurchaseQuote::count();
         $orders = \App\Models\PurchaseOrder::count();
         $products = \App\Models\Product::count();
         $suppliers = \App\Models\Supplier::count();
@@ -48,7 +46,6 @@ class ComprasSeeder extends Seeder
         $this->command->info("Productos: {$products}");
         $this->command->info("Proveedores: {$suppliers}");
         $this->command->info("RFQs: {$rfq}");
-        $this->command->info("Cotizaciones: {$quotes}");
         $this->command->info("Órdenes de Compra: {$orders}");
         $this->command->info('');
         $this->command->info('¡Datos de compras cargados exitosamente!');

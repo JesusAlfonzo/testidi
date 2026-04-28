@@ -197,37 +197,7 @@ describe('Validacion de Eliminacion de Maestros', function () {
     });
 });
 
-describe('Validacion de Proveedor Duplicado', function () {
 
-    test('convertToSupplier rechaza proveedor duplicado por nombre', function () {
-        $supplier = Supplier::factory()->create(['name' => 'Proveedor Test']);
-        
-        $quote = \App\Models\PurchaseQuote::factory()->create([
-            'supplier_name_temp' => 'Proveedor Test',
-            'supplier_id' => null,
-        ]);
-
-        $response = $this->post(route('admin.quotations.convert-supplier', $quote), []);
-
-        $response->assertSessionHas('error');
-    });
-
-    test('convertToSupplier rechaza proveedor duplicado por tax_id', function () {
-        $supplier = Supplier::factory()->create(['tax_id' => 'J123456789']);
-        
-        $quote = \App\Models\PurchaseQuote::factory()->create([
-            'supplier_name_temp' => 'Nuevo Proveedor',
-            'supplier_email_temp' => 'test@test.com',
-            'supplier_id' => null,
-        ]);
-
-        $response = $this->post(route('admin.quotations.convert-supplier', $quote), [
-            'tax_id' => 'J123456789',
-        ]);
-
-        $response->assertSessionHas('error');
-    });
-});
 
 describe('Cache Invalidation', function () {
 

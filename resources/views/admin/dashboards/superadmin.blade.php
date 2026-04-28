@@ -299,12 +299,6 @@
         </a>
     </div>
     <div class="col-6 col-md-2">
-        <a href="{{ route('admin.quotations.create') }}" class="quick-action-btn d-block bg-white shadow-sm text-decoration-none">
-            <div class="quick-action-icon" style="color: #ffc107;"><i class="fas fa-file-invoice-dollar"></i></div>
-            <div class="quick-action-label">Nueva Cotización</div>
-        </a>
-    </div>
-    <div class="col-6 col-md-2">
         <a href="{{ route('admin.purchaseOrders.create') }}" class="quick-action-btn d-block bg-white shadow-sm text-decoration-none">
             <div class="quick-action-icon" style="color: #28a745;"><i class="fas fa-shopping-cart"></i></div>
             <div class="quick-action-label">Nueva OC</div>
@@ -362,35 +356,35 @@
         </div>
     </div>
 
-    {{-- COTIZACIONES --}}
+    {{-- ÓRDENES DE COMPRA --}}
     <div class="col-md-4">
         <div class="card shadow-sm h-100">
-            <div class="card-header bg-white border-0" style="border-left: 4px solid #ffc107;">
+            <div class="card-header bg-white border-0" style="border-left: 4px solid #007bff;">
                 <div class="d-flex justify-content-between align-items-center">
-                    <h6 class="font-weight-bold mb-0" style="color: #ffc107;">
-                        <i class="fas fa-file-invoice-dollar mr-2"></i>Cotizaciones
+                    <h6 class="font-weight-bold mb-0" style="color: #007bff;">
+                        <i class="fas fa-clipboard-list mr-2"></i>Órdenes de Compra
                     </h6>
-                    <a href="{{ route('admin.quotations.index') }}" class="btn btn-sm btn-outline-secondary">Ver</a>
+                    <a href="{{ route('admin.purchaseOrders.index') }}" class="btn btn-sm btn-outline-secondary">Ver</a>
                 </div>
             </div>
             <div class="card-body">
                 <div class="row">
                     <div class="col-4">
                         <div class="mini-stat">
-                            <div class="mini-stat-value text-secondary">{{ $quoteStats['pending'] }}</div>
-                            <div class="mini-stat-label">Pendientes</div>
+                            <div class="mini-stat-value text-secondary">{{ $orderStats['draft'] }}</div>
+                            <div class="mini-stat-label">Borradores</div>
                         </div>
                     </div>
                     <div class="col-4">
                         <div class="mini-stat">
-                            <div class="mini-stat-value" style="color: #17a2b8;">{{ $quoteStats['selected'] }}</div>
-                            <div class="mini-stat-label">Seleccionada</div>
+                            <div class="mini-stat-value text-success">{{ $orderStats['issued'] }}</div>
+                            <div class="mini-stat-label">Emitidas</div>
                         </div>
                     </div>
                     <div class="col-4">
                         <div class="mini-stat">
-                            <div class="mini-stat-value text-success">{{ $quoteStats['approved'] }}</div>
-                            <div class="mini-stat-label">Aprobadas</div>
+                            <div class="mini-stat-value text-warning">{{ $orderStats['received'] }}</div>
+                            <div class="mini-stat-label">Recibidas</div>
                         </div>
                     </div>
                 </div>
@@ -486,11 +480,6 @@
                                         <i class="fas fa-truck"></i>
                                     </div>
                                     @break
-                                @case('PurchaseQuote')
-                                    <div class="activity-icon" style="background: #fff3cd; color: #ffc107;">
-                                        <i class="fas fa-file-invoice-dollar"></i>
-                                    </div>
-                                    @break
                                 @case('PurchaseOrder')
                                     <div class="activity-icon" style="background: #cce5ff; color: #007bff;">
                                         <i class="fas fa-clipboard-list"></i>
@@ -532,12 +521,12 @@
         <div class="card shadow-sm">
             <div class="card-header bg-white border-0">
                 <h6 class="font-weight-bold mb-0">
-                    <i class="fas fa-chart-pie mr-2 text-warning"></i>Estado de Cotizaciones
+                    <i class="fas fa-chart-pie mr-2 text-info"></i>Estado de RFQs
                 </h6>
             </div>
             <div class="card-body">
                 <div class="chart-container" style="height: 180px;">
-                    <canvas id="quoteChart"></canvas>
+                    <canvas id="rfqChart"></canvas>
                 </div>
             </div>
         </div>
@@ -659,21 +648,21 @@ $(function() {
         }
     });
 
-    // GRÁFICO DONUT COTIZACIONES
-    var quoteCtx = document.getElementById('quoteChart').getContext('2d');
-    var quoteChart = new Chart(quoteCtx, {
+    // GRÁFICO DONUT RFQS
+    var rfqCtx = document.getElementById('rfqChart').getContext('2d');
+    var rfqChart = new Chart(rfqCtx, {
         type: 'doughnut',
         data: {
-            labels: ['Pendientes', 'Seleccionada', 'Aprobadas', 'Rechazadas', 'Convertida'],
+            labels: ['Borradores', 'Enviadas', 'Parcial', 'Completadas', 'Canceladas'],
             datasets: [{
                 data: [
-                    {{ $quoteStats['pending'] }},
-                    {{ $quoteStats['selected'] }},
-                    {{ $quoteStats['approved'] }},
-                    {{ $quoteStats['rejected'] }},
-                    {{ $quoteStats['converted'] }}
+                    {{ $rfqStats['draft'] ?? 0 }},
+                    {{ $rfqStats['sent'] ?? 0 }},
+                    {{ $rfqStats['partial'] ?? 0 }},
+                    {{ $rfqStats['completed'] ?? 0 }},
+                    {{ $rfqStats['cancelled'] ?? 0 }}
                 ],
-                backgroundColor: [colors.secondary, colors.info, colors.success, colors.danger, colors.primary],
+                backgroundColor: [colors.secondary, colors.info, colors.warning, colors.success, colors.danger],
                 borderWidth: 0
             }]
         },

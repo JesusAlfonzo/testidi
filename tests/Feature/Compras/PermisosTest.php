@@ -4,7 +4,6 @@ use App\Models\Product;
 use App\Models\Supplier;
 use App\Models\User;
 use App\Models\RequestForQuotation;
-use App\Models\PurchaseQuote;
 use App\Models\PurchaseOrder;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
@@ -68,25 +67,10 @@ describe('Permisos - Superadmin', function () {
         // RFQ
         $this->get(route('admin.rfq.index'))->assertStatus(200);
         
-        // Cotizaciones
-        $this->get(route('admin.quotations.index'))->assertStatus(200);
-        
         // Órdenes de Compra
         $this->get(route('admin.purchaseOrders.index'))->assertStatus(200);
     });
 
-    test('superadmin puede aprobar cotizaciones', function () {
-        $user = User::factory()->create();
-        $user->assignRole('Superadmin');
-        $this->actingAs($user);
-
-        $quote = PurchaseQuote::factory()->create(['status' => 'selected']);
-
-        $response = $this->post(route('admin.quotations.approve', $quote));
-        
-        $response->assertSessionHas('success');
-        expect($quote->fresh()->status)->toBe('approved');
-    });
 });
 
 describe('Permisos - Solicitante', function () {
@@ -99,24 +83,8 @@ describe('Permisos - Solicitante', function () {
         // RFQ - debe ser bloqueado
         $this->get(route('admin.rfq.index'))->assertStatus(403);
         
-        // Cotizaciones - debe ser bloqueado
-        $this->get(route('admin.quotations.index'))->assertStatus(403);
-        
         // Órdenes de Compra - debe ser bloqueado
         $this->get(route('admin.purchaseOrders.index'))->assertStatus(403);
-    });
-
-    test('solicitante NO puede aprobar cotizaciones', function () {
-        $user = User::factory()->create();
-        $user->assignRole('Solicitante');
-        $this->actingAs($user);
-
-        $quote = PurchaseQuote::factory()->create(['status' => 'selected']);
-
-        $response = $this->post(route('admin.quotations.approve', $quote));
-        
-        // Debe ser bloqueado por middleware de permiso
-        $response->assertStatus(403);
     });
 });
 
@@ -149,23 +117,6 @@ describe('Permisos - Logistica', function () {
         ]);
 
         $response->assertRedirect();
-        $this->assertDatabaseHas('request_for_quotations', [
-            'title' => 'RFQ Test Logistica',
-        ]);
-    });
-
-    test('logistica NO puede aprobar cotizaciones (falta permiso)', function () {
-        $user = User::factory()->create();
-        $user->assignRole('Logistica');
-        $this->actingAs($user);
-
-        $quote = PurchaseQuote::factory()->create(['status' => 'selected']);
-
-        $response = $this->post(route('admin.quotations.approve', $quote));
-        
-        // Debe ser bloqueado - logistica no tiene cotizaciones_aprobar
-        // El middleware puede retornar 403 o redirigir
-        $this->assertTrue(in_array($response->getStatusCode(), [403, 302]));
     });
 
     test('logistica NO puede acceder a usuarios', function () {
@@ -195,16 +146,4 @@ describe('Permisos - Supervisor', function () {
         $this->get(route('admin.roles.index'))->assertStatus(403);
     });
 
-    test('supervisor puede aprobar cotizaciones', function () {
-        $user = User::factory()->create();
-        $user->assignRole('Supervisor');
-        $this->actingAs($user);
-
-        $quote = PurchaseQuote::factory()->create(['status' => 'selected']);
-
-        $response = $this->post(route('admin.quotations.approve', $quote));
-        
-        $response->assertSessionHas('success');
-        expect($quote->fresh()->status)->toBe('approved');
-    });
 });

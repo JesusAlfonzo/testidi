@@ -104,14 +104,6 @@ class RolesAndPermissionsSeeder extends Seeder
             'ordenes_compra_rechazar',
             'ordenes_compra_anular',
 
-            // MÓDULO COTIZACIONES
-            'cotizaciones_ver',
-            'cotizaciones_crear',
-            'cotizaciones_editar',
-            'cotizaciones_eliminar',
-            'cotizaciones_aprobar',
-            'cotizaciones_rechazar',
-
             // MÓDULO RFQ (Solicitud de Cotización)
             'rfq_ver',
             'rfq_crear',
@@ -167,8 +159,6 @@ class RolesAndPermissionsSeeder extends Seeder
             'solicitudes_ver', 'solicitudes_aprobar', 'solicitudes_crear',
             // Órdenes de Compra
             'ordenes_compra_ver', 'ordenes_compra_crear', 'ordenes_compra_editar', 'ordenes_compra_eliminar',
-            // Cotizaciones
-            'cotizaciones_ver', 'cotizaciones_crear', 'cotizaciones_editar', 'cotizaciones_eliminar', 'cotizaciones_aprobar', 'cotizaciones_rechazar',
             // RFQ (Solicitudes de Cotización)
             'rfq_ver', 'rfq_crear', 'rfq_editar', 'rfq_eliminar', 'rfq_enviar',
             // Reportes

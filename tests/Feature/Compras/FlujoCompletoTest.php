@@ -3,8 +3,6 @@
 use App\Models\Product;
 use App\Models\RequestForQuotation;
 use App\Models\RfqItem;
-use App\Models\PurchaseQuote;
-use App\Models\PurchaseQuoteItem;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use App\Models\Supplier;
@@ -35,23 +33,6 @@ function createRfq($status = 'draft') {
         'created_by' => auth()->id() ?? 1,
     ]);
     return $rfq;
-}
-
-function createQuote($status = 'pending', $supplierId = null) {
-    $quote = PurchaseQuote::create([
-        'code' => PurchaseQuote::generateCode(),
-        'supplier_id' => $supplierId ?? Supplier::factory()->create()->id,
-        'user_id' => auth()->id() ?? 1,
-        'date_issued' => now(),
-        'valid_until' => now()->addDays(30),
-        'currency' => 'USD',
-        'exchange_rate' => 17.15,
-        'subtotal' => 100,
-        'tax_amount' => 0,
-        'total' => 100,
-        'status' => $status,
-    ]);
-    return $quote;
 }
 
 function createOrder($status = 'draft', $supplierId = null) {
@@ -124,100 +105,13 @@ describe('RFQ - Solicitudes de Cotización', function () {
     });
 });
 
-describe('Cotizaciones', function () {
-    test('crear cotizacion con proveedor registrado', function () {
-        $supplier = Supplier::factory()->create();
-        $product = Product::factory()->create();
-        $rfq = createRfq('sent');
-
-        $response = $this->post(route('admin.quotations.store'), [
-            'supplier_type' => 'registered',
-            'supplier_id' => $supplier->id,
-            'rfq_id' => $rfq->id,
-            'date_issued' => now()->format('Y-m-d'),
-            'valid_until' => now()->addDays(30)->format('Y-m-d'),
-            'currency' => 'USD',
-            'exchange_rate' => 17.15,
-            'items' => [
-                ['product_id' => $product->id, 'quantity' => 10, 'unit_cost' => 100.50],
-            ],
-        ]);
-
-        $response->assertRedirect();
-        $this->assertDatabaseHas('purchase_quotes', [
-            'supplier_id' => $supplier->id,
-            'status' => 'pending',
-        ]);
-    });
-
-    test('crear cotizacion con proveedor temporal', function () {
-        $product = Product::factory()->create();
-
-        $response = $this->post(route('admin.quotations.store'), [
-            'supplier_type' => 'temp',
-            'temp_supplier_name' => 'Proveedor Temporal CA',
-            'temp_supplier_email' => 'temp@test.com',
-            'temp_supplier_phone' => '04141234567',
-            'date_issued' => now()->format('Y-m-d'),
-            'valid_until' => now()->addDays(30)->format('Y-m-d'),
-            'currency' => 'USD',
-            'exchange_rate' => 17.15,
-            'items' => [
-                ['product_id' => $product->id, 'quantity' => 10, 'unit_cost' => 100.50],
-            ],
-        ]);
-
-        $response->assertRedirect();
-        
-        $this->assertDatabaseHas('purchase_quotes', [
-            'supplier_name_temp' => 'Proveedor Temporal CA',
-            'supplier_email_temp' => 'temp@test.com',
-            'supplier_id' => null,
-            'status' => 'pending',
-        ]);
-    });
-
-    test('seleccionar cotizacion cambia estado a selected', function () {
-        $quote = createQuote('pending');
-
-        $response = $this->post(route('admin.quotations.select', $quote));
-
-        $response->assertSessionHas('success');
-        expect($quote->fresh()->status)->toBe('selected');
-    });
-
-    test('aprobar cotizacion cambia estado a approved', function () {
-        $quote = createQuote('selected');
-
-        $response = $this->post(route('admin.quotations.approve', $quote));
-
-        $response->assertRedirect();
-        expect($quote->fresh()->status)->toBe('approved');
-        expect($quote->fresh()->approved_by)->toBe($this->user->id);
-    });
-
-    test('rechazar cotizacion guarda razon', function () {
-        $quote = createQuote('pending');
-
-        $response = $this->post(route('admin.quotations.reject', $quote), [
-            'rejection_reason' => 'Precio superior al presupuesto disponible',
-        ]);
-
-        $response->assertRedirect();
-        expect($quote->fresh()->status)->toBe('rejected');
-        expect($quote->fresh()->rejection_reason)->toBe('Precio superior al presupuesto disponible');
-    });
-});
-
 describe('Órdenes de Compra', function () {
-    test('crear oc desde cotizacion aprobada', function () {
+    test('crear orden de compra', function () {
         $supplier = Supplier::factory()->create();
         $product = Product::factory()->create();
-        $quote = createQuote('approved', $supplier->id);
 
         $response = $this->post(route('admin.purchaseOrders.store'), [
             'supplier_id' => $supplier->id,
-            'purchase_quote_id' => $quote->id,
             'date_issued' => now()->format('Y-m-d'),
             'delivery_date' => now()->addDays(30)->format('Y-m-d'),
             'currency' => 'USD',
@@ -229,7 +123,7 @@ describe('Órdenes de Compra', function () {
 
         $response->assertRedirect();
         $this->assertDatabaseHas('purchase_orders', [
-            'purchase_quote_id' => $quote->id,
+            'supplier_id' => $supplier->id,
             'status' => 'draft',
         ]);
     });
@@ -280,43 +174,17 @@ describe('Órdenes de Compra', function () {
 });
 
 describe('Flujo Completo', function () {
-    test('flujo completo rfq -> cotizacion -> oc -> recepcion', function () {
-        $supplier = Supplier::factory()->create();
-        $product = Product::factory()->create();
-
+    test('flujo completo rfq -> oc', function () {
         // 1. Crear y enviar RFQ
         $rfq = createRfq('draft');
         
         $this->post(route('admin.rfq.mark-sent', $rfq));
         expect($rfq->fresh()->status)->toBe('sent');
 
-        // 2. Crear cotización desde RFQ
-        $this->post(route('admin.quotations.store'), [
-            'supplier_type' => 'registered',
-            'supplier_id' => $supplier->id,
-            'rfq_id' => $rfq->id,
-            'date_issued' => now()->format('Y-m-d'),
-            'valid_until' => now()->addDays(30)->format('Y-m-d'),
-            'currency' => 'USD',
-            'exchange_rate' => 17.15,
-            'items' => [
-                ['product_id' => $product->id, 'quantity' => 10, 'unit_cost' => 100.00],
-            ],
-        ]);
-        
-        $quote = PurchaseQuote::where('rfq_id', $rfq->id)->first();
-        expect($quote)->not->toBeNull();
-        expect($quote->status)->toBe('pending');
-
-        // 3. Seleccionar y aprobar cotización
-        $this->post(route('admin.quotations.select', $quote));
-        $this->post(route('admin.quotations.approve', $quote));
-        expect($quote->fresh()->status)->toBe('approved');
-
-        // 4. Crear OC desde cotización
-        $this->post(route('admin.purchaseOrders.store'), [
-            'supplier_id' => $supplier->id,
-            'purchase_quote_id' => $quote->id,
+        // 2. Crear OC directa
+        $product = Product::factory()->create();
+        $response = $this->post(route('admin.purchaseOrders.store'), [
+            'supplier_id' => $this->supplier->id,
             'date_issued' => now()->format('Y-m-d'),
             'delivery_date' => now()->addDays(30)->format('Y-m-d'),
             'currency' => 'USD',
@@ -326,17 +194,16 @@ describe('Flujo Completo', function () {
             ],
         ]);
 
-        $order = PurchaseOrder::where('purchase_quote_id', $quote->id)->first();
+        $order = PurchaseOrder::latest()->first();
         expect($order)->not->toBeNull();
         expect($order->status)->toBe('draft');
 
-        // 5. Emitir OC
+        // 3. Emitir OC
         $this->post(route('admin.purchaseOrders.issue', $order));
         expect($order->fresh()->status)->toBe('issued');
 
-        // 6. Validar flujo completo exitoso
+        // 4. Validar flujo completo exitoso
         expect($rfq->fresh()->status)->toBe('sent');
-        expect($quote->fresh()->status)->toBe('converted');
         expect($order->fresh()->status)->toBe('issued');
     });
 });

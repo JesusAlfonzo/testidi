@@ -30,13 +30,6 @@
                         </h3>
                     </div>
                     <div class="card-body">
-                        @if($quote)
-                            <div class="alert alert-success mb-3">
-                                <i class="fas fa-link"></i> Generada desde cotización <strong>{{ $quote->code }}</strong>
-                                <input type="hidden" name="purchase_quote_id" value="{{ $quote->id }}">
-                            </div>
-                        @endif
-
                         <div class="row">
                             <div class="col-12 col-md-3">
                                 <div class="form-group mb-2">
@@ -55,7 +48,7 @@
                                     <select name="supplier_id" id="supplier_id" class="form-control form-control-sm select2-ajax" data-placeholder="Buscar proveedor..." data-url="{{ route('admin.purchaseOrders.searchSuppliers') }}" required>
                                         <option value="">Seleccione un proveedor...</option>
                                         @foreach($suppliers as $supplier)
-                                            <option value="{{ $supplier->id }}" {{ ($quote && $quote->supplier && $quote->supplier->id == $supplier->id) ? 'selected' : '' }}>
+                                            <option value="{{ $supplier->id }}">
                                                 {{ $supplier->name }} | {{ $supplier->email ?? 'Sin email' }}
                                             </option>
                                         @endforeach
@@ -102,7 +95,7 @@
                                         <div class="input-group-prepend">
                                             <span class="input-group-text bg-info text-white"><i class="fas fa-calendar-check"></i></span>
                                         </div>
-                                        <input type="date" name="delivery_date" class="form-control" value="{{ old('delivery_date', $quote?->delivery_date?->format('Y-m-d')) }}">
+                                        <input type="date" name="delivery_date" class="form-control" value="{{ old('delivery_date') }}">
                                     </div>
                                 </div>
                             </div>
@@ -134,9 +127,9 @@
                                 <div class="form-group mb-2">
                                     <label for="currency" class="mb-1">Moneda</label>
                                     <select name="currency" class="form-control form-control-sm select2">
-                                        <option value="USD" {{ old('currency', $quote?->currency) == 'USD' ? 'selected' : '' }}>💵 USD - Dólar</option>
-                                        <option value="EUR" {{ old('currency', $quote?->currency) == 'EUR' ? 'selected' : '' }}>💶 EUR - Euro</option>
-                                        <option value="Bs" {{ old('currency', $quote?->currency) == 'Bs' ? 'selected' : '' }}>🇻🇪 Bs - Bolívar</option>
+                                        <option value="USD" {{ old('currency') == 'USD' ? 'selected' : '' }}>💵 USD - Dólar</option>
+                                        <option value="EUR" {{ old('currency') == 'EUR' ? 'selected' : '' }}>💶 EUR - Euro</option>
+                                        <option value="Bs" {{ old('currency') == 'Bs' ? 'selected' : '' }}>🇻🇪 Bs - Bolívar</option>
                                     </select>
                                 </div>
                             </div>
@@ -147,7 +140,7 @@
                                         <div class="input-group-prepend">
                                             <span class="input-group-text bg-success text-white"><i class="fas fa-exchange-alt"></i></span>
                                         </div>
-                                        <input type="number" step="0.0001" name="exchange_rate" class="form-control" value="{{ old('exchange_rate', $quote?->exchange_rate ?? 1) }}">
+                                        <input type="number" step="0.0001" name="exchange_rate" class="form-control" value="{{ old('exchange_rate', 1) }}">
                                     </div>
                                 </div>
                             </div>
@@ -192,8 +185,7 @@
                                     </tr>
                                 </thead>
                                 <tbody id="itemsBody">
-                                    @if($quote)
-                                        @foreach($quote->items as $index => $item)
+                                    @foreach($products->take(1) as $index => $product)
                                             <tr>
                                                 <td>
                                                     <select name="items[{{ $index }}][product_id]" class="form-control form-control-sm select2-product" required>
@@ -219,37 +211,11 @@
                                                 </td>
                                             </tr>
                                         @endforeach
-                                    @else
-                                        <tr>
-                                            <td>
-                                                <select name="items[0][product_id]" class="form-control form-control-sm select2-product" required>
-                                                    <option value="">Seleccione...</option>
-                                                    @foreach($products as $product)
-                                                        <option value="{{ $product->id }}">{{ $product->name }} ({{ $product->code ?? 'S/C' }})</option>
-                                                    @endforeach
-                                                </select>
-                                            </td>
-                                            <td>
-                                                <input type="number" name="items[0][quantity]" class="form-control form-control-sm item-qty" min="1" value="1" required>
-                                            </td>
-                                            <td>
-                                                <input type="number" step="0.01" name="items[0][unit_cost]" class="form-control form-control-sm item-cost" min="0" value="0" required>
-                                            </td>
-                                            <td class="text-right">
-                                                <span class="item-total font-weight-bold">0.00</span>
-                                            </td>
-                                            <td class="text-center">
-                                                <button type="button" class="btn btn-sm btn-danger remove-item" style="display:none;">
-                                                    <i class="fas fa-times"></i>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    @endif
                                 </tbody>
                                 <tfoot class="bg-success-light">
                                     <tr>
                                         <th colspan="3" class="text-right">TOTAL GENERAL:</th>
-                                        <th class="text-right"><span id="grandTotal" class="h5 text-success">${{ number_format($quote?->total ?? 0, 2) }}</span></th>
+                                        <th class="text-right"><span id="grandTotal" class="h5 text-success">$0.00</span></th>
                                         <th></th>
                                     </tr>
                                     <tr class="bg-info-light" id="rowSubtotalBs">
@@ -613,7 +579,7 @@
 
 @section('js')
     <script>
-        let itemIndex = {{ $quote ? $quote->items->count() : 1 }};
+        let itemIndex = 1;
         let currentProductSelect = null;
 
         function getCurrencySymbol(currency) {

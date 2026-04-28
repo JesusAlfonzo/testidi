@@ -14,7 +14,6 @@ class PurchaseOrder extends Model
 
     protected $fillable = [
         'code',
-        'purchase_quote_id',
         'supplier_id',
         'date_issued',
         'delivery_date',
@@ -56,11 +55,6 @@ class PurchaseOrder extends Model
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(Supplier::class);
-    }
-
-    public function quote(): BelongsTo
-    {
-        return $this->belongsTo(PurchaseQuote::class, 'purchase_quote_id');
     }
 
     public function creator(): BelongsTo

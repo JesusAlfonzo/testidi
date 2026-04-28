@@ -9,7 +9,6 @@ use App\Models\Kit;
 use App\Models\Location;
 use App\Models\Product;
 use App\Models\PurchaseOrder;
-use App\Models\PurchaseQuote;
 use App\Models\RequestForQuotation;
 use App\Models\StockIn;
 use App\Models\Supplier;
@@ -21,7 +20,6 @@ use App\Policies\KitPolicy;
 use App\Policies\LocationPolicy;
 use App\Policies\ProductPolicy;
 use App\Policies\PurchaseOrderPolicy;
-use App\Policies\PurchaseQuotePolicy;
 use App\Policies\RequestForQuotationPolicy;
 use App\Policies\StockInPolicy;
 use App\Policies\SupplierPolicy;
@@ -32,9 +30,7 @@ class AuthServiceProvider extends ServiceProvider
 {
     protected $policies = [
         Product::class => ProductPolicy::class,
-        Kit::class => KitPolicy::class,
         PurchaseOrder::class => PurchaseOrderPolicy::class,
-        PurchaseQuote::class => PurchaseQuotePolicy::class,
         RequestForQuotation::class => RequestForQuotationPolicy::class,
         InventoryRequest::class => InventoryRequestPolicy::class,
         StockIn::class => StockInPolicy::class,

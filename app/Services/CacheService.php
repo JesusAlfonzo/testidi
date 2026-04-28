@@ -76,7 +76,6 @@ class CacheService
         return Cache::remember('purchases:summary', self::TTL_MEDIUM, function () {
             return [
                 'pending_rfqs' => \App\Models\RequestForQuotation::where('status', 'Pending')->count(),
-                'pending_quotes' => \App\Models\PurchaseQuote::where('status', 'Pending')->count(),
                 'pending_orders' => \App\Models\PurchaseOrder::where('status', 'Pending')->count(),
             ];
         });

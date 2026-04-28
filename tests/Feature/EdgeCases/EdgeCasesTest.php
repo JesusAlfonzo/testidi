@@ -2,7 +2,6 @@
 
 use App\Models\Product;
 use App\Models\Supplier;
-use App\Models\PurchaseQuote;
 use App\Models\InventoryRequest;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;

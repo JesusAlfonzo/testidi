@@ -54,8 +54,6 @@ app/
 |--------|-------|-------------|
 | RequestForQuotation | request_for_quotations | RFQ (solicitudes de cotización) |
 | RfqItem | rfq_items | Items de RFQ |
-| PurchaseQuote | purchase_quotes | Cotizaciones de proveedores |
-| PurchaseQuoteItem | purchase_quote_items | Items de cotización |
 | PurchaseOrder | purchase_orders | Órdenes de compra |
 | PurchaseOrderItem | purchase_order_items | Items de orden de compra |
 
@@ -77,12 +75,21 @@ app/
    ├── Enviar a proveedores
    └── Estado: draft → sent → closed
 
-2. Cotizaciones (PurchaseQuote)
-   ├── Proveedores responden con precios
-   ├── Seleccionar mejor cotización
-   └── Estado: pending → selected → approved → converted
+2. Órden de Compra (PurchaseOrder)
+   ├── Crear orden de compra
+   ├── Emitir orden
+   ├── Recepción de mercancía
+   └── Estado: draft → issued → completed / cancelled
 
-3. Órden de Compra (PurchaseOrder)
+3. Recepción (StockIn)
+   └── Ingresar mercancía al inventario
+```
+1. RFQ (Request for Quotation)
+   ├── Crear solicitud de cotización
+   ├── Enviar a proveedores
+   └── Estado: draft → sent → closed
+
+2. Órden de Compra (PurchaseOrder)
    ├── Generar orden desde cotización aprobada
    ├── Emitir orden
    ├── Receptionar merchandise
@@ -131,7 +138,6 @@ Kardex (historial de movimientos)
 /admin/products      → Productos
 /admin/kits         → Kits
 /admin/rfq          → Solicitudes de Cotización
-/admin/quotations   → Cotizaciones
 /admin/purchaseOrders → Órdenes de Compra
 /admin/stock-in     → Entradas de Stock
 /admin/requests     → Solicitudes de Salida
@@ -231,7 +237,6 @@ Cada modelo tiene su Policy:
 | StockInPolicy | viewAny, view, create, update, delete |
 | InventoryRequestPolicy | viewAny, view, create, update, delete, process |
 | RequestForQuotationPolicy | viewAny, view, create, update, delete, markAsSent, markAsClosed, cancel |
-| PurchaseQuotePolicy | viewAny, view, create, update, delete, select, approve, reject |
 | PurchaseOrderPolicy | viewAny, view, create, update, delete, issue, complete, cancel |
 
 ---
@@ -239,7 +244,7 @@ Cada modelo tiene su Policy:
 ## 11. Tests
 
 ### Flujo de Compras (tests/Feature/Compras/)
-- **FlujoCompletoTest**: RFQ → Cotización → OC → Recepción
+- **FlujoCompletoTest**: RFQ → OC → Recepción
 - **PermisosTest**: Validación de permisos por rol
 
 ### Roles Predefinidos

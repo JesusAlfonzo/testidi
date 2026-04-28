@@ -44,9 +44,6 @@ class Supplier extends Model
             ->dontSubmitEmptyLogs();
     }
 
-    // Un proveedor tiene MUCHAS cotizaciones
-    public function quotes()
-    {
-        return $this->hasMany(PurchaseQuote::class);
-    }
+
+
 }

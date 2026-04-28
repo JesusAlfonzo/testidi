@@ -10,7 +10,6 @@ use App\Models\Brand;
 use App\Models\Unit;
 use App\Models\Location;
 use App\Models\Supplier;
-use App\Models\PurchaseQuote;
 use App\Models\PurchaseOrder;
 use App\Models\User;
 use App\Models\RequestForQuotation;
@@ -193,11 +192,6 @@ class HomeController extends Controller
         }
 
         // 2-5. OPTIMIZADO: Una sola consulta por modelo con CASE
-        $quoteStats = PurchaseQuote::select('status', DB::raw('count(*) as count'))
-            ->groupBy('status')
-            ->pluck('count', 'status')
-            ->toArray();
-        
         $orderStats = PurchaseOrder::select('status', DB::raw('count(*) as count'))
             ->groupBy('status')
             ->pluck('count', 'status')
@@ -235,15 +229,6 @@ class HomeController extends Controller
                 'units' => Unit::count(),
                 'locations' => Location::count(),
                 'suppliers' => Supplier::count(),
-            ],
-            
-            // Stats Cotizaciones
-            'quoteStats' => [
-                'pending' => $quoteStats['pending'] ?? 0,
-                'selected' => $quoteStats['selected'] ?? 0,
-                'approved' => $quoteStats['approved'] ?? 0,
-                'rejected' => $quoteStats['rejected'] ?? 0,
-                'converted' => $quoteStats['converted'] ?? 0,
             ],
             
             // Stats Órdenes de Compra

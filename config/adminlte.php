@@ -326,12 +326,6 @@ return [
                     'can'  => 'rfq_ver',
                 ],
                 [
-                    'text' => 'Cotizaciones',
-                    'url'  => 'admin/quotations',
-                    'icon' => 'fas fa-fw fa-file-alt',
-                    'can'  => 'cotizaciones_ver',
-                ],
-                [
                     'text' => 'Ordenes de Compra',
                     'url'  => 'admin/purchaseOrders',
                     'icon' => 'fas fa-fw fa-shopping-cart',

@@ -42,16 +42,6 @@
                                     <td>{!! $purchaseOrder->status_badge !!}</td>
                                 </tr>
                                 <tr>
-                                    <th>Cotización Origen:</th>
-                                    <td>
-                                        @if($purchaseOrder->quote)
-                                            <a href="{{ route('admin.quotations.show', $purchaseOrder->quote) }}">{{ $purchaseOrder->quote->code }}</a>
-                                        @else
-                                            Sin cotización
-                                        @endif
-                                    </td>
-                                </tr>
-                                <tr>
                                     <th>Creado por:</th>
                                     <td>{{ $purchaseOrder->creator->name ?? 'N/A' }}</td>
                                 </tr>

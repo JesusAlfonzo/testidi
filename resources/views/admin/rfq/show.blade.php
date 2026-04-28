@@ -165,14 +165,6 @@
                             </button>
                         @endif
 
-                        @if($rfq->status === 'closed')
-                            @can('cotizaciones_crear')
-                                <a href="{{ route('admin.quotations.create-from-rfq', $rfq) }}" class="btn btn-primary">
-                                    <i class="fas fa-file-invoice"></i> Crear Cotización
-                                </a>
-                            @endcan
-                        @endif
-
                         @if(in_array($rfq->status, ['draft', 'sent']))
                             <button type="button" class="btn btn-danger" onclick="confirmAction({
                                 title: 'Cancelar RFQ',

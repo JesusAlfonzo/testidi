@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
-use App\Models\PurchaseQuote;
 use App\Models\Product;
 use App\Models\Supplier;
 use App\Models\User;
@@ -17,7 +16,6 @@ class PurchaseOrderSeeder extends Seeder
     {
         $products = Product::all();
         $suppliers = Supplier::all();
-        $approvedQuotes = PurchaseQuote::where('status', 'approved')->get();
         $users = User::role(['Superadmin', 'Supervisor', 'Logistica'])->get();
         
         if ($users->isEmpty()) {
@@ -66,13 +64,7 @@ class PurchaseOrderSeeder extends Seeder
                 'created_by' => $user->id,
             ];
 
-            if ($orderData['has_quote'] && $approvedQuotes->isNotEmpty()) {
-                $quote = $approvedQuotes->random();
-                $orderDataCreate['purchase_quote_id'] = $quote->id;
-                $orderDataCreate['supplier_id'] = $quote->supplier_id;
-            } else {
-                $orderDataCreate['supplier_id'] = $suppliers->random()->id;
-            }
+            $orderDataCreate['supplier_id'] = $suppliers->random()->id;
 
             $order = PurchaseOrder::create($orderDataCreate);
 

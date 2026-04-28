@@ -30,8 +30,6 @@
 |--------|-------|-------------|
 | RequestForQuotation | request_for_quotations | RFQ (solicitudes de cotización) |
 | RfqItem | rfq_items | Items de RFQ |
-| PurchaseQuote | purchase_quotes | Cotizaciones de proveedores |
-| PurchaseQuoteItem | purchase_quote_items | Items de cotización |
 | PurchaseOrder | purchase_orders | Órdenes de compra |
 | PurchaseOrderItem | purchase_order_items | Items de orden de compra |
 

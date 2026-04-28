@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
-use App\Models\PurchaseQuote;
 use App\Models\Supplier;
 use App\Models\Product;
 use App\Services\OrderCalculationService;
@@ -193,18 +192,11 @@ class PurchaseOrdersController extends Controller
 
     public function create(Request $request)
     {
-        $quote = null;
-        if ($request->filled('quote')) {
-            $quote = PurchaseQuote::with(['supplier', 'items.product'])
-                ->where('status', 'approved')
-                ->find($request->quote);
-        }
-
         $suppliers = Supplier::orderBy('name')->get();
         $products = Product::with(['category', 'unit'])->get();
         $code = PurchaseOrder::generateCode();
 
-        return view('admin.purchaseOrders.create', compact('suppliers', 'products', 'code', 'quote'));
+        return view('admin.purchaseOrders.create', compact('suppliers', 'products', 'code'));
     }
 
     public function store(Request $request)
@@ -229,7 +221,6 @@ class PurchaseOrdersController extends Controller
 
             $order = PurchaseOrder::create([
                 'code' => $request->code ?? PurchaseOrder::generateCode(),
-                'purchase_quote_id' => $request->purchase_quote_id ?: null,
                 'supplier_id' => $request->supplier_id,
                 'date_issued' => $request->date_issued,
                 'delivery_date' => $request->delivery_date,
@@ -266,11 +257,6 @@ class PurchaseOrdersController extends Controller
                     'total_cost' => $item['quantity'] * $item['unit_cost'],
                     'equivalent_bs' => $equivalentBs * $item['quantity'],
                 ]);
-            }
-
-            if ($request->purchase_quote_id) {
-                PurchaseQuote::where('id', $request->purchase_quote_id)
-                    ->update(['status' => 'converted']);
             }
 
             DB::commit();
@@ -386,11 +372,6 @@ class PurchaseOrdersController extends Controller
         }
 
         try {
-            if ($purchaseOrder->purchase_quote_id) {
-                PurchaseQuote::where('id', $purchaseOrder->purchase_quote_id)
-                    ->update(['status' => 'approved']);
-            }
-
             $purchaseOrder->delete();
 
             return redirect()->route('admin.purchaseOrders.index')
@@ -457,3 +438,4 @@ class PurchaseOrdersController extends Controller
         }
     }
 }
+
