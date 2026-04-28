@@ -56,7 +56,6 @@ class HelpController extends Controller
             'solicitudes' => 'Solicitudes',
             'maestros' => 'Módulos Maestros',
             'ordenes' => 'Órdenes de Compra',
-            'cotizaciones' => 'Cotizaciones',
             'rfq' => 'RFQ',
             'reportes' => 'Reportes',
             'usuarios' => 'Gestión de Usuarios',
@@ -417,11 +416,8 @@ HTML;
                     'icon' => 'fas fa-shopping-cart',
                     'section' => 'ordenes-compra'
                 ],
-                'cotizaciones' => [
                     'title' => 'Cotizaciones',
-                    'description' => 'Gestionar cotizaciones',
                     'icon' => 'fas fa-file-invoice-dollar',
-                    'section' => 'cotizaciones'
                 ],
                 'rfq' => [
                     'title' => 'RFQ',
@@ -485,11 +481,8 @@ HTML;
                     'icon' => 'fas fa-shopping-cart',
                     'section' => 'ordenes-compra'
                 ],
-                'cotizaciones' => [
                     'title' => 'Cotizaciones',
-                    'description' => 'Gestionar cotizaciones',
                     'icon' => 'fas fa-file-invoice-dollar',
-                    'section' => 'cotizaciones'
                 ],
                 'rfq' => [
                     'title' => 'RFQ',
@@ -522,8 +515,8 @@ HTML;
         $roleSections = [
             'solicitante' => ['general', 'solicitante'],
             'logistica' => ['general', 'logistica', 'productos', 'kits', 'entradas', 'solicitudes', 'maestros', 'ordenes', 'reportes'],
-            'supervisor' => ['general', 'supervisor', 'productos', 'kits', 'entradas', 'solicitudes', 'maestros', 'ordenes', 'cotizaciones', 'rfq', 'reportes-avanzados'],
-            'superadmin' => ['general', 'superadmin', 'productos', 'kits', 'entradas', 'solicitudes', 'maestros', 'ordenes', 'cotizaciones', 'rfq', 'reportes-avanzados', 'usuarios', 'roles', 'auditoria']
+            'supervisor' => ['general', 'supervisor', 'productos', 'kits', 'entradas', 'solicitudes', 'maestros', 'ordenes', 'rfq', 'reportes-avanzados'],
+            'superadmin' => ['general', 'superadmin', 'productos', 'kits', 'entradas', 'solicitudes', 'maestros', 'ordenes', 'rfq', 'reportes-avanzados', 'usuarios', 'roles', 'auditoria']
         ];
 
         return $roleSections[$role] ?? ['general'];
