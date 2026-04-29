@@ -12,6 +12,8 @@ class RequestForQuotation extends Model
 {
     use HasFactory, SoftDeletes;
 
+    protected $table = 'request_for_quotations';
+
     protected $fillable = [
         'code',
         'title',
