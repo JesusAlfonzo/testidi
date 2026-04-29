@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Spatie\Permission\Models\Role;
-use Barryvdh\DomPDF\Facade as PDF;
+use Barryvdh\DomPDF\Facade\Pdf as PDF;
 
 class HelpController extends Controller
 {
@@ -17,14 +17,14 @@ class HelpController extends Controller
         if (!$user) {
             return redirect()->route('login');
         }
-
+        
         $role = $user->getRoleNames()->first() ?? 'solicitante';
         
         $modules = $this->getModulesByRole($role);
         
         return view('admin.help.index', compact('role', 'modules'));
     }
-
+    
     public function show($section)
     {
         $user = Auth::user();
@@ -32,7 +32,7 @@ class HelpController extends Controller
         if (!$user) {
             return redirect()->route('login');
         }
-
+        
         $role = $user->getRoleNames()->first() ?? 'solicitante';
         
         $allowedSections = $this->getAllowedSections($role);
@@ -40,7 +40,7 @@ class HelpController extends Controller
         if (!in_array($section, $allowedSections)) {
             abort(403, 'Sección no disponible para su rol');
         }
-
+        
         $content = $this->getSectionContent($section);
         $htmlContent = $this->markdownToHtml($content);
         
@@ -62,9 +62,9 @@ class HelpController extends Controller
             'roles' => 'Gestión de Roles',
             'auditoria' => 'Auditoría'
         ];
-
+        
         $title = $sectionTitles[$section] ?? 'Ayuda';
-
+    
         return view('admin.help.section', [
             'role' => $role,
             'section' => $section,
@@ -72,7 +72,7 @@ class HelpController extends Controller
             'content' => $htmlContent
         ]);
     }
-
+    
     public function downloadPdf($section)
     {
         $user = Auth::user();
@@ -80,7 +80,7 @@ class HelpController extends Controller
         if (!$user) {
             return redirect()->route('login');
         }
-
+        
         $role = $user->getRoleNames()->first() ?? 'solicitante';
         
         $allowedSections = $this->getAllowedSections($role);
@@ -88,7 +88,7 @@ class HelpController extends Controller
         if (!in_array($section, $allowedSections)) {
             abort(403, 'Sección no disponible para su rol');
         }
-
+        
         $content = $this->getSectionContent($section);
         
         $sectionTitles = [
@@ -243,8 +243,8 @@ HTML;
         $html = preg_replace('/^# (.+)$/m', '<h1>$1</h1>', $html);
         
         // Negritas y cursivas
-        $html = preg_replace('/\*\*\*(.+?)\*\*\*/', '<strong><em>$1</em></strong>', $html);
-        $html = preg_replace('/\*\*(.+?)\*\*/', '<strong>$1</strong>', $html);
+        $html = preg_replace('/\*\*(.+?)\*\*\*/', '<strong><em>$1</em></strong>', $html);
+        $html = preg_replace('/\*(.+?)\*\*/', '<strong>$1</strong>', $html);
         $html = preg_replace('/\*(.+?)\*/', '<em>$1</em>', $html);
         
         // Listas con guiones
@@ -263,8 +263,8 @@ HTML;
         $html = nl2br($html);
         
         // Limpiar saltos de línea extra alrededor de bloques
-        $html = preg_replace('/(<h[1-6]>.*?<\/h[1-6]>)\s*(<br\s*\/?>)/i', '$1', $html);
-        $html = preg_replace('/(<pre>.*?<\/pre>)\s*(<br\s*\/?>)/si', '$1', $html);
+        $html = preg_replace('/(<h[1-6]>.*<\/h[1-6]>)\s*(<br\s*\/?>)/i', '$1', $html);
+        $html = preg_replace('/(<pre>.*<\/pre>)\s*(<br\s*\/?>)/si', '$1', $html);
         
         return $html;
     }
@@ -314,7 +314,7 @@ HTML;
             return $html;
         }, $text);
     }
-
+    
     private function getModulesByRole($role)
     {
         $modules = [
@@ -325,7 +325,7 @@ HTML;
                 'section' => 'general'
             ]
         ];
-
+        
         $roleModules = [
             'solicitante' => [
                 'solicitudes' => [
@@ -416,9 +416,6 @@ HTML;
                     'icon' => 'fas fa-shopping-cart',
                     'section' => 'ordenes-compra'
                 ],
-                    'title' => 'Cotizaciones',
-                    'icon' => 'fas fa-file-invoice-dollar',
-                ],
                 'rfq' => [
                     'title' => 'RFQ',
                     'description' => 'Solicitudes de cotización',
@@ -481,9 +478,6 @@ HTML;
                     'icon' => 'fas fa-shopping-cart',
                     'section' => 'ordenes-compra'
                 ],
-                    'title' => 'Cotizaciones',
-                    'icon' => 'fas fa-file-invoice-dollar',
-                ],
                 'rfq' => [
                     'title' => 'RFQ',
                     'description' => 'Solicitudes de cotización',
@@ -504,10 +498,10 @@ HTML;
                 ]
             ]
         ];
-
+        
         return array_merge($modules, $roleModules[$role] ?? []);
     }
-
+    
     private function getAllowedSections($role)
     {
         $allSections = ['general'];
@@ -518,10 +512,10 @@ HTML;
             'supervisor' => ['general', 'supervisor', 'productos', 'kits', 'entradas', 'solicitudes', 'maestros', 'ordenes', 'rfq', 'reportes-avanzados'],
             'superadmin' => ['general', 'superadmin', 'productos', 'kits', 'entradas', 'solicitudes', 'maestros', 'ordenes', 'rfq', 'reportes-avanzados', 'usuarios', 'roles', 'auditoria']
         ];
-
+        
         return $roleSections[$role] ?? ['general'];
     }
-
+    
     private function getSectionContent($section)
     {
         $docsPath = base_path('docs/usuario');
@@ -533,14 +527,14 @@ HTML;
             'supervisor' => 'rol-supervisor.md',
             'superadmin' => 'rol-superadmin.md'
         ];
-
+        
         if (isset($sectionFiles[$section])) {
             $filePath = $docsPath . '/' . $sectionFiles[$section];
             if (file_exists($filePath)) {
                 return file_get_contents($filePath);
             }
         }
-
+        
         return '<h1>Sección en desarrollo</h1><p>Esta sección de ayuda aún no está disponible.</p>';
     }
 }
