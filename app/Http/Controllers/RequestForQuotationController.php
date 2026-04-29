@@ -61,7 +61,7 @@ class RequestForQuotationController extends Controller
             $query->where('status', $statusSearch);
         }
 
-        $orderColumn = $request->input('order.0.column', 4);
+        $orderColumn = $request->input('order.0.column', 0);
         $orderDir = $request->input('order.0.dir', 'desc');
         $columns = ['code', 'title', 'status', 'date_required', 'items_count'];
         

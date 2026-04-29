@@ -83,7 +83,7 @@
                 ordering: true,
                 info: true,
                 autoWidth: false,
-                order: [[4, 'desc']],
+                order: [[0, 'desc']],
 
                 ajax: {
                     url: "{{ route('admin.rfq.index') }}",
