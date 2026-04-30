@@ -333,11 +333,101 @@ class RequestForQuotationController extends Controller
             $rfq->load(['creator', 'items.product.category', 'items.product.unit']);
 
             $pdf = Pdf::loadView('admin.rfq.pdf', compact('rfq'));
-            
+
             return $pdf->stream('RFQ-' . $rfq->code . '.pdf');
         } catch (\Exception $e) {
             \Log::error('Error al generar PDF de RFQ: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Error al generar el PDF. Por favor, contacte al administrador.');
+        }
+    }
+
+    public function convertToPO(RequestForQuotation $rfq)
+    {
+        if (!$rfq->canConvertToPO()) {
+            return back()->with('error', 'Esta RFQ no puede convertirse a Orden de Compra.');
+        }
+
+        $rfq->load('items.product');
+        $suppliers = \App\Models\Supplier::orderBy('name')->get();
+        $products = \App\Models\Product::with(['category', 'unit'])->get();
+        $code = \App\Models\PurchaseOrder::generateCode();
+
+        return view('admin.rfq.convert-to-po', compact('rfq', 'suppliers', 'products', 'code'));
+    }
+
+    public function storePOFromRFQ(Request $request, RequestForQuotation $rfq)
+    {
+        if (!$rfq->canConvertToPO()) {
+            return back()->with('error', 'Esta RFQ no puede convertirse a Orden de Compra.');
+        }
+
+        $request->validate([
+            'supplier_id' => 'required|exists:suppliers,id',
+            'date_issued' => 'required|date',
+            'delivery_date' => 'nullable|date|after_or_equal:date_issued',
+            'currency' => 'required|string|max:3',
+            'exchange_rate' => 'required|numeric|min:0',
+            'items' => 'required|array|min:1',
+            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.quantity' => 'required|integer|min:1',
+            'items.*.unit_cost' => 'required|numeric|min:0',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $calc = new \App\Services\OrderCalculationService();
+            $totals = $calc->calculate($request->items, $request->currency, $request->exchange_rate);
+
+            $order = \App\Models\PurchaseOrder::create([
+                'code' => $request->code ?? \App\Models\PurchaseOrder::generateCode(),
+                'rfq_id' => $rfq->id,
+                'supplier_id' => $request->supplier_id,
+                'date_issued' => $request->date_issued,
+                'delivery_date' => $request->delivery_date,
+                'delivery_address' => $request->delivery_address,
+                'currency' => $request->currency,
+                'exchange_rate' => $totals['exchange_rate'],
+                'subtotal' => $totals['subtotal'],
+                'tax_amount' => $totals['tax_amount'],
+                'total' => $totals['total'],
+                'subtotal_bs' => $totals['subtotal_bs'],
+                'tax_amount_bs' => $totals['tax_amount_bs'],
+                'total_bs' => $totals['total_bs'],
+                'terms' => $request->terms,
+                'notes' => 'Generado desde RFQ-' . $rfq->code . '. ' . ($request->notes ?? ''),
+                'status' => 'draft',
+                'created_by' => auth()->id(),
+            ]);
+
+            $productIds = array_column($request->items, 'product_id');
+            $products = \App\Models\Product::whereIn('id', $productIds)->get()->keyBy('id');
+
+            foreach ($request->items as $item) {
+                $product = $products->get($item['product_id']);
+                $equivalentBs = $calc->calculateItemEquivalentBs($item['unit_cost'], $request->currency, $request->exchange_rate);
+
+                \App\Models\PurchaseOrderItem::create([
+                    'purchase_order_id' => $order->id,
+                    'product_id' => $item['product_id'],
+                    'product_name' => $product->name,
+                    'product_code' => $product->code,
+                    'quantity' => $item['quantity'],
+                    'quantity_received' => 0,
+                    'unit_cost' => $item['unit_cost'],
+                    'total_cost' => $item['quantity'] * $item['unit_cost'],
+                    'equivalent_bs' => $equivalentBs * $item['quantity'],
+                ]);
+            }
+
+            DB::commit();
+
+            return redirect()->route('admin.purchaseOrders.show', $order)
+                ->with('success', 'Orden de Compra creada exitosamente desde la RFQ.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Error al crear OC desde RFQ: ' . $e->getMessage());
+            return back()->withInput()->with('error', 'Error al crear la orden. Por favor, intente de nuevo.');
         }
     }
 }

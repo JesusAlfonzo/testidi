@@ -185,32 +185,30 @@
                                     </tr>
                                 </thead>
                                 <tbody id="itemsBody">
-                                    @foreach($products->take(1) as $index => $product)
-                                            <tr>
-                                                <td>
-                                                    <select name="items[{{ $index }}][product_id]" class="form-control form-control-sm select2-product" required>
-                                                        <option value="">Seleccione...</option>
-                                                        @foreach($products as $product)
-                                                            <option value="{{ $product->id }}" {{ $product->id == $item->product_id ? 'selected' : '' }}>{{ $product->name }} ({{ $product->code ?? 'S/C' }})</option>
-                                                        @endforeach
-                                                    </select>
-                                                </td>
-                                                <td>
-                                                    <input type="number" name="items[{{ $index }}][quantity]" class="form-control form-control-sm item-qty" min="1" value="{{ $item->quantity }}" required>
-                                                </td>
-                                                <td>
-                                                    <input type="number" step="0.01" name="items[{{ $index }}][unit_cost]" class="form-control form-control-sm item-cost" min="0" value="{{ $item->unit_cost }}" required>
-                                                </td>
-                                                <td class="text-right">
-                                                    <span class="item-total font-weight-bold">{{ number_format($item->quantity * $item->unit_cost, 2) }}</span>
-                                                </td>
-                                                <td class="text-center">
-                                                    <button type="button" class="btn btn-sm btn-danger remove-item" {{ $quote->items->count() <= 1 ? 'style=display:none' : '' }}>
-                                                        <i class="fas fa-times"></i>
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        @endforeach
+                                    <tr>
+                                        <td>
+                                            <select name="items[0][product_id]" class="form-control form-control-sm select2-product" required>
+                                                <option value="">Seleccione...</option>
+                                                @foreach($products as $product)
+                                                    <option value="{{ $product->id }}" {{ old('items.0.product_id') == $product->id ? 'selected' : '' }}>{{ $product->name }} ({{ $product->code ?? 'S/C' }})</option>
+                                                @endforeach
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <input type="number" name="items[0][quantity]" class="form-control form-control-sm item-qty" min="1" value="{{ old('items.0.quantity', 1) }}" required>
+                                        </td>
+                                        <td>
+                                            <input type="number" step="0.01" name="items[0][unit_cost]" class="form-control form-control-sm item-cost" min="0" value="{{ old('items.0.unit_cost', 0) }}" required>
+                                        </td>
+                                        <td class="text-right">
+                                            <span class="item-total font-weight-bold">0.00</span>
+                                        </td>
+                                        <td class="text-center">
+                                            <button type="button" class="btn btn-sm btn-danger remove-item" style="display:none">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
                                 </tbody>
                                 <tfoot class="bg-success-light">
                                     <tr>

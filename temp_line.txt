@@ -1,0 +1,1 @@
+            $totals = $calc->calculate($request->items, $request->currency, $request->exchange_rate);

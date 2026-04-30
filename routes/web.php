@@ -67,6 +67,8 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::post('rfq/{rfq}/mark-sent', [RequestForQuotationController::class, 'markAsSent'])->name('rfq.mark-sent');
     Route::post('rfq/{rfq}/mark-closed', [RequestForQuotationController::class, 'markAsClosed'])->name('rfq.mark-closed');
     Route::post('rfq/{rfq}/cancel', [RequestForQuotationController::class, 'cancel'])->name('rfq.cancel');
+    Route::get('rfq/{rfq}/convert-to-po', [RequestForQuotationController::class, 'convertToPO'])->name('rfq.convert-to-po');
+    Route::post('rfq/{rfq}/store-po', [RequestForQuotationController::class, 'storePOFromRFQ'])->name('rfq.store-po');
 
     // MÓDULO ORDENES DE COMPRAS
     Route::get('purchaseOrders/search-suppliers', [PurchaseOrdersController::class, 'searchSuppliers'])->name('purchaseOrders.searchSuppliers');

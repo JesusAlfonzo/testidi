@@ -184,6 +184,14 @@
                                 <i class="fas fa-times"></i> Cancelar
                             </button>
                         @endif
+
+                        @if($rfq->canConvertToPO())
+                            @can('ordenes_compra_crear')
+                                <a href="{{ route('admin.rfq.convert-to-po', $rfq) }}" class="btn btn-success">
+                                    <i class="fas fa-shopping-cart"></i> Convertir a OC
+                                </a>
+                            @endcan
+                        @endif
                     </div>
                 </div>
             @endcan

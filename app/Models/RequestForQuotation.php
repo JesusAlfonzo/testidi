@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class RequestForQuotation extends Model
 {
@@ -35,6 +36,11 @@ class RequestForQuotation extends Model
         return $this->hasMany(RfqItem::class, 'rfq_id');
     }
 
+    public function purchaseOrder(): HasOne
+    {
+        return $this->hasOne(PurchaseOrder::class, 'rfq_id');
+    }
+
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
@@ -50,6 +56,11 @@ class RequestForQuotation extends Model
     public function isEditable(): bool
     {
         return $this->status === 'draft';
+    }
+
+    public function canConvertToPO(): bool
+    {
+        return in_array($this->status, ['sent', 'closed']) && !$this->purchaseOrder;
     }
 
     public function getStatusBadgeAttribute(): string
