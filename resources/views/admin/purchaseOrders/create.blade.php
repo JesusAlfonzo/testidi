@@ -134,13 +134,19 @@
                                 </div>
                             </div>
                             <div class="col-12">
-                                <div class="form-group mb-0">
+                                <div class="form-group mb-2">
                                     <label for="exchange_rate" class="mb-1">Tasa de Cambio</label>
                                     <div class="input-group input-group-sm">
                                         <div class="input-group-prepend">
                                             <span class="input-group-text bg-success text-white"><i class="fas fa-exchange-alt"></i></span>
                                         </div>
                                         <input type="number" step="0.0001" name="exchange_rate" class="form-control" value="{{ old('exchange_rate', 1) }}">
+                                    </div>
+                                </div>
+                                <div class="form-group mb-0">
+                                    <div class="custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input" id="iva_exempt" name="iva_exempt" value="1">
+                                        <label class="custom-control-label" for="iva_exempt">Exento de IVA (16%)</label>
                                     </div>
                                 </div>
                             </div>
@@ -224,6 +230,11 @@
                                     <tr class="bg-info-light" id="rowIva">
                                         <th colspan="3" class="text-right">IVA 16%:</th>
                                         <th class="text-right"><span id="ivaBs" class="h5 text-info">Bs 0.00</span></th>
+                                        <th></th>
+                                    </tr>
+                                    <tr class="bg-info-light" id="rowIvaExempt" style="display: none;">
+                                        <th colspan="3" class="text-right">IVA:</th>
+                                        <th class="text-right"><span id="ivaExemptBadge" class="badge badge-info">Exento</span></th>
                                         <th></th>
                                     </tr>
                                     <tr class="bg-info" id="rowTotalBs">
@@ -594,6 +605,7 @@
             const exchangeRate = parseFloat($('input[name="exchange_rate"]').val()) || 0;
             const symbol = getCurrencySymbol(currency);
             const isBs = currency === 'Bs';
+            const isIvaExempt = $('#iva_exempt').is(':checked');
             
             let grandTotal = 0;
             let grandTotalBs = 0;
@@ -612,13 +624,27 @@
             $('#grandTotal').text(symbol + grandTotal.toFixed(2));
             
             // Calcular IVA y total en Bs
-            const ivaBs = grandTotalBs * 0.16;
+            const ivaRate = isIvaExempt ? 0 : 0.16;
+            const ivaBs = grandTotalBs * ivaRate;
             const totalBs = grandTotalBs + ivaBs;
             
             $('#grandTotalBs').text('Bs ' + grandTotalBs.toFixed(2));
             $('#ivaBs').text('Bs ' + ivaBs.toFixed(2));
             $('#totalBs').text('Bs ' + totalBs.toFixed(2));
+            
+            if (isIvaExempt) {
+                $('#rowIva').hide();
+                $('#rowIvaExempt').show();
+            } else {
+                $('#rowIva').show();
+                $('#rowIvaExempt').hide();
+            }
         }
+
+        // Actualizar totales al cambiar el checkbox de IVA exento
+        $('#iva_exempt').change(function() {
+            calculateTotals();
+        });
 
         // Cambiar exchange_rate según la moneda seleccionada
         $('select[name="currency"]').change(function() {

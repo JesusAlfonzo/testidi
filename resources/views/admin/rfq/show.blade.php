@@ -2,6 +2,8 @@
 
 @section('title', 'RFQ ' . $rfq->code)
 
+@section('plugins.Datatables', true)
+
 @section('content_header')
     <div class="d-flex justify-content-between">
         <h1><i class="fas fa-file-invoice"></i> RFQ {{ $rfq->code }}</h1>
@@ -85,12 +87,29 @@
                 </div>
             </div>
 
+            <div class="row mt-3 mb-3">
+                <div class="col-12 d-flex justify-content-between align-items-center">
+                    <a href="{{ route('admin.rfq.index') }}" class="btn btn-default">
+                        <i class="fas fa-arrow-left"></i> Volver al listado
+                    </a>
+                    @can('rfq_enviar')
+                        @if($rfq->canConvertToPO())
+                            @can('ordenes_compra_crear')
+                                <a href="{{ route('admin.rfq.convert-to-po', $rfq) }}" class="btn btn-success">
+                                    <i class="fas fa-shopping-cart"></i> Convertir a Orden de Compra
+                                </a>
+                            @endcan
+                        @endif
+                    @endcan
+                </div>
+            </div>
+
             <div class="card card-outline card-success mt-3">
                 <div class="card-header">
                     <h3 class="card-title">Productos Solicitados ({{ $rfq->items->count() }})</h3>
                 </div>
                 <div class="card-body p-0">
-                    <table class="table table-striped table-bordered m-0">
+                    <table id="productsTable" class="table table-striped table-bordered m-0">
                         <thead class="thead-light">
                             <tr>
                                 <th>#</th>
@@ -121,51 +140,51 @@
             </div>
 
             @can('rfq_enviar')
-                <div class="card card-outline card-warning mt-3">
-                    <div class="card-header">
-                        <h3 class="card-title">Acciones de Estado</h3>
-                    </div>
-                    <div class="card-body">
-                        @if($rfq->status === 'draft')
-                            <span class="text-muted mr-3">Marcar como enviada cuando haya compartido el PDF con proveedores.</span>
-                            <button type="button" class="btn btn-success" onclick="confirmAction({
-                                title: 'Enviar RFQ',
-                                message: '¿Está seguro de marcar esta Solicitud de Cotización como ENVIADA?',
-                                alert: 'Una vez enviada, ya no podrá editarla.',
-                                confirmBtnClass: 'btn-success',
-                                onConfirm: function() {
-                                    var form = document.createElement('form');
-                                    form.method = 'POST';
-                                    form.action = '{{ route('admin.rfq.mark-sent', $rfq) }}';
-                                    var csrfToken = document.querySelector('meta[name=&quot;csrf-token&quot;]').getAttribute('content');
-                                    form.innerHTML = '<input type=&quot;hidden&quot; name=&quot;_token&quot; value=&quot;' + csrfToken + '&quot;>';
-                                    document.body.appendChild(form);
-                                    form.submit();
-                                }
-                            })">
-                                <i class="fas fa-paper-plane"></i> Marcar Enviada
-                            </button>
-                        @elseif($rfq->status === 'sent')
-                            <button type="button" class="btn btn-success" onclick="confirmAction({
-                                title: 'Cerrar RFQ',
-                                message: '¿Está seguro de CERRAR esta Solicitud de Cotización?',
-                                alert: 'Esto finalizará el proceso de cotización.',
-                                confirmBtnClass: 'btn-success',
-                                onConfirm: function() {
-                                    var form = document.createElement('form');
-                                    form.method = 'POST';
-                                    form.action = '{{ route('admin.rfq.mark-closed', $rfq) }}';
-                                    var csrfToken = document.querySelector('meta[name=&quot;csrf-token&quot;]').getAttribute('content');
-                                    form.innerHTML = '<input type=&quot;hidden&quot; name=&quot;_token&quot; value=&quot;' + csrfToken + '&quot;>';
-                                    document.body.appendChild(form);
-                                    form.submit();
-                                }
-                            })">
-                                <i class="fas fa-check"></i> Cerrar RFQ
-                            </button>
-                        @endif
+                @if(in_array($rfq->status, ['draft', 'sent']))
+                    <div class="card card-outline card-warning mt-3">
+                        <div class="card-header">
+                            <h3 class="card-title">Acciones de Estado</h3>
+                        </div>
+                        <div class="card-body">
+                            @if($rfq->status === 'draft')
+                                <span class="text-muted mr-3">Marcar como enviada cuando haya compartido el PDF con proveedores.</span>
+                                <button type="button" class="btn btn-success" onclick="confirmAction({
+                                    title: 'Enviar RFQ',
+                                    message: '¿Está seguro de marcar esta Solicitud de Cotización como ENVIADA?',
+                                    alert: 'Una vez enviada, ya no podrá editarla.',
+                                    confirmBtnClass: 'btn-success',
+                                    onConfirm: function() {
+                                        var form = document.createElement('form');
+                                        form.method = 'POST';
+                                        form.action = '{{ route('admin.rfq.mark-sent', $rfq) }}';
+                                        var csrfToken = document.querySelector('meta[name=&quot;csrf-token&quot;]').getAttribute('content');
+                                        form.innerHTML = '<input type=&quot;hidden&quot; name=&quot;_token&quot; value=&quot;' + csrfToken + '&quot;>';
+                                        document.body.appendChild(form);
+                                        form.submit();
+                                    }
+                                })">
+                                    <i class="fas fa-paper-plane"></i> Marcar Enviada
+                                </button>
+                            @elseif($rfq->status === 'sent')
+                                <button type="button" class="btn btn-success" onclick="confirmAction({
+                                    title: 'Cerrar RFQ',
+                                    message: '¿Está seguro de CERRAR esta Solicitud de Cotización?',
+                                    alert: 'Esto finalizará el proceso de cotización.',
+                                    confirmBtnClass: 'btn-success',
+                                    onConfirm: function() {
+                                        var form = document.createElement('form');
+                                        form.method = 'POST';
+                                        form.action = '{{ route('admin.rfq.mark-closed', $rfq) }}';
+                                        var csrfToken = document.querySelector('meta[name=&quot;csrf-token&quot;]').getAttribute('content');
+                                        form.innerHTML = '<input type=&quot;hidden&quot; name=&quot;_token&quot; value=&quot;' + csrfToken + '&quot;>';
+                                        document.body.appendChild(form);
+                                        form.submit();
+                                    }
+                                })">
+                                    <i class="fas fa-check"></i> Cerrar RFQ
+                                </button>
+                            @endif
 
-                        @if(in_array($rfq->status, ['draft', 'sent']))
                             <button type="button" class="btn btn-danger" onclick="confirmAction({
                                 title: 'Cancelar RFQ',
                                 message: '¿Está seguro de CANCELAR esta Solicitud de Cotización?',
@@ -183,29 +202,46 @@
                             })">
                                 <i class="fas fa-times"></i> Cancelar
                             </button>
-                        @endif
-
-                        @if($rfq->canConvertToPO())
-                            @can('ordenes_compra_crear')
-                                <a href="{{ route('admin.rfq.convert-to-po', $rfq) }}" class="btn btn-success">
-                                    <i class="fas fa-shopping-cart"></i> Convertir a OC
-                                </a>
-                            @endcan
-                        @endif
+                        </div>
                     </div>
-                </div>
+                @endif
             @endcan
-        </div>
-    </div>
-
-    <div class="row mt-3">
-        <div class="col-12">
-            <a href="{{ route('admin.rfq.index') }}" class="btn btn-default">
-                <i class="fas fa-arrow-left"></i> Volver al listado
-            </a>
         </div>
     </div>
 
     @include('admin.partials.delete-confirm')
     @include('admin.partials.confirm-action')
+@stop
+
+@section('css')
+<style>
+    .dataTables_wrapper > .row:first-child {
+        margin-bottom: 0.75rem;
+    }
+    .dataTables_wrapper > .row:last-child {
+        margin-top: 0.75rem;
+    }
+</style>
+@stop
+
+@section('js')
+<script>
+    $(document).ready(function() {
+        $('#productsTable').DataTable({
+            "pageLength": 10,
+            "lengthMenu": [[10, 25, 50], [10, 25, 50]],
+            "pagingType": "simple_numbers",
+            "searching": false,
+            "info": false,
+            "order": [[0, 'asc']],
+            "language": {
+                "emptyTable": "No hay productos en esta solicitud",
+                "paginate": {
+                    "next": "Siguiente",
+                    "previous": "Anterior"
+                }
+            }
+        });
+    });
+</script>
 @stop

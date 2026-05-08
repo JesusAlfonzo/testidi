@@ -31,11 +31,13 @@ class UserController extends Controller
             $perPage = 15;
         }
 
-        // Obtiene todos los usuarios paginados, excluyendo al Superadmin (por seguridad)
-        $query = User::with('roles')
-            ->whereDoesntHave('roles', function ($query) {
+        $query = User::with('roles');
+
+        if (!auth()->user()->hasRole('Superadmin')) {
+            $query->whereDoesntHave('roles', function ($query) {
                 $query->where('name', 'Superadmin');
             });
+        }
 
         if ($request->get('view_all') === 'true') {
             $users = $query->paginate($perPage)->appends($request->except('page'));

@@ -53,7 +53,7 @@ class ProductBatch extends Model
         if (!$this->expiry_date) {
             return null;
         }
-        return now()->diffInDays($this->expiry_date, false);
+        return now()->startOfDay()->diffInDays($this->expiry_date, false);
     }
 
     public static function consumeFromOldestBatch(int $productId, int $quantityRequired): array

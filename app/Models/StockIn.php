@@ -23,6 +23,8 @@ class StockIn extends Model
         'quantity',
         'unit_cost',
         'reason',
+        'type',
+        'original_stock_in_id',
         'entry_date',
         'user_id',
     ];
@@ -55,6 +57,16 @@ class StockIn extends Model
     public function items()
     {
         return $this->hasMany(StockInItem::class);
+    }
+
+    public function originalStockIn()
+    {
+        return $this->belongsTo(StockIn::class, 'original_stock_in_id');
+    }
+
+    public function replacements()
+    {
+        return $this->hasMany(StockIn::class, 'original_stock_in_id');
     }
 
     public function getActivitylogOptions(): LogOptions

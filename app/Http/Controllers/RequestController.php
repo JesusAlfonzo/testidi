@@ -24,7 +24,6 @@ class RequestController extends Controller
     public function __construct(CacheService $cacheService)
     {
         $this->cacheService = $cacheService;
-        $this->authorizeResource(RequestModel::class, 'inventoryRequest');
         $this->middleware('can:solicitudes_aprobar')->only('process');
     }
 
@@ -276,18 +275,18 @@ $start = $request->input('start', 0);
     }
 
     // Muestra los detalles de la solicitud
-    public function show(RequestModel $requestModel)
+    public function show(RequestModel $request)
     {
         $this->authorize('solicitudes_ver');
         
-        $requestModel->load([
+        $request->load([
             'requester',
             'approver',
             'items.product.unit',
-            'items.kit.components.unit', // Carga componentes de kits
+            'items.kit.components.unit',
         ]);
 
-        return view('admin.requests.show', compact('requestModel'));
+        return view('admin.requests.show', compact('request'));
     }
 
     // Método especializado para APROBAR o RECHAZAR una solicitud
@@ -310,6 +309,9 @@ $start = $request->input('start', 0);
                 return redirect()->route('admin.requests.index')->with('success', 'Solicitud APROBADA y stock actualizado correctamente.');
 
             } elseif ($action === 'reject') {
+                if (!$reason || trim($reason) === '') {
+                    return redirect()->back()->with('error', 'Debe proporcionar un motivo para el rechazo.');
+                }
                 $service->reject($request, $reason);
                 DB::commit();
                 return redirect()->route('admin.requests.index')->with('warning', 'Solicitud RECHAZADA.');

@@ -80,6 +80,10 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::post('purchaseOrders/{purchaseOrder}/cancel', [PurchaseOrdersController::class, 'cancel'])->name('purchaseOrders.cancel');
 
     // MOVIMIENTOS - ENTRADAS DE STOCK
+    // Rutas personalizadas PRIMERO (antes del resource)
+    Route::get('stock-in/{stockIn}/create-replacement', [StockInController::class, "createReplacement"])->name('stock-in.create-replacement');
+    Route::post('stock-in/store-replacement', [StockInController::class, "storeReplacement"])->name('stock-in.store-replacement');
+    // Resource routes DESPUÉS
     Route::resource('stock-in', StockInController::class);
 
     // MOVIMIENTOS - SOLICITUDES DE SALIDA

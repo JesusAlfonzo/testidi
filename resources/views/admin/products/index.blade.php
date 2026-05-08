@@ -171,7 +171,7 @@
                         "data": "stock", 
                         "name": "stock",
                         "render": function(data, type, row) {
-                            return '<span class="badge ' + row.stock_class + '">' + data + ' ' + row.unit + '</span>';
+                            return '<span class="badge ' + row.stock_class + '">' + data + '</span>';
                         }
                     },
                     { "data": "actions", "name": "actions", "orderable": false, "searchable": false },

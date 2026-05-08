@@ -17,6 +17,8 @@ class PurchaseOrderItem extends Model
         'product_code',
         'quantity',
         'quantity_received',
+        'quantity_rejected',
+        'quantity_replaced',
         'unit_cost',
         'total_cost',
         'equivalent_bs',
@@ -40,11 +42,16 @@ class PurchaseOrderItem extends Model
 
     public function getPendingQuantity(): int
     {
-        return $this->quantity - $this->quantity_received;
+        return $this->quantity - $this->quantity_received - $this->quantity_replaced;
+    }
+
+    public function getRejectedPendingQuantity(): int
+    {
+        return $this->quantity_rejected - $this->quantity_replaced;
     }
 
     public function isFullyReceived(): bool
     {
-        return $this->quantity_received >= $this->quantity;
+        return ($this->quantity_received + $this->quantity_replaced) >= $this->quantity;
     }
 }

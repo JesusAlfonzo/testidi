@@ -5,7 +5,7 @@ class OrderCalculationService
 {
     private float $ivaRate = 0.16;
 
-    public function calculate(array $items, string $currency, float $exchangeRate = 1): array
+    public function calculate(array $items, string $currency, float $exchangeRate = 1, bool $ivaExempt = false): array
     {
         $isBs = $currency === 'Bs';
         $subtotal = 0;
@@ -22,14 +22,15 @@ class OrderCalculationService
             $subtotalBs += $equivalentBs * $item['quantity'];
         }
 
-        $taxAmountBs = $subtotalBs * $this->ivaRate;
+        $ivaRate = $ivaExempt ? 0 : $this->ivaRate;
+        $taxAmountBs = $subtotalBs * $ivaRate;
         $totalBs = $subtotalBs + $taxAmountBs;
         $total = $subtotal;
 
         return [
             'subtotal' => $subtotal,
-            'tax_amount' => $subtotal * $this->ivaRate,
-            'total' => $subtotal + ($subtotal * $this->ivaRate),
+            'tax_amount' => $subtotal * $ivaRate,
+            'total' => $subtotal + ($subtotal * $ivaRate),
             'subtotal_bs' => $subtotalBs,
             'tax_amount_bs' => $taxAmountBs,
             'total_bs' => $totalBs,

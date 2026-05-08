@@ -121,7 +121,6 @@ class ProductController extends Controller
                 'name' => $product->name,
                 'stock' => $product->stock,
                 'stock_class' => $product->stock <= $product->min_stock ? 'badge-danger' : 'badge-success',
-                'unit' => $product->unit->abbreviation ?? 'unid',
                 'actions' => view('admin.products.partials.actions', ['product' => $product])->render(),
                 'code' => $product->code ?? 'N/A',
                 'category' => $product->category->name ?? 'N/A',

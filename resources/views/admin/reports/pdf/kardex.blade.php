@@ -213,7 +213,7 @@
         </div>
         <div class="product-info-right">
             <div class="summary-label">Stock Actual</div>
-            <div class="stock-badge">{{ $product->stock }} {{ $product->unit->abbreviation ?? '' }}</div>
+            <div class="stock-badge">{{ $product->stock }}</div>
         </div>
     </div>
 

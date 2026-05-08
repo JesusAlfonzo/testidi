@@ -16,10 +16,10 @@ if ($item->status === 'Pending' && ($user->can('solicitudes_aprobar') || $user->
     $actions .= '<button type="submit" class="btn btn-sm btn-success" title="Aprobar" onclick="return confirm(\'¿Está seguro de APROBAR esta solicitud?\');">';
     $actions .= '<i class="fas fa-check"></i></button></form> ';
 
-    $actions .= '<form method="POST" action="' . $processUrl . '" style="display:inline;">';
+    $actions .= '<form method="POST" action="' . $processUrl . '" style="display:inline;" id="reject-form-' . $item->id . '">';
     $actions .= '<input type="hidden" name="_token" value="' . $csrf . '">';
     $actions .= '<input type="hidden" name="action" value="reject">';
-    $actions .= '<button type="submit" class="btn btn-sm btn-danger" title="Rechazar" onclick="return confirm(\'¿Está seguro de RECHAZAR esta solicitud?\');">';
+    $actions .= '<button type="button" class="btn btn-sm btn-danger" title="Rechazar" onclick="var reason = prompt(\'Motivo del rechazo:\'); if(reason) { var f=document.getElementById(\'reject-form-' . $item->id . '\'); var i=document.createElement(\'input\'); i.type=\'hidden\'; i.name=\'rejection_reason\'; i.value=reason; f.appendChild(i); f.submit(); }">';
     $actions .= '<i class="fas fa-times"></i></button></form>';
 }
 

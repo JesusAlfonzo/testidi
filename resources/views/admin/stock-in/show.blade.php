@@ -153,6 +153,7 @@
                                 <th>Fecha Venc.</th>
                                 <th>Nro. Serie</th>
                                 <th>Ubicación</th>
+                                <th>Estado</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -162,7 +163,13 @@
                                     <td>{{ $item->product->name ?? 'N/A' }}</td>
                                     <td>{{ $item->product->code ?? 'N/A' }}</td>
                                     <td class="text-center">
-                                        <span class="badge badge-success">{{ $item->quantity }}</span>
+                                        @if($item->status === 'rejected')
+                                            <span class="badge badge-danger">{{ $item->quantity }} (Rechazado)</span>
+                                        @elseif($item->status === 'replaced')
+                                            <span class="badge badge-info">{{ $item->quantity }} (Reemplazado)</span>
+                                        @else
+                                            <span class="badge badge-success">{{ $item->quantity }}</span>
+                                        @endif
                                     </td>
                                     <td class="text-right">${{ number_format($item->unit_cost, 2) }}</td>
                                     <td class="text-right">${{ number_format($item->quantity * $item->unit_cost, 2) }}</td>
@@ -178,13 +185,27 @@
                                     </td>
                                     <td>{{ $item->serial_number ?? '-' }}</td>
                                     <td>{{ $item->warehouse_location ?? '-' }}</td>
+                                    <td>
+                                        @if($item->status === 'rejected')
+                                            <span class="badge badge-danger">Rechazado</span>
+                                            @if($item->rejection_reason)
+                                                <small class="text-muted d-block">{{ $item->rejection_reason }}</small>
+                                            @endif
+                                        @elseif($item->status === 'replaced')
+                                            <span class="badge badge-info">Reemplazado</span>
+                                        @else
+                                            <span class="badge badge-success">Recibido</span>
+                                        @endif
+                                    </td>
                                 </tr>
-                                @php $totalGeneral += $item->quantity * $item->unit_cost; @endphp
+                                @if($item->status !== 'rejected')
+                                    @php $totalGeneral += $item->quantity * $item->unit_cost; @endphp
+                                @endif
                             @endforeach
                             <tr class="table-success font-weight-bold">
                                 <td colspan="4" class="text-right">TOTAL:</td>
                                 <td class="text-right">${{ number_format($totalGeneral, 2) }}</td>
-                                <td colspan="4"></td>
+                                <td colspan="6"></td>
                             </tr>
                         </tbody>
                     </table>
@@ -192,6 +213,44 @@
             </div>
         </div>
     </div>
+
+    @if($stockIn->items()->where('status', 'rejected')->count() > 0 && $stockIn->type !== 'replacement')
+    <div class="row mt-3">
+        <div class="col-12">
+            <div class="card" style="border-left: 4px solid #f59e0b;">
+                <div class="card-header" style="background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);">
+                    <h3 class="card-title text-white">
+                        <i class="fas fa-undo"></i> Productos Rechazados
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <p>Esta entrada tiene {{ $stockIn->items()->where('status', 'rejected')->count() }} producto(s) rechazado(s).</p>
+                    <a href="{{ route('admin.stock-in.create-replacement', $stockIn) }}" class="btn btn-warning">
+                        <i class="fas fa-sync-alt"></i> Registrar Reemplazo
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    @if($stockIn->type === 'replacement' && $stockIn->originalStockIn)
+    <div class="row mt-3">
+        <div class="col-12">
+            <div class="card" style="border-left: 4px solid #8b5cf6;">
+                <div class="card-header" style="background: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%);">
+                    <h3 class="card-title text-white">
+                        <i class="fas fa-link"></i> Entrada Original
+                    </h3>
+                </div>
+                <div class="card-body">
+                    Esta es una entrada de reemplazo vinculada a la entrada
+                    <a href="{{ route('admin.stock-in.show', $stockIn->originalStockIn) }}">{{ $stockIn->originalStockIn->id }}</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
 
     <div class="row mt-3">
         <div class="col-12">

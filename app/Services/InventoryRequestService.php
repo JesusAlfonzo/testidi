@@ -75,7 +75,7 @@ class InventoryRequestService
         }
     }
 
-    public function reject(InventoryRequest $request, string $reason): void
+    public function reject(InventoryRequest $request, ?string $reason = null): void
     {
         $request->status = 'Rejected';
         $request->approver_id = auth()->id();

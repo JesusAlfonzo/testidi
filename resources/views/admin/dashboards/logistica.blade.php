@@ -449,8 +449,12 @@ $(function() {
                             <td>{{ $batch->expiry_date->format('d/m/Y') }}</td>
                             <td>{{ $batch->quantity }}</td>
                             <td>
-                                @php $daysLeft = now()->diffInDays($batch->expiry_date, false); @endphp
-                                @if($daysLeft <= 7)
+                                @php $daysLeft = $batch->getDaysUntilExpiry(); @endphp
+                                @if($daysLeft === 0)
+                                    <span class="badge badge-warning">Se vence hoy</span>
+                                @elseif($daysLeft < 0)
+                                    <span class="badge badge-danger">Vencido</span>
+                                @elseif($daysLeft <= 7)
                                     <span class="badge badge-danger">{{ $daysLeft }} días</span>
                                 @elseif($daysLeft <= 15)
                                     <span class="badge badge-warning">{{ $daysLeft }} días</span>

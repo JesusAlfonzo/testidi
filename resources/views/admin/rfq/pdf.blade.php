@@ -12,32 +12,60 @@
         }
         body {
             font-family: 'Helvetica', 'Arial', sans-serif;
-            font-size: 11px;
-            padding: 20px;
+            font-size: 10px;
+            padding: 15px;
             color: #333;
         }
         .header-container {
             width: 100%;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             border-bottom: 2px solid #1a4a7a;
-            padding-bottom: 15px;
+            padding-bottom: 12px;
         }
-        .header-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
+        .header-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .header-cell {
+            vertical-align: top;
+        }
+        .header-cell-left {
+            width: 50%;
+        }
+        .header-cell-right {
+            width: 50%;
+            text-align: right;
+        }
+        .header-table td {
+            border: none;
         }
         .logo-section {
-            width: 180px;
+            width: 150px;
         }
         .logo-section img {
-            width: 150px;
+            width: 130px;
             height: auto;
+        }
+        .header-info-box {
+            margin-top: 10px;
+        }
+        .header-info-title {
+            font-size: 9px;
+            text-transform: uppercase;
+            color: #1a4a7a;
+            font-weight: bold;
+            margin-bottom: 5px;
+            border-bottom: 1px solid #1a4a7a;
+            padding-bottom: 3px;
+        }
+        .header-info-item {
+            margin-bottom: 3px;
+            line-height: 1.3;
+            font-size: 9px;
         }
         .company-info {
             text-align: right;
-            flex: 1;
-            padding-left: 20px;
+            margin-top: 0;
         }
         .company-name {
             font-size: 16px;
@@ -50,7 +78,7 @@
             color: #666;
         }
         .document-info {
-            margin-top: 15px;
+            margin-top: 5px;
             text-align: right;
         }
         .document-title {
@@ -67,72 +95,33 @@
             font-size: 11px;
             color: #666;
         }
-        .info-section {
-            display: flex;
-            gap: 30px;
-            margin-bottom: 20px;
-        }
-        .info-box {
-            flex: 1;
-            border: 1px solid #ddd;
-            padding: 12px;
-            background: #fafafa;
-        }
-        .info-box-title {
-            font-size: 10px;
-            text-transform: uppercase;
-            color: #1a4a7a;
-            font-weight: bold;
-            margin-bottom: 8px;
-            border-bottom: 1px solid #1a4a7a;
-            padding-bottom: 5px;
-        }
-        .info-item {
-            margin-bottom: 4px;
-            line-height: 1.4;
-        }
-        .info-label {
-            font-weight: bold;
-            color: #555;
-        }
-        .title-section {
-            background: #f0f5fa;
-            border: 1px solid #1a4a7a;
-            padding: 15px;
-            margin-bottom: 20px;
-        }
-        .title-main {
-            font-size: 14px;
-            font-weight: bold;
-            color: #1a4a7a;
-            margin-bottom: 8px;
-        }
-        .title-description {
-            font-size: 11px;
-            line-height: 1.5;
-            white-space: pre-wrap;
-        }
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
+            page-break-inside: auto;
+        }
+        tr {
+            page-break-inside: avoid;
         }
         th, td {
             border: 1px solid #333;
-            padding: 8px;
+            padding: 6px;
             text-align: left;
+            line-height: 1.2;
         }
         th {
             background: #1a4a7a;
             color: white;
             font-weight: bold;
-            font-size: 10px;
+            font-size: 9px;
             text-transform: uppercase;
         }
         .text-center { text-align: center; }
         .text-right { text-align: right; }
         .notes-section {
-            margin-bottom: 20px;
+            margin-bottom: 15px;
+            page-break-inside: avoid;
         }
         .notes-title {
             font-size: 11px;
@@ -151,8 +140,8 @@
         .contact-section {
             background: #1a4a7a;
             color: white;
-            padding: 15px;
-            margin-bottom: 20px;
+            padding: 12px;
+            margin-bottom: 15px;
             text-align: center;
         }
         .contact-title {
@@ -164,49 +153,29 @@
             font-size: 11px;
         }
         .footer {
-            margin-top: 40px;
-            padding-top: 15px;
+            margin-top: 30px;
+            padding-top: 12px;
             border-top: 1px solid #ddd;
             font-size: 9px;
             color: #888;
             text-align: center;
+            page-break-inside: avoid;
         }
     </style>
 </head>
 <body>
     <div class="header-container">
-        <div class="header-row">
-            <div class="logo-section">
-                <img src="{{ public_path('images/logo-iac.png') }}" alt="Logo IAC">
-            </div>
-            <div class="company-info">
-                <div class="company-name">Inmunologia Asociacion Civil</div>
-                <div class="company-rif">RIF: J-30710739-1</div>
-                <div class="document-info">
-                    <div class="document-title">SOLICITUD DE COTIZACIÓN</div>
-                    <div class="document-number">N° {{ $rfq->code }}</div>
-                    <div class="document-date">Fecha: {{ $rfq->created_at->format('d/m/Y') }}</div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="title-section">
-        <div class="title-main">{{ $rfq->title }}</div>
-        @if($rfq->description)
-            <div class="title-description">{{ $rfq->description }}</div>
-        @endif
-    </div>
-
-    <div class="info-section">
-        <div class="info-box">
-            <div class="info-box-title">Fechas</div>
-            <div class="info-item"><span class="info-label">Fecha de Emisión:</span> {{ $rfq->created_at->format('d/m/Y') }}</div>
-            <div class="info-item"><span class="info-label">Fecha Límite:</span> {{ $rfq->date_required?->format('d/m/Y') ?? 'No especificada' }}</div>
-            <div class="info-item"><span class="info-label">Fecha Entrega:</span> {{ $rfq->delivery_deadline?->format('d/m/Y') ?? 'A convenir' }}</div>
-        </div>
-        <div class="info-box">
-            <div class="info-box-title">Información</div>
+        <table class="header-table">
+            <tr>
+                <td class="header-cell header-cell-left">
+                    <div class="logo-section">
+                        <img src="{{ public_path('images/logo-iac.png') }}" alt="Logo IAC">
+                    </div>
+                    <div class="header-info-box">
+                        <div class="header-info-title">Información de la Solicitud</div>
+                        @if($rfq->description)
+                            <div class="header-info-item"><span style="font-weight: bold;">Descripción:</span> {{ $rfq->description }}</div>
+                        @endif
 <?php
     $statusLabels = [
         'draft' => 'Borrador',
@@ -216,10 +185,27 @@
     ];
     $statusLabel = $statusLabels[$rfq->status] ?? ucfirst($rfq->status);
 ?>
-            <div class="info-item"><span class="info-label">Estado:</span> {{ $statusLabel }}</div>
-            <div class="info-item"><span class="info-label">Solicitado por:</span> {{ $rfq->creator->name ?? 'Sistema' }}</div>
-            <div class="info-item"><span class="info-label">Total Items:</span> {{ $rfq->items->count() }}</div>
-        </div>
+                        <div class="header-info-item"><span style="font-weight: bold;">Fecha de Emisión:</span> {{ $rfq->created_at->format('d/m/Y') }}</div>
+                        <div class="header-info-item"><span style="font-weight: bold;">Fecha Límite:</span> {{ $rfq->date_required?->format('d/m/Y') ?? 'No especificada' }}</div>
+                        <div class="header-info-item"><span style="font-weight: bold;">Fecha Entrega:</span> {{ $rfq->delivery_deadline?->format('d/m/Y') ?? 'A convenir' }}</div>
+                        <div class="header-info-item"><span style="font-weight: bold;">Estado:</span> {{ $statusLabel }}</div>
+                        <div class="header-info-item"><span style="font-weight: bold;">Solicitado por:</span> {{ $rfq->creator->name ?? 'Sistema' }}</div>
+                        <div class="header-info-item"><span style="font-weight: bold;">Total Items:</span> {{ $rfq->items->count() }}</div>
+                    </div>
+                </td>
+                <td class="header-cell header-cell-right">
+                    <div class="company-info">
+                        <div class="company-name">Inmunologia Asociacion Civil</div>
+                        <div class="company-rif">RIF: J-30710739-1</div>
+                        <div class="document-info">
+                            <div class="document-title">SOLICITUD DE COTIZACIÓN</div>
+                            <div class="document-number">N° {{ $rfq->code }}</div>
+                            <div class="document-date">Fecha: {{ $rfq->created_at->format('d/m/Y') }}</div>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        </table>
     </div>
 
     <table>
@@ -227,10 +213,10 @@
             <tr>
                 <th style="width: 5%; text-align: center;">#</th>
                 <th style="width: 12%;">Código</th>
-                <th style="width: 43%;">Descripción / Producto</th>
+                <th style="width: 45%;">Descripción / Producto</th>
                 <th style="width: 10%; text-align: center;">Cant.</th>
                 <th style="width: 10%; text-align: center;">Und.</th>
-                <th style="width: 20%;">Notas</th>
+                <th style="width: 18%;">Notas</th>
             </tr>
         </thead>
         <tbody>

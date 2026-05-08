@@ -207,6 +207,7 @@ class PurchaseOrdersController extends Controller
             'delivery_date' => 'nullable|date|after_or_equal:date_issued',
             'currency' => 'required|string|max:3',
             'exchange_rate' => 'required|numeric|min:0',
+            'iva_exempt' => 'nullable|boolean',
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
@@ -217,7 +218,7 @@ class PurchaseOrdersController extends Controller
             DB::beginTransaction();
 
             $calc = new OrderCalculationService();
-            $totals = $calc->calculate($request->items, $request->currency, $request->exchange_rate);
+            $totals = $calc->calculate($request->items, $request->currency, $request->exchange_rate, $request->boolean('iva_exempt'));
 
             $order = PurchaseOrder::create([
                 'code' => $request->code ?? PurchaseOrder::generateCode(),
@@ -227,6 +228,7 @@ class PurchaseOrdersController extends Controller
                 'delivery_address' => $request->delivery_address,
                 'currency' => $request->currency,
                 'exchange_rate' => $totals['exchange_rate'],
+                'iva_exempt' => $request->boolean('iva_exempt'),
                 'subtotal' => $totals['subtotal'],
                 'tax_amount' => $totals['tax_amount'],
                 'total' => $totals['total'],
@@ -303,6 +305,7 @@ class PurchaseOrdersController extends Controller
             'delivery_date' => 'nullable|date|after_or_equal:date_issued',
             'currency' => 'required|string|max:3',
             'exchange_rate' => 'required|numeric|min:0',
+            'iva_exempt' => 'nullable|boolean',
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
@@ -315,7 +318,7 @@ class PurchaseOrdersController extends Controller
             $purchaseOrder->items()->delete();
 
             $calc = new OrderCalculationService();
-            $totals = $calc->calculate($request->items, $request->currency, $request->exchange_rate);
+            $totals = $calc->calculate($request->items, $request->currency, $request->exchange_rate, $request->boolean('iva_exempt'));
 
             $purchaseOrder->update([
                 'supplier_id' => $request->supplier_id,
@@ -324,6 +327,7 @@ class PurchaseOrdersController extends Controller
                 'delivery_address' => $request->delivery_address,
                 'currency' => $request->currency,
                 'exchange_rate' => $totals['exchange_rate'],
+                'iva_exempt' => $request->boolean('iva_exempt'),
                 'subtotal' => $totals['subtotal'],
                 'tax_amount' => $totals['tax_amount'],
                 'total' => $totals['total'],

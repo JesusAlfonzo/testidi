@@ -377,7 +377,7 @@ class RequestForQuotationController extends Controller
             DB::beginTransaction();
 
             $calc = new \App\Services\OrderCalculationService();
-            $totals = $calc->calculate($request->items, $request->currency, $request->exchange_rate);
+            $totals = $calc->calculate($request->items, $request->currency, $request->exchange_rate, $request->boolean('iva_exempt'));
 
             $order = \App\Models\PurchaseOrder::create([
                 'code' => $request->code ?? \App\Models\PurchaseOrder::generateCode(),
@@ -398,6 +398,7 @@ class RequestForQuotationController extends Controller
                 'notes' => 'Generado desde RFQ-' . $rfq->code . '. ' . ($request->notes ?? ''),
                 'status' => 'draft',
                 'created_by' => auth()->id(),
+                'iva_exempt' => $request->boolean('iva_exempt'),
             ]);
 
             $productIds = array_column($request->items, 'product_id');

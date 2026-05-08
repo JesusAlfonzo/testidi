@@ -157,13 +157,14 @@
                             <table class="table table-bordered table-striped mb-0" id="itemsTable">
                                 <thead class="bg-info text-white">
                                     <tr>
-                                        <th width="25%">Producto</th>
-                                        <th width="10%">Cantidad</th>
-                                        <th width="12%">Costo Unit.</th>
-                                        <th width="12%">Nro. Lote</th>
-                                        <th width="12%">Fecha Venc.</th>
-                                        <th width="12%">Nro. Serie</th>
-                                        <th width="10%">Ubicación</th>
+                                        <th width="20%">Producto</th>
+                                        <th width="8%">Cantidad</th>
+                                        <th width="10%">Costo Unit.</th>
+                                        <th width="10%">Nro. Lote</th>
+                                        <th width="10%">Fecha Venc.</th>
+                                        <th width="10%">Nro. Serie</th>
+                                        <th width="8%">Ubicación</th>
+                                        <th width="10%">Estado</th>
                                         <th width="7%"></th>
                                     </tr>
                                 </thead>
@@ -242,6 +243,13 @@
                                                             <option value="{{ $name }}">{{ $name }}</option>
                                                         @endforeach
                                                     </select>
+                                                </td>
+                                                <td>
+                                                    <select name="items[{{ $index }}][status]" class="form-control form-control-sm status-select" onchange="toggleRejectionReason(this)">
+                                                        <option value="received">Recibido</option>
+                                                        <option value="rejected">Rechazado</option>
+                                                    </select>
+                                                    <input type="text" name="items[{{ $index }}][rejection_reason]" class="form-control form-control-sm rejection-reason mt-1" placeholder="Razón rechazo" style="display:none;">
                                                 </td>
                                                 <td>
                                                     <button type="button" class="btn btn-danger btn-sm" onclick="removeItem(this)">
@@ -327,13 +335,20 @@
         const tbody = document.getElementById('itemsBody');
         const row = document.createElement('tr');
         row.setAttribute('data-index', itemIndex);
-        
-        const productOptions = `@foreach($products as $id => $name)<option value="{{ $id }}">{{ $name }}</option>@endforeach`;
+
+        let productOptions = '<option value="">Seleccione...</option>';
+        @foreach($products as $id => $name)
+            productOptions += '<option value="{{ $id }}">{{ $name }}</option>';
+        @endforeach
+
+        let locationOptions = '<option value="">Seleccione...</option>';
+        @foreach($locations as $id => $name)
+            locationOptions += '<option value="{{ $name }}">{{ $name }}</option>';
+        @endforeach
         
         row.innerHTML = `
             <td>
                 <select name="items[${itemIndex}][product_id]" class="form-control select2-product" required>
-                    <option value="">Seleccione...</option>
                     ${productOptions}
                 </select>
             </td>
@@ -354,11 +369,15 @@
             </td>
             <td>
                 <select name="items[${itemIndex}][warehouse_location]" class="form-control">
-                    <option value="">Seleccione...</option>
-                    @foreach($locations as $id => $name)
-                        <option value="{{ $name }}">{{ $name }}</option>
-                    @endforeach
+                    ${locationOptions}
                 </select>
+            </td>
+            <td>
+                <select name="items[${itemIndex}][status]" class="form-control status-select" onchange="toggleRejectionReason(this)">
+                    <option value="received">Recibido</option>
+                    <option value="rejected">Rechazado</option>
+                </select>
+                <input type="text" name="items[${itemIndex}][rejection_reason]" class="form-control form-control-sm rejection-reason mt-1" placeholder="Razón rechazo" style="display:none;">
             </td>
             <td>
                 <button type="button" class="btn btn-danger btn-sm" onclick="removeItem(this)">
@@ -382,6 +401,19 @@
             $(button).closest('tr').remove();
         } else {
             alert('Debe mantener al menos un producto.');
+        }
+    }
+
+    function toggleRejectionReason(select) {
+        const row = select.closest('tr');
+        const reasonInput = row.querySelector('.rejection-reason');
+        if (select.value === 'rejected') {
+            reasonInput.style.display = 'block';
+            reasonInput.required = true;
+        } else {
+            reasonInput.style.display = 'none';
+            reasonInput.required = false;
+            reasonInput.value = '';
         }
     }
 

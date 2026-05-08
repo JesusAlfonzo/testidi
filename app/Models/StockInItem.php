@@ -20,6 +20,9 @@ class StockInItem extends Model
         'serial_number',
         'warehouse_location',
         'notes',
+        'status',
+        'rejection_reason',
+        'replaced_item_id',
     ];
 
     protected $casts = [
@@ -35,5 +38,15 @@ class StockInItem extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function replacedItem(): BelongsTo
+    {
+        return $this->belongsTo(StockInItem::class, 'replaced_item_id');
+    }
+
+    public function replacements()
+    {
+        return $this->hasMany(StockInItem::class, 'replaced_item_id');
     }
 }

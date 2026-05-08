@@ -28,6 +28,8 @@ class StoreStockInRequest extends FormRequest
             'items.*.serial_number' => ['nullable', 'string', 'max:100'],
             'items.*.warehouse_location' => ['nullable', 'string', 'max:100'],
             'items.*.notes' => ['nullable', 'string', 'max:255'],
+            'items.*.status' => ['nullable', 'in:received,rejected'],
+            'items.*.rejection_reason' => ['nullable', 'string', 'max:255'],
         ];
     }
 

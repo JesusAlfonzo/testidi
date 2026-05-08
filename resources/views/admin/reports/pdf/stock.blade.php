@@ -139,7 +139,7 @@
                     <td>{{ $product->category->name ?? 'N/A' }}</td>
                     <td>{{ $product->brand->name ?? 'N/A' }}</td>
                     <td>{{ $product->location->name ?? 'N/A' }}</td>
-                    <td class="text-right"><strong>{{ $product->stock }}</strong> {{ $product->unit->abbreviation ?? '' }}</td>
+                    <td class="text-right"><strong>{{ $product->stock }}</strong></td>
                     <td class="text-right">{{ $product->min_stock }}</td>
                     <td class="text-center">
                         <span class="{{ $stockClass }}">{{ $stockLabel }}</span>
