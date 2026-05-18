@@ -202,17 +202,27 @@ class StockInController extends Controller
 
         $order = null;
         $orderItem = null;
+        $selectedItemIds = [];
 
         if ($request->filled('order')) {
             $order = PurchaseOrder::with(['supplier', 'items.product'])
                 ->find($request->order);
 
             if ($order && $request->filled('item')) {
-                $orderItem = $order->items->where('id', $request->item)->where('quantity_received', '<', DB::raw('quantity'))->first();
+                $orderItem = $order->items()
+                    ->where('id', $request->item)
+                    ->where(function ($q) {
+                        $q->whereColumn('quantity_received', '<', 'quantity');
+                    })
+                    ->first();
+            }
+
+            if ($order && $request->filled('items')) {
+                $selectedItemIds = $request->input('items', []);
             }
         }
 
-        return view('admin.stock-in.create', compact('products', 'suppliers', 'locations', 'order', 'orderItem'));
+        return view('admin.stock-in.create', compact('products', 'suppliers', 'locations', 'order', 'orderItem', 'selectedItemIds'));
     }
 
     public function store(StoreStockInRequest $request)
@@ -314,6 +324,14 @@ class StockInController extends Controller
                         }
                         $orderItem->save();
                     }
+                }
+            }
+
+            if (!empty($validatedData['purchase_order_id'])) {
+                $purchaseOrder = PurchaseOrder::with('items')->find($validatedData['purchase_order_id']);
+                if ($purchaseOrder && $purchaseOrder->isFullyReceived() && $purchaseOrder->status === 'issued') {
+                    $purchaseOrder->update(['status' => 'completed']);
+                    session()->flash('oc_completed', "La Orden de Compra {$purchaseOrder->code} se ha completado automáticamente al recibir todos los productos.");
                 }
             }
 

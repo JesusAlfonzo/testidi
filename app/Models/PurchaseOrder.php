@@ -55,6 +55,11 @@ class PurchaseOrder extends Model
         return $this->hasMany(PurchaseOrderItem::class);
     }
 
+    public function stockIns(): HasMany
+    {
+        return $this->hasMany(StockIn::class, 'purchase_order_id');
+    }
+
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(Supplier::class);
@@ -104,7 +109,7 @@ class PurchaseOrder extends Model
     public function isFullyReceived(): bool
     {
         foreach ($this->items as $item) {
-            if ($item->quantity_received < $item->quantity) {
+            if (($item->quantity_received + $item->quantity_replaced) < $item->quantity) {
                 return false;
             }
         }

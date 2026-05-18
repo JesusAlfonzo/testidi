@@ -67,12 +67,12 @@
 
                             <div class="col-12 col-md-3">
                                 <div class="form-group">
-                                    <label for="reason">Razón del Ingreso</label>
+                                    <label for="reason">Razón del Ingreso (*)</label>
                                     <div class="input-group input-group-sm">
                                         <div class="input-group-prepend">
                                             <span class="input-group-text bg-info text-white"><i class="fas fa-question-circle"></i></span>
                                         </div>
-                                        <input type="text" name="reason" class="form-control @error('reason') is-invalid @enderror" value="{{ old('reason') }}" placeholder="Ej: Compra, Donación, Ajuste">
+                                        <input type="text" name="reason" class="form-control @error('reason') is-invalid @enderror" value="{{ old('reason') }}" placeholder="Ej: Compra, Donación, Ajuste" required>
                                     </div>
                                     @error('reason')<span class="invalid-feedback">{{ $message }}</span>@enderror
                                 </div>
@@ -91,24 +91,24 @@
                         <div class="row">
                             <div class="col-12 col-md-3">
                                 <div class="form-group">
-                                    <label for="document_type">Tipo de Documento</label>
+                                    <label for="document_type">Tipo de Documento (*)</label>
                                     <div class="input-group input-group-sm">
                                         <div class="input-group-prepend">
                                             <span class="input-group-text bg-secondary text-white"><i class="fas fa-file"></i></span>
                                         </div>
-                                        <input type="text" name="document_type" class="form-control @error('document_type') is-invalid @enderror" value="{{ old('document_type') }}" placeholder="Ej: Factura, Guía">
+                                        <input type="text" name="document_type" class="form-control @error('document_type') is-invalid @enderror" value="{{ old('document_type') }}" placeholder="Ej: Factura, Guía" required>
                                     </div>
                                     @error('document_type')<span class="invalid-feedback">{{ $message }}</span>@enderror
                                 </div>
                             </div>
                             <div class="col-12 col-md-3">
                                 <div class="form-group">
-                                    <label for="document_number">Número de Documento</label>
+                                    <label for="document_number">Número de Documento (*)</label>
                                     <div class="input-group input-group-sm">
                                         <div class="input-group-prepend">
                                             <span class="input-group-text bg-secondary text-white"><i class="fas fa-hashtag"></i></span>
                                         </div>
-                                        <input type="text" name="document_number" class="form-control @error('document_number') is-invalid @enderror" value="{{ old('document_number') }}" placeholder="Ej: F-001-12345">
+                                        <input type="text" name="document_number" class="form-control @error('document_number') is-invalid @enderror" value="{{ old('document_number') }}" placeholder="Ej: F-001-12345" required>
                                     </div>
                                     @error('document_number')<span class="invalid-feedback">{{ $message }}</span>@enderror
                                 </div>
@@ -147,9 +147,11 @@
                             <h3 class="card-title text-white">
                                 <i class="fas fa-boxes"></i> Productos
                             </h3>
+                            @unless($orderItem)
                             <button type="button" class="btn btn-sm btn-outline-light text-light" onclick="addItem()">
                                 <i class="fas fa-plus"></i> Agregar Producto
                             </button>
+                            @endunless
                         </div>
                     </div>
                     <div class="card-body p-0">
@@ -157,15 +159,20 @@
                             <table class="table table-bordered table-striped mb-0" id="itemsTable">
                                 <thead class="bg-info text-white">
                                     <tr>
-                                        <th width="20%">Producto</th>
-                                        <th width="8%">Cantidad</th>
+                                        <th width="18%">Producto</th>
+                                        <th width="10%">Cantidad</th>
                                         <th width="10%">Costo Unit.</th>
-                                        <th width="10%">Nro. Lote</th>
-                                        <th width="10%">Fecha Venc.</th>
+                                        <th width="12%">Nro. Lote (*)</th>
+                                        <th width="12%">Fecha Venc. (*)</th>
                                         <th width="10%">Nro. Serie</th>
-                                        <th width="8%">Ubicación</th>
-                                        <th width="10%">Estado</th>
-                                        <th width="7%"></th>
+                                        <th width="12%">Ubicación (*)</th>
+                                        @unless($order)
+                                        <th width="8%">Estado</th>
+                                        @endunless
+                                        @if(!$order || $orderItem)
+                                        @else
+                                        <th width="5%"></th>
+                                        @endif
                                     </tr>
                                 </thead>
                                 <tbody id="itemsBody">
@@ -188,16 +195,16 @@
                                                     <input type="number" step="0.01" name="items[{{ $index }}][unit_cost]" class="form-control form-control-sm @error("items.$index.unit_cost") is-invalid @enderror" value="{{ $item['unit_cost'] ?? 0 }}" min="0" required>
                                                 </td>
                                                 <td>
-                                                    <input type="text" name="items[{{ $index }}][batch_number]" class="form-control form-control-sm" value="{{ $item['batch_number'] ?? '' }}" placeholder="Lote">
+                                                    <input type="text" name="items[{{ $index }}][batch_number]" class="form-control form-control-sm @error("items.$index.batch_number") is-invalid @enderror" value="{{ $item['batch_number'] ?? '' }}" placeholder="Lote" required>
                                                 </td>
                                                 <td>
-                                                    <input type="date" name="items[{{ $index }}][expiry_date]" class="form-control form-control-sm" value="{{ $item['expiry_date'] ?? '' }}">
+                                                    <input type="date" name="items[{{ $index }}][expiry_date]" class="form-control form-control-sm @error("items.$index.expiry_date") is-invalid @enderror" value="{{ $item['expiry_date'] ?? '' }}" required>
                                                 </td>
                                                 <td>
                                                     <input type="text" name="items[{{ $index }}][serial_number]" class="form-control form-control-sm" value="{{ $item['serial_number'] ?? '' }}" placeholder="Serie">
                                                 </td>
                                                 <td>
-                                                    <select name="items[{{ $index }}][warehouse_location]" class="form-control form-control-sm">
+                                                    <select name="items[{{ $index }}][warehouse_location]" class="form-control form-control-sm @error("items.$index.warehouse_location") is-invalid @enderror" required>
                                                         <option value="">Seleccione...</option>
                                                         @foreach($locations as $id => $name)
                                                             <option value="{{ $name }}" {{ ($item['warehouse_location'] ?? '') == $name ? 'selected' : '' }}>{{ $name }}</option>
@@ -213,7 +220,8 @@
                                             @php $itemIndex = $index + 1; @endphp
                                         @endforeach
                                     @elseif($order)
-                                        @foreach($order->items as $index => $orderItem)
+                                        @if($orderItem)
+                                            @php $index = 0; $pending = max(0, $orderItem->quantity - $orderItem->quantity_received); @endphp
                                             <tr data-index="{{ $index }}">
                                                 <td>
                                                     <select name="items[{{ $index }}][product_id]" class="form-control form-control-sm select2-product" required>
@@ -221,44 +229,118 @@
                                                     </select>
                                                 </td>
                                                 <td>
-                                                    <input type="number" name="items[{{ $index }}][quantity]" class="form-control form-control-sm" value="{{ max(1, $orderItem->quantity - $orderItem->quantity_received) }}" min="1" required>
-                                                    <small class="text-muted">Pend: {{ $orderItem->quantity - $orderItem->quantity_received }}</small>
+                                                    <input type="number" name="items[{{ $index }}][quantity]" class="form-control form-control-sm" value="{{ $pending }}" min="1" max="{{ $pending }}" required>
+                                                    <small class="text-muted">Pendiente: {{ $pending }} de {{ $orderItem->quantity }}</small>
                                                 </td>
                                                 <td>
                                                     <input type="number" step="0.01" name="items[{{ $index }}][unit_cost]" class="form-control form-control-sm" value="{{ $orderItem->unit_cost }}" min="0" required>
                                                 </td>
                                                 <td>
-                                                    <input type="text" name="items[{{ $index }}][batch_number]" class="form-control form-control-sm" placeholder="Lote">
+                                                    <input type="text" name="items[{{ $index }}][batch_number]" class="form-control form-control-sm" placeholder="Lote" required>
                                                 </td>
                                                 <td>
-                                                    <input type="date" name="items[{{ $index }}][expiry_date]" class="form-control form-control-sm">
+                                                    <input type="date" name="items[{{ $index }}][expiry_date]" class="form-control form-control-sm" required>
                                                 </td>
                                                 <td>
                                                     <input type="text" name="items[{{ $index }}][serial_number]" class="form-control form-control-sm" placeholder="Serie">
                                                 </td>
                                                 <td>
-                                                    <select name="items[{{ $index }}][warehouse_location]" class="form-control form-control-sm">
+                                                    <select name="items[{{ $index }}][warehouse_location]" class="form-control form-control-sm" required>
                                                         <option value="">Seleccione...</option>
                                                         @foreach($locations as $id => $name)
                                                             <option value="{{ $name }}">{{ $name }}</option>
                                                         @endforeach
                                                     </select>
                                                 </td>
-                                                <td>
-                                                    <select name="items[{{ $index }}][status]" class="form-control form-control-sm status-select" onchange="toggleRejectionReason(this)">
-                                                        <option value="received">Recibido</option>
-                                                        <option value="rejected">Rechazado</option>
-                                                    </select>
-                                                    <input type="text" name="items[{{ $index }}][rejection_reason]" class="form-control form-control-sm rejection-reason mt-1" placeholder="Razón rechazo" style="display:none;">
-                                                </td>
-                                                <td>
-                                                    <button type="button" class="btn btn-danger btn-sm" onclick="removeItem(this)">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                </td>
                                             </tr>
-                                            @php $itemIndex = $index + 1; @endphp
-                                        @endforeach
+                                            @php $itemIndex = 1; @endphp
+                                        @elseif(!empty($selectedItemIds))
+                                            @foreach($order->items->whereIn('id', $selectedItemIds) as $index => $orderItem)
+                                                @php $pending = max(0, $orderItem->quantity - $orderItem->quantity_received); @endphp
+                                                @if($pending > 0)
+                                                <tr data-index="{{ $index }}">
+                                                    <td>
+                                                        <select name="items[{{ $index }}][product_id]" class="form-control form-control-sm select2-product" required>
+                                                            <option value="{{ $orderItem->product_id }}" selected>{{ $orderItem->product->name ?? 'Producto' }}</option>
+                                                        </select>
+                                                    </td>
+                                                    <td>
+                                                        <input type="number" name="items[{{ $index }}][quantity]" class="form-control form-control-sm" value="{{ $pending }}" min="1" max="{{ $pending }}" required>
+                                                        <small class="text-muted">Pendiente: {{ $pending }} de {{ $orderItem->quantity }}</small>
+                                                    </td>
+                                                    <td>
+                                                        <input type="number" step="0.01" name="items[{{ $index }}][unit_cost]" class="form-control form-control-sm" value="{{ $orderItem->unit_cost }}" min="0" required>
+                                                    </td>
+                                                    <td>
+                                                        <input type="text" name="items[{{ $index }}][batch_number]" class="form-control form-control-sm" placeholder="Lote" required>
+                                                    </td>
+                                                    <td>
+                                                        <input type="date" name="items[{{ $index }}][expiry_date]" class="form-control form-control-sm" required>
+                                                    </td>
+                                                    <td>
+                                                        <input type="text" name="items[{{ $index }}][serial_number]" class="form-control form-control-sm" placeholder="Serie">
+                                                    </td>
+                                                    <td>
+                                                        <select name="items[{{ $index }}][warehouse_location]" class="form-control form-control-sm" required>
+                                                            <option value="">Seleccione...</option>
+                                                            @foreach($locations as $id => $name)
+                                                                <option value="{{ $name }}">{{ $name }}</option>
+                                                            @endforeach
+                                                        </select>
+                                                    </td>
+                                                    <td>
+                                                        <button type="button" class="btn btn-danger btn-sm" onclick="removeItem(this)" title="Quitar producto de esta entrada">
+                                                            <i class="fas fa-times"></i>
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                                @php $itemIndex = $index + 1; @endphp
+                                                @endif
+                                            @endforeach
+                                        @else
+                                            @foreach($order->items as $index => $orderItem)
+                                                @php $pending = max(0, $orderItem->quantity - $orderItem->quantity_received); @endphp
+                                                @if($pending > 0)
+                                                <tr data-index="{{ $index }}">
+                                                    <td>
+                                                        <select name="items[{{ $index }}][product_id]" class="form-control form-control-sm select2-product" required>
+                                                            <option value="{{ $orderItem->product_id }}" selected>{{ $orderItem->product->name ?? 'Producto' }}</option>
+                                                        </select>
+                                                    </td>
+                                                    <td>
+                                                        <input type="number" name="items[{{ $index }}][quantity]" class="form-control form-control-sm" value="{{ $pending }}" min="1" max="{{ $pending }}" required>
+                                                        <small class="text-muted">Pendiente: {{ $pending }} de {{ $orderItem->quantity }}</small>
+                                                    </td>
+                                                    <td>
+                                                        <input type="number" step="0.01" name="items[{{ $index }}][unit_cost]" class="form-control form-control-sm" value="{{ $orderItem->unit_cost }}" min="0" required>
+                                                    </td>
+                                                    <td>
+                                                        <input type="text" name="items[{{ $index }}][batch_number]" class="form-control form-control-sm" placeholder="Lote" required>
+                                                    </td>
+                                                    <td>
+                                                        <input type="date" name="items[{{ $index }}][expiry_date]" class="form-control form-control-sm" required>
+                                                    </td>
+                                                    <td>
+                                                        <input type="text" name="items[{{ $index }}][serial_number]" class="form-control form-control-sm" placeholder="Serie">
+                                                    </td>
+                                                    <td>
+                                                        <select name="items[{{ $index }}][warehouse_location]" class="form-control form-control-sm" required>
+                                                            <option value="">Seleccione...</option>
+                                                            @foreach($locations as $id => $name)
+                                                                <option value="{{ $name }}">{{ $name }}</option>
+                                                            @endforeach
+                                                        </select>
+                                                    </td>
+                                                    <td>
+                                                        <button type="button" class="btn btn-danger btn-sm" onclick="removeItem(this)" title="Quitar producto de esta entrada">
+                                                            <i class="fas fa-times"></i>
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                                @endif
+                                                @php $itemIndex = $index + 1; @endphp
+                                            @endforeach
+                                        @endif
                                     @else
                                         <tr data-index="0">
                                             <td>
@@ -276,21 +358,28 @@
                                                 <input type="number" step="0.01" name="items[0][unit_cost]" class="form-control form-control-sm" value="0" min="0" required>
                                             </td>
                                             <td>
-                                                <input type="text" name="items[0][batch_number]" class="form-control form-control-sm" placeholder="Lote">
+                                                <input type="text" name="items[0][batch_number]" class="form-control form-control-sm" placeholder="Lote" required>
                                             </td>
                                             <td>
-                                                <input type="date" name="items[0][expiry_date]" class="form-control form-control-sm">
+                                                <input type="date" name="items[0][expiry_date]" class="form-control form-control-sm" required>
                                             </td>
                                             <td>
                                                 <input type="text" name="items[0][serial_number]" class="form-control form-control-sm" placeholder="Serie">
                                             </td>
                                             <td>
-                                                <select name="items[0][warehouse_location]" class="form-control form-control-sm">
+                                                <select name="items[0][warehouse_location]" class="form-control form-control-sm" required>
                                                     <option value="">Seleccione...</option>
                                                     @foreach($locations as $id => $name)
                                                         <option value="{{ $name }}">{{ $name }}</option>
                                                     @endforeach
                                                 </select>
+                                            </td>
+                                            <td>
+                                                <select name="items[0][status]" class="form-control form-control-sm status-select" onchange="toggleRejectionReason(this)">
+                                                    <option value="received">Recibido</option>
+                                                    <option value="rejected">Rechazado</option>
+                                                </select>
+                                                <input type="text" name="items[0][rejection_reason]" class="form-control form-control-sm rejection-reason mt-1" placeholder="Razón rechazo" style="display:none;">
                                             </td>
                                             <td>
                                                 <button type="button" class="btn btn-danger btn-sm" onclick="removeItem(this)">
@@ -346,7 +435,8 @@
             locationOptions += '<option value="{{ $name }}">{{ $name }}</option>';
         @endforeach
         
-        row.innerHTML = `
+        const hasOrder = {{ $order ? 'true' : 'false' }};
+        let cols = `
             <td>
                 <select name="items[${itemIndex}][product_id]" class="form-control select2-product" required>
                     ${productOptions}
@@ -359,19 +449,22 @@
                 <input type="number" step="0.01" name="items[${itemIndex}][unit_cost]" class="form-control" value="0" min="0" required>
             </td>
             <td>
-                <input type="text" name="items[${itemIndex}][batch_number]" class="form-control" placeholder="Lote">
+                <input type="text" name="items[${itemIndex}][batch_number]" class="form-control" placeholder="Lote" required>
             </td>
             <td>
-                <input type="date" name="items[${itemIndex}][expiry_date]" class="form-control">
+                <input type="date" name="items[${itemIndex}][expiry_date]" class="form-control" required>
             </td>
             <td>
                 <input type="text" name="items[${itemIndex}][serial_number]" class="form-control" placeholder="Serie">
             </td>
             <td>
-                <select name="items[${itemIndex}][warehouse_location]" class="form-control">
+                <select name="items[${itemIndex}][warehouse_location]" class="form-control" required>
                     ${locationOptions}
                 </select>
-            </td>
+            </td>`;
+
+        if (!hasOrder) {
+            cols += `
             <td>
                 <select name="items[${itemIndex}][status]" class="form-control status-select" onchange="toggleRejectionReason(this)">
                     <option value="received">Recibido</option>
@@ -383,8 +476,10 @@
                 <button type="button" class="btn btn-danger btn-sm" onclick="removeItem(this)">
                     <i class="fas fa-trash"></i>
                 </button>
-            </td>
-        `;
+            </td>`;
+        }
+
+        row.innerHTML = cols;
         
         tbody.appendChild(row);
         

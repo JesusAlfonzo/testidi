@@ -51,6 +51,16 @@
                                     <th><i class="fas fa-check-circle text-secondary"></i> Estado:</th>
                                     <td>{!! $purchaseOrder->status_badge !!}</td>
                                 </tr>
+                                @if($purchaseOrder->rfq)
+                                <tr>
+                                    <th><i class="fas fa-file-invoice text-secondary"></i> RFQ Origen:</th>
+                                    <td>
+                                        <a href="{{ route('admin.rfq.show', $purchaseOrder->rfq) }}" class="font-weight-bold">
+                                            <i class="fas fa-external-link-alt"></i> {{ $purchaseOrder->rfq->code }}
+                                        </a>
+                                    </td>
+                                </tr>
+                                @endif
                                 <tr>
                                     <th><i class="fas fa-user text-secondary"></i> Creado por:</th>
                                     <td>{{ $purchaseOrder->creator->name ?? 'N/A' }}</td>
@@ -115,7 +125,11 @@
                             <table class="table table-sm table-borderless mb-0">
                                 <tr>
                                     <th width="35%"><i class="fas fa-building text-warning"></i> Nombre:</th>
-                                    <td><strong>{{ $purchaseOrder->supplier->name }}</strong></td>
+                                    <td>
+                                        <a href="{{ route('admin.suppliers.show', $purchaseOrder->supplier) }}">
+                                            <strong>{{ $purchaseOrder->supplier->name }}</strong>
+                                        </a>
+                                    </td>
                                 </tr>
                                 <tr>
                                     <th><i class="fas fa-id-card text-warning"></i> RIF:</th>
@@ -155,9 +169,12 @@
                     </a>
                     @if($purchaseOrder->status === 'issued')
                         @can('entradas_crear')
-                            <a href="{{ route('admin.stock-in.create', ['order' => $purchaseOrder->id]) }}" class="btn btn-success">
-                                <i class="fas fa-truck-loading"></i> Generar Entrada de Stock
+                            <a href="{{ route('admin.stock-in.create', ['order' => $purchaseOrder->id]) }}" class="btn btn-success mr-2">
+                                <i class="fas fa-truck-loading"></i> Entrada Completa
                             </a>
+                            <button type="button" class="btn btn-info" id="btnReceiveSelected" onclick="receiveSelected()" disabled>
+                                <i class="fas fa-check-square"></i> Recibir Seleccionados
+                            </button>
                         @endcan
                     @endif
                 </div>
@@ -175,7 +192,12 @@
                         <table id="itemsTable" class="table table-striped table-bordered mb-0">
                             <thead class="thead-light">
                                 <tr>
-                                    <th>#</th>
+                                    <th style="width: 30px;">#</th>
+                                    @if($purchaseOrder->status === 'issued')
+                                    <th style="width: 30px;">
+                                        <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)" title="Seleccionar todos">
+                                    </th>
+                                    @endif
                                     <th>Producto</th>
                                     <th>Cantidad</th>
                                     <th>Recibido</th>
@@ -191,10 +213,24 @@
                             </thead>
                             <tbody>
                                 @foreach($purchaseOrder->items as $index => $item)
-                                    <tr>
+                                    @php $isFullyReceived = $item->isFullyReceived(); @endphp
+                                    <tr class="{{ $isFullyReceived ? 'table-success' : '' }}">
                                         <td>{{ $index + 1 }}</td>
+                                        @if($purchaseOrder->status === 'issued')
+                                        <td class="text-center">
+                                            @if(!$isFullyReceived)
+                                                <input type="checkbox" class="item-checkbox" value="{{ $item->id }}" onchange="updateReceiveButton()">
+                                            @endif
+                                        </td>
+                                        @endif
                                         <td>
-                                            <strong>{{ $item->product_name }}</strong>
+                                            @if($item->product)
+                                                <a href="{{ route('admin.products.show', $item->product) }}">
+                                                    <strong>{{ $item->product_name }}</strong>
+                                                </a>
+                                            @else
+                                                <strong>{{ $item->product_name }}</strong>
+                                            @endif
                                             @if($item->product_code)
                                                 <br><small class="text-muted">{{ $item->product_code }}</small>
                                             @endif
@@ -203,7 +239,7 @@
                                             <span class="badge badge-primary">{{ $item->quantity }}</span>
                                         </td>
                                         <td>
-                                            @if($item->isFullyReceived())
+                                            @if($isFullyReceived)
                                                 <span class="badge badge-success">{{ $item->quantity_received }}</span>
                                             @else
                                                 <span class="badge badge-warning">{{ $item->quantity_received }} / {{ $item->quantity }}</span>
@@ -215,11 +251,11 @@
                                         @endif
                                         <td><strong>{{ $purchaseOrder->currency_symbol }}{{ number_format($item->total_cost, 2) }}</strong></td>
                                         @if($purchaseOrder->status === 'issued')
-                                            <td>
-                                                @if(!$item->isFullyReceived())
+                                            <td class="text-center">
+                                                @if(!$isFullyReceived)
                                                     @can('entradas_crear')
-                                                        <a href="{{ route('admin.stock-in.create', ['order' => $purchaseOrder->id, 'item' => $item->id]) }}" class="btn btn-sm btn-success">
-                                                            <i class="fas fa-box"></i> Recibir
+                                                        <a href="{{ route('admin.stock-in.create', ['order' => $purchaseOrder->id, 'item' => $item->id]) }}" class="btn btn-sm btn-success" title="Recibir solo este producto">
+                                                            <i class="fas fa-box"></i>
                                                         </a>
                                                     @endcan
                                                 @else
@@ -303,6 +339,51 @@
                     </div>
                 </div>
             </div>
+
+            {{-- Entradas de Stock asociadas --}}
+            @if($purchaseOrder->stockIns->count() > 0)
+            <div class="card mt-3" style="border-left: 4px solid #8b5cf6;">
+                <div class="card-header" style="background: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%);">
+                    <h3 class="card-title text-white">
+                        <i class="fas fa-truck-loading"></i> Entradas de Stock Asociadas
+                    </h3>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-sm table-bordered mb-0">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Fecha</th>
+                                <th>Tipo Doc.</th>
+                                <th>Nro. Documento</th>
+                                <th>Productos</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($purchaseOrder->stockIns as $entry)
+                                <tr>
+                                    <td>
+                                        <a href="{{ route('admin.stock-in.show', $entry) }}">{{ $entry->id }}</a>
+                                    </td>
+                                    <td>{{ $entry->entry_date->format('d/m/Y') }}</td>
+                                    <td>{{ $entry->document_type ?? '-' }}</td>
+                                    <td>{{ $entry->document_number ?? '-' }}</td>
+                                    <td>
+                                        @foreach($entry->items as $ei)
+                                            @if($ei->product)
+                                                <a href="{{ route('admin.products.show', $ei->product) }}" class="badge badge-info mr-1">
+                                                    {{ $ei->product->name }} x{{ $ei->quantity }}
+                                                </a>
+                                            @endif
+                                        @endforeach
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            @endif
 
             {{-- Términos y Condiciones --}}
             @if($purchaseOrder->terms)
@@ -425,5 +506,42 @@
             }
         });
     });
+
+    function toggleSelectAll(source) {
+        document.querySelectorAll('.item-checkbox').forEach(function(cb) {
+            cb.checked = source.checked;
+        });
+        updateReceiveButton();
+    }
+
+    function updateReceiveButton() {
+        var checked = document.querySelectorAll('.item-checkbox:checked');
+        var btn = document.getElementById('btnReceiveSelected');
+        if (checked.length > 0) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-check-square"></i> Recibir Seleccionados (' + checked.length + ')';
+        } else {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-check-square"></i> Recibir Seleccionados';
+        }
+    }
+
+    function receiveSelected() {
+        var checked = document.querySelectorAll('.item-checkbox:checked');
+        if (checked.length === 0) return;
+
+        var ids = [];
+        checked.forEach(function(cb) {
+            ids.push(cb.value);
+        });
+
+        var params = new URLSearchParams();
+        params.set('order', '{{ $purchaseOrder->id }}');
+        ids.forEach(function(id) {
+            params.append('items[]', id);
+        });
+
+        window.location.href = '{{ route('admin.stock-in.create') }}?' + params.toString();
+    }
 </script>
 @stop

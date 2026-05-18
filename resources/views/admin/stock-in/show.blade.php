@@ -59,7 +59,11 @@
                         <table class="table table-sm">
                             <tr>
                                 <th>Nombre:</th>
-                                <td>{{ $stockIn->supplier->name }}</td>
+                                <td>
+                                    <a href="{{ route('admin.suppliers.show', $stockIn->supplier) }}">
+                                        <strong>{{ $stockIn->supplier->name }}</strong>
+                                    </a>
+                                </td>
                             </tr>
                             <tr>
                                 <th>RIF:</th>
@@ -160,7 +164,15 @@
                             @php $totalGeneral = 0; @endphp
                             @foreach($stockIn->items as $item)
                                 <tr>
-                                    <td>{{ $item->product->name ?? 'N/A' }}</td>
+                                    <td>
+                                        @if($item->product)
+                                            <a href="{{ route('admin.products.show', $item->product) }}">
+                                                <strong>{{ $item->product->name }}</strong>
+                                            </a>
+                                        @else
+                                            {{ $item->product->name ?? 'N/A' }}
+                                        @endif
+                                    </td>
                                     <td>{{ $item->product->code ?? 'N/A' }}</td>
                                     <td class="text-center">
                                         @if($item->status === 'rejected')

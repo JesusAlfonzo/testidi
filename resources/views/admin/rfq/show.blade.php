@@ -47,6 +47,16 @@
                                     <th>Estado:</th>
                                     <td>{!! $rfq->status_badge !!}</td>
                                 </tr>
+                                @if($rfq->purchaseOrder)
+                                <tr>
+                                    <th><i class="fas fa-shopping-cart"></i> OC Generada:</th>
+                                    <td>
+                                        <a href="{{ route('admin.purchaseOrders.show', $rfq->purchaseOrder) }}" class="font-weight-bold">
+                                            <i class="fas fa-external-link-alt"></i> {{ $rfq->purchaseOrder->code }}
+                                        </a>
+                                    </td>
+                                </tr>
+                                @endif
                                 <tr>
                                     <th>Creado por:</th>
                                     <td>{{ $rfq->creator->name ?? 'N/A' }}</td>
@@ -125,7 +135,11 @@
                                 <tr>
                                     <td>{{ $index + 1 }}</td>
                                     <td>{{ $item->product->code ?? 'N/A' }}</td>
-                                    <td><strong>{{ $item->product->name }}</strong></td>
+                                    <td>
+                                        <a href="{{ route('admin.products.show', $item->product) }}">
+                                            <strong>{{ $item->product->name }}</strong>
+                                        </a>
+                                    </td>
                                     <td>{{ $item->product->category->name ?? 'N/A' }}</td>
                                     <td>
                                         <span class="badge badge-primary">{{ $item->quantity }}</span>

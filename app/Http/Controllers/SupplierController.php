@@ -98,6 +98,12 @@ class SupplierController extends Controller
         ]);
     }
 
+    public function show(Supplier $supplier)
+    {
+        $supplier->loadCount(['purchaseOrders', 'stockIns']);
+        return view('admin.suppliers.show', compact('supplier'));
+    }
+
     public function create()
     {
         return view('admin.suppliers.create');

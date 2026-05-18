@@ -15,22 +15,37 @@ beforeEach(function () {
     $this->actingAs($this->user);
 });
 
+function stockInItemData(Product $product, int $quantity = 1, float $cost = 10): array
+{
+    return [
+        'product_id' => $product->id,
+        'quantity' => $quantity,
+        'unit_cost' => $cost,
+        'batch_number' => 'LOTE-' . now()->format('Ymd'),
+        'expiry_date' => now()->addYear()->format('Y-m-d'),
+        'warehouse_location' => 'Almacén Principal',
+    ];
+}
+
+function baseStockInPayload(array $overrides = []): array
+{
+    return array_merge([
+        'document_type' => 'Factura',
+        'document_number' => 'F-' . now()->format('Ymd') . '-' . rand(100, 999),
+        'reason' => 'Compra de prueba',
+        'entry_date' => now()->format('Y-m-d'),
+    ], $overrides);
+}
+
 describe('StockIn - Entradas de Inventario', function () {
     test('crear entrada de inventario aumenta stock', function () {
         $product = Product::factory()->create(['stock' => 0, 'cost' => 10]);
         $supplier = Supplier::factory()->create();
 
-        $response = $this->post(route('admin.stock-in.store'), [
+        $response = $this->post(route('admin.stock-in.store'), baseStockInPayload([
             'supplier_id' => $supplier->id,
-            'quantity' => 100,
-            'entry_date' => now()->format('Y-m-d'),
-            'document_type' => 'invoice',
-            'document_number' => 'FACT-001',
-            'reason' => 'Entrada de prueba',
-            'items' => [
-                ['product_id' => $product->id, 'quantity' => 100, 'unit_cost' => 10.50],
-            ],
-        ]);
+            'items' => [stockInItemData($product, 100, 10.50)],
+        ]));
 
         $response->assertRedirect();
         
@@ -64,17 +79,13 @@ describe('StockIn - Entradas de Inventario', function () {
             'total_cost' => 500,
         ]);
 
-        $response = $this->post(route('admin.stock-in.store'), [
+        $response = $this->post(route('admin.stock-in.store'), baseStockInPayload([
             'supplier_id' => $supplier->id,
             'purchase_order_id' => $order->id,
-            'quantity' => 25,
-            'entry_date' => now()->format('Y-m-d'),
-            'document_type' => 'delivery',
+            'document_type' => 'Guía',
             'document_number' => 'GR-001',
-            'items' => [
-                ['product_id' => $product->id, 'quantity' => 25, 'unit_cost' => 10],
-            ],
-        ]);
+            'items' => [stockInItemData($product, 25, 10)],
+        ]));
 
         $response->assertRedirect();
         
@@ -84,17 +95,136 @@ describe('StockIn - Entradas de Inventario', function () {
     test('entrada de ajuste no requiere proveedor', function () {
         $product = Product::factory()->create(['stock' => 10]);
 
-        $response = $this->post(route('admin.stock-in.store'), [
-            'quantity' => 5,
-            'entry_date' => now()->format('Y-m-d'),
+        $response = $this->post(route('admin.stock-in.store'), baseStockInPayload([
             'reason' => 'Ajuste / Hallazgo',
-            'items' => [
-                ['product_id' => $product->id, 'quantity' => 5, 'unit_cost' => 10],
-            ],
-        ]);
+            'items' => [stockInItemData($product, 5, 10)],
+        ]));
 
         $response->assertRedirect();
         
         expect($product->fresh()->stock)->toBe(15);
+    });
+
+    test('no permite recibir mas de lo ordenado en la OC', function () {
+        $supplier = Supplier::factory()->create();
+        $product = Product::factory()->create(['stock' => 0, 'cost' => 10]);
+
+        $order = PurchaseOrder::create([
+            'code' => 'OC-LIMIT-001',
+            'supplier_id' => $supplier->id,
+            'date_issued' => now()->format('Y-m-d'),
+            'currency' => 'USD',
+            'exchange_rate' => 1,
+            'subtotal' => 100,
+            'tax_amount' => 0,
+            'total' => 100,
+            'status' => 'issued',
+            'created_by' => $this->user->id,
+        ]);
+
+        $order->items()->create([
+            'product_id' => $product->id,
+            'product_name' => $product->name,
+            'product_code' => $product->code,
+            'quantity' => 10,
+            'quantity_received' => 0,
+            'unit_cost' => 10,
+            'total_cost' => 100,
+        ]);
+
+        $response = $this->post(route('admin.stock-in.store'), baseStockInPayload([
+            'purchase_order_id' => $order->id,
+            'supplier_id' => $supplier->id,
+            'items' => [stockInItemData($product, 5, 10)],
+        ]));
+        $response->assertSessionHas('success');
+        expect($product->fresh()->stock)->toBe(5);
+
+        $response = $this->post(route('admin.stock-in.store'), baseStockInPayload([
+            'purchase_order_id' => $order->id,
+            'supplier_id' => $supplier->id,
+            'items' => [stockInItemData($product, 10, 10)],
+        ]));
+        $response->assertSessionHasErrors('items.0.quantity');
+        expect($product->fresh()->stock)->toBe(5);
+    });
+
+    test('auto-completa la OC cuando todos los productos estan recibidos', function () {
+        $supplier = Supplier::factory()->create();
+        $product = Product::factory()->create(['stock' => 0, 'cost' => 10]);
+
+        $order = PurchaseOrder::create([
+            'code' => 'OC-AUTO-001',
+            'supplier_id' => $supplier->id,
+            'date_issued' => now()->format('Y-m-d'),
+            'currency' => 'USD',
+            'exchange_rate' => 1,
+            'subtotal' => 50,
+            'tax_amount' => 0,
+            'total' => 50,
+            'status' => 'issued',
+            'created_by' => $this->user->id,
+        ]);
+
+        $order->items()->create([
+            'product_id' => $product->id,
+            'product_name' => $product->name,
+            'product_code' => $product->code,
+            'quantity' => 5,
+            'quantity_received' => 0,
+            'unit_cost' => 10,
+            'total_cost' => 50,
+        ]);
+
+        $this->post(route('admin.stock-in.store'), baseStockInPayload([
+            'purchase_order_id' => $order->id,
+            'supplier_id' => $supplier->id,
+            'items' => [stockInItemData($product, 5, 10)],
+        ]));
+
+        expect($order->fresh()->status)->toBe('completed');
+    });
+
+    test('permite recibir parcialmente y luego completar sin exceder', function () {
+        $supplier = Supplier::factory()->create();
+        $product = Product::factory()->create(['stock' => 0, 'cost' => 10]);
+
+        $order = PurchaseOrder::create([
+            'code' => 'OC-PARTIAL-001',
+            'supplier_id' => $supplier->id,
+            'date_issued' => now()->format('Y-m-d'),
+            'currency' => 'USD',
+            'exchange_rate' => 1,
+            'subtotal' => 80,
+            'tax_amount' => 0,
+            'total' => 80,
+            'status' => 'issued',
+            'created_by' => $this->user->id,
+        ]);
+
+        $order->items()->create([
+            'product_id' => $product->id,
+            'product_name' => $product->name,
+            'product_code' => $product->code,
+            'quantity' => 8,
+            'quantity_received' => 0,
+            'unit_cost' => 10,
+            'total_cost' => 80,
+        ]);
+
+        $this->post(route('admin.stock-in.store'), baseStockInPayload([
+            'purchase_order_id' => $order->id,
+            'supplier_id' => $supplier->id,
+            'items' => [stockInItemData($product, 3, 10)],
+        ]));
+        expect($product->fresh()->stock)->toBe(3);
+
+        $this->post(route('admin.stock-in.store'), baseStockInPayload([
+            'purchase_order_id' => $order->id,
+            'supplier_id' => $supplier->id,
+            'items' => [stockInItemData($product, 5, 10)],
+        ]));
+        expect($product->fresh()->stock)->toBe(8);
+        expect($order->fresh()->status)->toBe('completed');
     });
 });

@@ -140,7 +140,15 @@ class ProductController extends Controller
         ]);
     }
 
-    // ... (resto de métodos create, store, edit, update, destroy se mantienen IGUAL) ...
+    public function show(Product $product)
+    {
+        $product->load(['category', 'unit', 'location', 'brand', 'batches']);
+        $stockIns = \App\Models\StockIn::whereHas('items', function ($q) use ($product) {
+            $q->where('product_id', $product->id);
+        })->with('purchaseOrder')->latest()->limit(20)->get();
+        return view('admin.products.show', compact('product', 'stockIns'));
+    }
+
     public function create() { 
         $categories = Category::pluck('name', 'id');
         $units = Unit::pluck('name', 'id');
