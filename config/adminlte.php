@@ -462,12 +462,6 @@ return [
                     'url'     => 'admin/audit-logs',
                     'can'     => 'auditoria_ver',
                 ],
-                // AYUDA
-                [
-                    'text'    => 'Ayuda',
-                    'icon'    => 'fas fa-fw fa-question-circle',
-                    'url'     => 'admin/ayuda',
-                ],
             ],
         ],
     ],
