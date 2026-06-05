@@ -6,7 +6,12 @@
 @section('plugins.Sweetalert2', true)
 
 @section('content_header')
-    <h1><i class="fas fa-file-invoice"></i> Nueva Solicitud de Cotización</h1>
+    <div class="d-flex justify-content-between align-items-center">
+        <h1><i class="fas fa-file-invoice text-primary"></i> Nueva Solicitud de Cotización (RFQ)</h1>
+        <a href="{{ route('admin.rfq.index') }}" class="btn btn-sm btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Volver al Listado
+        </a>
+    </div>
 @stop
 
 @section('content')
@@ -16,333 +21,323 @@
         $locations = \App\Models\Location::orderBy('name')->get();
         $brands = \App\Models\Brand::orderBy('name')->get();
     @endphp
-    
 
-    <!-- Modal para crear Kit rápido -->
-    <div class="modal fade" id="kitModal" tabindex="-1" role="dialog" aria-labelledby="kitModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg" role="document">
-            <div class="modal-content">
-                <div class="modal-header" style="background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);">
-                    <h5 class="modal-title text-white" id="kitModalLabel"><i class="fas fa-boxes"></i> Crear Nuevo Kit</h5>
-                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <form id="kitForm">
-                    <div class="modal-body">
-                        <div class="row">
-                            <div class="col-12 col-md-6">
-                                <div class="form-group">
-                                    <label for="kit_code">Código/SKU (*)</label>
-                                    <input type="text" name="code" id="kit_code" class="form-control" required>
-                                    <small class="text-danger" id="kitCodeError" style="display:none;">El código ya existe</small>
-                                </div>
-                            </div>
-                            <div class="col-12 col-md-6">
-                                <div class="form-group">
-                                    <label for="kit_name">Nombre (*)</label>
-                                    <input type="text" name="name" id="kit_name" class="form-control" required>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-12 col-md-6">
-                                <div class="form-group">
-                                    <label for="kit_category_id">Categoría (*)</label>
-                                    <select name="category_id" id="kit_category_id" class="form-control select2" required>
-                                        <option value="">Seleccione...</option>
-                                        @foreach($categories as $category)
-                                            <option value="{{ $category->id }}">{{ $category->name }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-12 col-md-6">
-                                <div class="form-group">
-                                    <label for="kit_unit_id">Unidad (*)</label>
-                                    <select name="unit_id" id="kit_unit_id" class="form-control select2" required>
-                                        <option value="">Seleccione...</option>
-                                        @foreach($units as $unit)
-                                            <option value="{{ $unit->id }}">{{ $unit->name }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-12 col-md-6">
-                                <div class="form-group">
-                                    <label for="kit_brand_id">Marca</label>
-                                    <select name="brand_id" id="kit_brand_id" class="form-control select2">
-                                        <option value="">Seleccione...</option>
-                                        @foreach($brands as $brand)
-                                            <option value="{{ $brand->id }}">{{ $brand->name }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-12 col-md-6">
-                                <div class="form-group">
-                                    <label for="kit_location_id">Ubicación (*)</label>
-                                    <select name="location_id" id="kit_location_id" class="form-control select2" required>
-                                        <option value="">Seleccione...</option>
-                                        @foreach($locations as $location)
-                                            <option value="{{ $location->id }}">{{ $location->name }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-12 col-md-6">
-                                <div class="form-group">
-                                    <label for="kit_cost">Costo</label>
-                                    <input type="number" step="0.01" name="cost" id="kit_cost" class="form-control" value="0" min="0">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
-                        <button type="submit" class="btn btn-warning" id="saveKitBtn">
-                            <i class="fas fa-save"></i> Guardar Kit
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
+    <div class="container-fluid">
+        @include('admin.partials.session-messages')
 
-    <form action="{{ route('admin.rfq.store') }}" method="POST" id="rfqForm">
-        @csrf
-
-        <!-- Sección: Información General -->
-        <div class="row">
-            <div class="col-12">
-                <div class="card" style="border-left: 4px solid #6c757d;">
-                    <div class="card-header" style="background: linear-gradient(135deg, #6c757d 0%, #8a939d 100%);">
-                        <h3 class="card-title text-white">
-                            <i class="fas fa-info-circle"></i> Información General
-                        </h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-12 col-md-3">
-                                <div class="form-group mb-2">
-                                    <label for="code" class="mb-1">Código RFQ</label>
-                                    <div class="input-group input-group-sm">
-                                        <div class="input-group-prepend">
-                                            <span class="input-group-text bg-secondary text-white"><i class="fas fa-hashtag"></i></span>
-                                        </div>
-                                        <input type="text" name="code" class="form-control" value="{{ $code }}" readonly>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-12 col-md-9">
-                                <div class="form-group mb-2">
-                                    <label for="title" class="mb-1">Título / Asunto (*)</label>
-                                    <input type="text" name="title" class="form-control form-control-sm @error('title') is-invalid @enderror" value="{{ old('title') }}" required>
-                                    @error('title')<span class="invalid-feedback">{{ $message }}</span>@enderror
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-12 col-md-6">
-                                <div class="form-group mb-2">
-                                    <label for="date_required" class="mb-1">Fecha Límite de Respuesta</label>
-                                    <div class="input-group input-group-sm">
-                                        <div class="input-group-prepend">
-                                            <span class="input-group-text bg-info text-white"><i class="fas fa-calendar"></i></span>
-                                        </div>
-                                        <input type="date" name="date_required" class="form-control form-control-sm @error('date_required') is-invalid @enderror" value="{{ old('date_required') }}">
-                                    </div>
-                                    @error('date_required')<span class="invalid-feedback">{{ $message }}</span>@enderror
-                                </div>
-                            </div>
-                            <div class="col-12 col-md-6">
-                                <div class="form-group mb-2">
-                                    <label for="delivery_deadline" class="mb-1">Fecha Límite de Entrega</label>
-                                    <div class="input-group input-group-sm">
-                                        <div class="input-group-prepend">
-                                            <span class="input-group-text bg-info text-white"><i class="fas fa-truck"></i></span>
-                                        </div>
-                                        <input type="date" name="delivery_deadline" class="form-control form-control-sm @error('delivery_deadline') is-invalid @enderror" value="{{ old('delivery_deadline') }}">
-                                    </div>
-                                    @error('delivery_deadline')<span class="invalid-feedback">{{ $message }}</span>@enderror
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-12">
-                                <div class="form-group mb-2">
-                                    <label for="description" class="mb-1">Descripción / Instrucciones</label>
-                                    <textarea name="description" id="description" rows="2" class="form-control form-control-sm @error('description') is-invalid @enderror">{{ old('description') }}</textarea>
-                                    @error('description')<span class="invalid-feedback">{{ $message }}</span>@enderror
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Sección: Productos -->
-        <div class="row">
-            <div class="col-12">
-                <div class="card" style="border-left: 4px solid #ef4444;">
-                    <div class="card-header" style="background: linear-gradient(135deg, #ef4444 0%, #f87171 100%);">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h3 class="card-title text-white">
-                                <i class="fas fa-boxes"></i> Productos a Cotizar
+        <form action="{{ route('admin.rfq.store') }}" method="POST" id="rfqForm">
+            @csrf
+            
+            <div class="row">
+                <!-- Columna Principal (Izquierda - 70%) -->
+                <div class="col-lg-9 col-md-12">
+                    
+                    <!-- Card de Información de la RFQ -->
+                    <div class="card shadow-sm border-0 mb-4" style="border-radius: 12px;">
+                        <div class="card-header bg-gradient-white border-bottom py-3">
+                            <h3 class="card-title text-dark font-weight-bold mb-0">
+                                <i class="fas fa-info-circle text-primary mr-1"></i> Información General
                             </h3>
-                            <div class="d-flex">
-                                <button type="button" class="btn btn-sm btn-warning text-dark mr-2 create-product-btn" data-toggle="modal" data-target="#productModal">
-                                    <i class="fas fa-plus"></i> Crear Producto
-                                </button>
-                                <button type="button" id="addKitItem" class="btn btn-sm btn-warning text-dark mr-2">
-                                    <i class="fas fa-plus"></i> Agregar Kit
-                                </button>
-                                <button type="button" id="addItem" class="btn btn-sm btn-light text-danger">
-                                    <i class="fas fa-plus"></i> Agregar Producto
-                                </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4 col-12">
+                                    <div class="form-group mb-3">
+                                        <label for="code" class="text-xs text-muted mb-1">Código Correlativo Automático</label>
+                                        <div class="input-group input-group-sm">
+                                            <div class="input-group-prepend">
+                                                <span class="input-group-text bg-light border-right-0"><i class="fas fa-hashtag text-muted"></i></span>
+                                            </div>
+                                            <input type="text" name="code" class="form-control bg-light border-left-0 font-weight-bold" value="{{ $code }}" readonly>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 col-12">
+                                    <div class="form-group mb-3">
+                                        <label for="created_date" class="text-xs text-muted mb-1">Fecha de Emisión</label>
+                                        <div class="input-group input-group-sm">
+                                            <div class="input-group-prepend">
+                                                <span class="input-group-text bg-light border-right-0"><i class="fas fa-calendar-alt text-muted"></i></span>
+                                            </div>
+                                            <input type="text" id="created_date" class="form-control bg-light border-left-0" value="{{ date('d/m/Y') }}" disabled>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 col-12">
+                                    <div class="form-group mb-3">
+                                        <label for="department" class="text-xs text-muted mb-1">Departamento Solicitante</label>
+                                        <div class="input-group input-group-sm">
+                                            <div class="input-group-prepend">
+                                                <span class="input-group-text bg-light border-right-0"><i class="fas fa-building text-muted"></i></span>
+                                            </div>
+                                            <input type="text" id="department" class="form-control bg-light border-left-0" value="Compras y Logística" disabled>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-12">
+                                    <div class="form-group mb-3">
+                                        <label for="title" class="text-xs text-muted mb-1">Título / Asunto de la Solicitud <span class="text-danger">*</span></label>
+                                        <input type="text" name="title" id="title" class="form-control form-control-sm @error('title') is-invalid @enderror" value="{{ old('title') }}" placeholder="Ej. Adquisición de repuestos para planta eléctrica" required>
+                                        @error('title')<span class="invalid-feedback text-xs">{{ $message }}</span>@enderror
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-12">
+                                    <div class="form-group mb-0">
+                                        <label for="description" class="text-xs text-muted mb-1">Descripción General / Notas</label>
+                                        <textarea name="description" id="description" rows="3" class="form-control form-control-sm @error('description') is-invalid @enderror" placeholder="Escriba aquí instrucciones detalladas o términos generales para los proveedores">{{ old('description') }}</textarea>
+                                        @error('description')<span class="invalid-feedback text-xs">{{ $message }}</span>@enderror
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="table table-bordered table-striped mb-0" id="itemsTable">
-                                <thead class="bg-light">
-                                    <tr>
-                                        <th style="width: 45%">Producto</th>
-                                        <th style="width: 20%">Cantidad</th>
-                                        <th style="width: 25%">Notas</th>
-                                        <th style="width: 10%"></th>
-                                    </tr>
-                                </thead>
-                                <tbody id="itemsBody">
-                                    <tr>
-                                        <td>
-                                            <select name="items[0][product_id]" class="form-control select2-product form-control-sm" required>
-                                                <option value="">Seleccione...</option>
-                                                @foreach($products as $product)
-                                                    <option value="{{ $product->id }}" data-unit="{{ $product->unit->abbreviation ?? 'und' }}">
-                                                        {{ $product->name }} ({{ $product->code ?? 'S/C' }})
-                                                    </option>
-                                                @endforeach
-                                            </select>
-                                        </td>
-                                        <td>
-                                            <input type="number" name="items[0][quantity]" class="form-control form-control-sm" min="1" value="1" required>
-                                        </td>
-                                        <td>
-                                            <input type="text" name="items[0][notes]" class="form-control form-control-sm" placeholder="Opcional">
-                                        </td>
-                                        <td class="text-center">
-                                            <button type="button" class="btn btn-sm btn-danger remove-item" style="display:none;">
-                                                <i class="fas fa-times"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
+
+                    <!-- Card de Ítems de la Solicitud (Repetidor Dinámico) -->
+                    <div class="card shadow-sm border-0 mb-4" style="border-radius: 12px;">
+                        <div class="card-header bg-gradient-white border-bottom py-3 d-flex justify-content-between align-items-center">
+                            <h3 class="card-title text-dark font-weight-bold mb-0">
+                                <i class="fas fa-list-ul text-primary mr-1"></i> Ítems a Cotizar
+                            </h3>
+                            <div>
+                                <button type="button" class="btn btn-xs btn-primary shadow-sm mr-1" id="quickNewItemBtn">
+                                    <i class="fas fa-plus-circle"></i> + Nuevo Ítem
+                                </button>
+                                <button type="button" class="btn btn-xs btn-success shadow-sm" id="addItemRowBtn">
+                                    <i class="fas fa-plus"></i> Añadir Fila
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0" id="itemsTable">
+                                    <thead class="bg-light text-muted text-uppercase text-xs font-weight-bold">
+                                        <tr>
+                                            <th style="width: 50%">Catálogo (Producto / Kit) <span class="text-danger">*</span></th>
+                                            <th style="width: 15%">Cantidad <span class="text-danger">*</span></th>
+                                            <th style="width: 25%">Especificaciones / Notas</th>
+                                            <th style="width: 10%" class="text-center">Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="itemsBody">
+                                        <!-- Fila Inicial -->
+                                        <tr class="item-row" data-index="0">
+                                            <td>
+                                                <input type="hidden" name="items[0][item_type]" class="row-item-type" value="product">
+                                                <input type="hidden" name="items[0][product_id]" class="row-product-id" value="">
+                                                <input type="hidden" name="items[0][kit_id]" class="row-kit-id" value="">
+                                                
+                                                <select class="form-control form-control-sm select2-item-selector item-selector" required style="width: 100%;">
+                                                    <option value="">Seleccione un ítem...</option>
+                                                    <optgroup label="Productos Individuales">
+                                                        @foreach($products as $product)
+                                                            @if(!$product->is_kit)
+                                                                <option value="{{ $product->id }}" data-is-kit="0" data-unit="{{ $product->unit->abbreviation ?? 'und' }}">
+                                                                    {{ $product->name }} ({{ $product->code ?? 'S/C' }})
+                                                                </option>
+                                                            @endif
+                                                        @endforeach
+                                                    </optgroup>
+                                                    <optgroup label="Kits / Compuestos">
+                                                        @foreach($products as $product)
+                                                            @if($product->is_kit)
+                                                                <option value="{{ $product->id }}" data-is-kit="1" data-unit="{{ $product->unit->abbreviation ?? 'und' }}">
+                                                                    {{ $product->name }} ({{ $product->code ?? 'S/C' }}) [Kit]
+                                                                </option>
+                                                            @endif
+                                                        @endforeach
+                                                        @foreach($kits as $kit)
+                                                            <option value="{{ $kit->id }}" data-is-kit="1" data-unit="und">
+                                                                {{ $kit->name }} [Kit Legacy]
+                                                            </option>
+                                                        @endforeach
+                                                    </optgroup>
+                                                </select>
+                                            </td>
+                                            <td>
+                                                <div class="input-group input-group-sm">
+                                                    <input type="number" name="items[0][quantity]" class="form-control form-control-sm text-center row-quantity" min="1" value="1" required>
+                                                    <div class="input-group-append">
+                                                        <span class="input-group-text row-unit-badge text-muted text-xs bg-light">und</span>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <input type="text" name="items[0][notes]" class="form-control form-control-sm" placeholder="Especificaciones adicionales...">
+                                            </td>
+                                            <td class="text-center">
+                                                <button type="button" class="btn btn-sm btn-outline-danger remove-item" style="display:none;" title="Eliminar fila">
+                                                    <i class="fas fa-trash-alt"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="card-footer bg-white border-top py-3 d-flex justify-content-between align-items-center">
+                            <span class="text-xs text-muted">Asegúrese de agregar al menos un ítem al listado.</span>
+                            <span class="text-sm font-weight-bold text-dark">Total de Ítems: <span id="totalItemsCount" class="text-primary font-weight-bold">1</span></span>
+                        </div>
+                    </div>
+
+                    <!-- Sección: Notas Internas -->
+                    <div class="card shadow-sm border-0 mb-4" style="border-radius: 12px;">
+                        <div class="card-header bg-gradient-white border-bottom py-3">
+                            <h3 class="card-title text-dark font-weight-bold mb-0">
+                                <i class="fas fa-comment-dots text-primary mr-1"></i> Notas Internas
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-group mb-0">
+                                <textarea name="notes" id="notes" rows="2" class="form-control form-control-sm @error('notes') is-invalid @enderror" placeholder="Notas internas visibles solo para administradores y supervisores (no se incluyen en el PDF enviado a proveedores)">{{ old('notes') }}</textarea>
+                                @error('notes')<span class="invalid-feedback text-xs">{{ $message }}</span>@enderror
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Columna Lateral (Derecha - 30%) -->
+                <div class="col-lg-3 col-md-12">
+                    
+                    <!-- Card de Control y Estado -->
+                    <div class="card shadow-sm border-0 mb-4" style="border-radius: 12px; overflow: hidden;">
+                        <div class="bg-gradient-primary py-3 px-3">
+                            <h3 class="card-title h6 text-white font-weight-bold mb-0">
+                                <i class="fas fa-sliders-h mr-1"></i> Panel de Control
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="text-xs text-muted mb-1 d-block">Estatus RFQ</label>
+                                <span class="badge badge-secondary py-2 px-3 d-block font-weight-bold text-sm shadow-sm" style="border-radius: 6px;">
+                                    <i class="fas fa-file-alt mr-1"></i> BORRADOR
+                                </span>
+                            </div>
+
+                            <div class="form-group mb-3">
+                                <label for="priority" class="text-xs text-muted mb-1">Prioridad de Solicitud</label>
+                                <select name="priority" id="priority" class="form-control form-control-sm select2" style="width: 100%;">
+                                    <option value="baja" selected>🟢 Baja</option>
+                                    <option value="media">🟡 Media</option>
+                                    <option value="alta">🔴 Alta</option>
+                                </select>
+                            </div>
+
+                            <hr class="my-3">
+
+                            <div class="form-group mb-3">
+                                <label for="date_required" class="text-xs text-muted mb-1">F. Límite de Respuesta</label>
+                                <div class="input-group input-group-sm">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-light border-right-0"><i class="fas fa-calendar-times text-danger"></i></span>
+                                    </div>
+                                    <input type="date" name="date_required" id="date_required" class="form-control border-left-0 form-control-sm @error('date_required') is-invalid @enderror" value="{{ old('date_required') }}">
+                                </div>
+                                @error('date_required')<span class="invalid-feedback text-xs d-block">{{ $message }}</span>@enderror
+                            </div>
+
+                            <div class="form-group mb-4">
+                                <label for="delivery_deadline" class="text-xs text-muted mb-1">F. Límite de Entrega</label>
+                                <div class="input-group input-group-sm">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-light border-right-0"><i class="fas fa-truck-loading text-primary"></i></span>
+                                    </div>
+                                    <input type="date" name="delivery_deadline" id="delivery_deadline" class="form-control border-left-0 form-control-sm @error('delivery_deadline') is-invalid @enderror" value="{{ old('delivery_deadline') }}">
+                                </div>
+                                @error('delivery_deadline')<span class="invalid-feedback text-xs d-block">{{ $message }}</span>@enderror
+                            </div>
+
+                            <button type="button" class="btn btn-primary btn-block shadow-sm mb-2" id="saveRfqBtn">
+                                <i class="fas fa-save mr-1"></i> Guardar Borrador
+                            </button>
+                            
+                            <button type="button" class="btn btn-outline-secondary btn-block btn-sm mb-3" disabled title="Guarde primero para descargar PDF">
+                                <i class="fas fa-file-pdf mr-1"></i> Generar PDF Genérico
+                            </button>
+
+                            <a href="{{ route('admin.rfq.index') }}" class="btn btn-outline-danger btn-sm btn-block">
+                                <i class="fas fa-times mr-1"></i> Cancelar
+                            </a>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </form>
+    </div>
 
-        <!-- Sección: Notas -->
-        <div class="row">
-            <div class="col-12">
-                <div class="card" style="border-left: 4px solid #9ca3af;">
-                    <div class="card-header" style="background: linear-gradient(135deg, #9ca3af 0%, #d1d5db 100%);">
-                        <h3 class="card-title text-white">
-                            <i class="fas fa-sticky-note"></i> Notas Internas
-                        </h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="form-group mb-0">
-                            <textarea name="notes" id="notes" rows="2" class="form-control form-control-sm @error('notes') is-invalid @enderror" placeholder="Notas visibles solo internamente">{{ old('notes') }}</textarea>
-                            @error('notes')<span class="invalid-feedback">{{ $message }}</span>@enderror
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Botones de Acción -->
-        <div class="row">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-body d-flex justify-content-end">
-                        <a href="{{ route('admin.rfq.index') }}" class="btn btn-secondary btn-lg mr-2">
-                            <i class="fas fa-times"></i> Cancelar
-                        </a>
-                        <button type="button" class="btn btn-primary btn-lg" id="saveRfqBtn">
-                            <i class="fas fa-save"></i> Guardar RFQ
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </form>
-
-    <!-- Modal para crear producto -->
-    <div class="modal fade" id="productModal" tabindex="-1" role="dialog" aria-labelledby="productModalLabel" aria-hidden="true">
+    <!-- Modal de Creación Rápida "En Caliente" -->
+    <div class="modal fade" id="quickItemModal" tabindex="-1" role="dialog" aria-labelledby="quickItemModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg" role="document">
-            <div class="modal-content">
-                <div class="modal-header" style="background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);">
-                    <h5 class="modal-title text-white" id="productModalLabel"><i class="fas fa-box"></i> Crear Nuevo Producto</h5>
+            <div class="modal-content shadow border-0" style="border-radius: 12px;">
+                <div class="modal-header bg-gradient-primary text-white py-3">
+                    <h5 class="modal-title font-weight-bold" id="quickItemModalLabel">
+                        <i class="fas fa-plus-circle mr-1"></i> Crear Nuevo Ítem Rápido
+                    </h5>
                     <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
-                <form id="productForm">
-                    <div class="modal-body">
-                        <div class="row">
-                            <div class="col-12 col-md-6">
-                                <div class="form-group">
-                                    <label for="product_code">Código/SKU (*)</label>
-                                    <input type="text" name="code" id="product_code" class="form-control" required>
-                                    <small class="text-danger" id="codeError" style="display:none;">El código ya existe</small>
+                <form id="quickItemForm">
+                    <div class="modal-body py-4">
+                        
+                        <!-- Toggle de Tipo: Producto vs Kit -->
+                        <div class="row mb-4">
+                            <div class="col-12 text-center">
+                                <div class="custom-control custom-switch custom-switch-off-danger custom-switch-on-success d-inline-block">
+                                    <input type="checkbox" class="custom-control-input" id="modal_is_kit" name="is_kit" value="1">
+                                    <label class="custom-control-label font-weight-bold text-md" for="modal_is_kit">
+                                        <i class="fas fa-cubes text-info"></i> Definir como Kit / Compuesto
+                                    </label>
                                 </div>
-                            </div>
-                            <div class="col-12 col-md-6">
-                                <div class="form-group">
-                                    <label for="product_name">Nombre (*)</label>
-                                    <input type="text" name="name" id="product_name" class="form-control" required>
-                                </div>
+                                <div class="text-muted text-xs mt-1">Marque esta casilla si desea asociar múltiples componentes hijos a este ítem.</div>
                             </div>
                         </div>
+
                         <div class="row">
-                            <div class="col-12 col-md-6">
+                            <!-- Columna Izquierda del Modal -->
+                            <div class="col-md-6 border-right">
+                                <h6 class="text-primary font-weight-bold mb-3 border-bottom pb-2">Información Básica</h6>
+                                
                                 <div class="form-group">
-                                    <label for="product_category_id">Categoría (*)</label>
-                                    <select name="category_id" id="product_category_id" class="form-control select2" required>
+                                    <label for="modal_code" class="text-xs text-muted mb-1">Código/SKU <span class="text-danger">*</span></label>
+                                    <input type="text" name="code" id="modal_code" class="form-control form-control-sm" required placeholder="Ej. PROD-0023">
+                                    <small class="text-danger text-xs" id="modalCodeError" style="display:none;">El código ya existe.</small>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="modal_name" class="text-xs text-muted mb-1">Nombre del Producto <span class="text-danger">*</span></label>
+                                    <input type="text" name="name" id="modal_name" class="form-control form-control-sm" required placeholder="Ej. Válvula de compresión de 3 pulgadas">
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="modal_unit_id" class="text-xs text-muted mb-1">Unidad de Medida <span class="text-danger">*</span></label>
+                                    <select name="unit_id" id="modal_unit_id" class="form-control select2" required style="width: 100%;">
+                                        <option value="">Seleccione...</option>
+                                        @foreach($units as $unit)
+                                            <option value="{{ $unit->id }}">{{ $unit->name }} ({{ $unit->abbreviation }})</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="modal_category_id" class="text-xs text-muted mb-1">Categoría <span class="modal-generic-marker text-danger">*</span></label>
+                                    <select name="category_id" id="modal_category_id" class="form-control select2" required style="width: 100%;">
                                         <option value="">Seleccione...</option>
                                         @foreach($categories as $category)
                                             <option value="{{ $category->id }}">{{ $category->name }}</option>
                                         @endforeach
                                     </select>
                                 </div>
-                            </div>
-                            <div class="col-12 col-md-6">
-                                <div class="form-group">
-                                    <label for="product_unit_id">Unidad (*)</label>
-                                    <select name="unit_id" id="product_unit_id" class="form-control select2" required>
-                                        <option value="">Seleccione...</option>
-                                        @foreach($units as $unit)
-                                            <option value="{{ $unit->id }}">{{ $unit->name }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-12 col-md-6">
-                                <div class="form-group">
-                                    <label for="product_location_id">Ubicación (*)</label>
-                                    <select name="location_id" id="product_location_id" class="form-control select2" required>
+
+                                <div class="form-group mb-0">
+                                    <label for="modal_location_id" class="text-xs text-muted mb-1">Ubicación de Inventario <span class="modal-generic-marker text-danger">*</span></label>
+                                    <select name="location_id" id="modal_location_id" class="form-control select2" required style="width: 100%;">
                                         <option value="">Seleccione...</option>
                                         @foreach($locations as $location)
                                             <option value="{{ $location->id }}">{{ $location->name }}</option>
@@ -350,51 +345,96 @@
                                     </select>
                                 </div>
                             </div>
-                            <div class="col-12 col-md-6">
-                                <div class="form-group">
-                                    <label for="product_brand_id">Marca</label>
-                                    <select name="brand_id" id="product_brand_id" class="form-control select2">
+
+                            <!-- Columna Derecha del Modal -->
+                            <div class="col-md-6">
+                                <h6 class="text-primary font-weight-bold mb-3 border-bottom pb-2">Configuraciones y Alertas</h6>
+                                
+                                <div class="form-group mb-2">
+                                    <label for="modal_brand_id" class="text-xs text-muted mb-1">Marca</label>
+                                    <select name="brand_id" id="modal_brand_id" class="form-control select2" style="width: 100%;">
                                         <option value="">Seleccione...</option>
                                         @foreach($brands as $brand)
                                             <option value="{{ $brand->id }}">{{ $brand->name }}</option>
                                         @endforeach
                                     </select>
                                 </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-12">
-                                <div class="form-group">
-                                    <label for="product_description">Descripción</label>
-                                    <textarea name="description" id="product_description" rows="2" class="form-control"></textarea>
+
+                                <div class="form-group mb-3">
+                                    <div class="custom-control custom-switch mt-2">
+                                        <input type="hidden" name="is_generic" value="0">
+                                        <input type="checkbox" class="custom-control-input" id="modal_is_generic" name="is_generic" value="1">
+                                        <label class="custom-control-label text-xs font-weight-bold" for="modal_is_generic">
+                                            <i class="fas fa-cubes text-info mr-1"></i> Producto Genérico
+                                        </label>
+                                    </div>
+                                    <small class="form-text text-muted text-xs">Marcar para productos genéricos donde marca, categoría y ubicación son opcionales.</small>
                                 </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-12 col-md-4">
-                                <div class="form-group">
-                                    <label for="product_cost">Costo</label>
-                                    <input type="number" step="0.01" name="cost" id="product_cost" class="form-control" value="0" min="0">
+
+                                <!-- Sección Dinámica 1: Detalles de Producto Individual (Se oculta para kits) -->
+                                <div id="productDetailsSection">
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <div class="form-group">
+                                                <label for="modal_cost" class="text-xs text-muted mb-1">Costo ($)</label>
+                                                <input type="number" step="0.01" name="cost" id="modal_cost" class="form-control form-control-sm" value="0.00" min="0">
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="form-group">
+                                                <label for="modal_price" class="text-xs text-muted mb-1">Precio Venta ($)</label>
+                                                <input type="number" step="0.01" name="price" id="modal_price" class="form-control form-control-sm" value="0.00" min="0">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="modal_min_stock" class="text-xs text-muted mb-1">Stock Mínimo Alerta</label>
+                                        <input type="number" name="min_stock" id="modal_min_stock" class="form-control form-control-sm" value="0" min="0">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="modal_description" class="text-xs text-muted mb-1">Descripción</label>
+                                        <textarea name="description" id="modal_description" rows="2" class="form-control form-control-sm" placeholder="Opcional"></textarea>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="col-12 col-md-4">
-                                <div class="form-group">
-                                    <label for="product_price">Precio</label>
-                                    <input type="number" step="0.01" name="price" id="product_price" class="form-control" value="0" min="0">
-                                </div>
-                            </div>
-                            <div class="col-12 col-md-4">
-                                <div class="form-group">
-                                    <label for="product_min_stock">Stock Mínimo</label>
-                                    <input type="number" name="min_stock" id="product_min_stock" class="form-control" value="0" min="0">
+
+                                <!-- Sección Dinámica 2: Componentes del Kit (Se muestra solo para kits) -->
+                                <div id="kitDetailsSection" style="display: none;">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <label class="text-xs text-muted mb-0 font-weight-bold text-uppercase"><i class="fas fa-boxes text-warning mr-1"></i> Componentes del Kit</label>
+                                        <button type="button" class="btn btn-xs btn-outline-warning" id="addModalComponentBtn">
+                                            <i class="fas fa-plus"></i> Componente
+                                        </button>
+                                    </div>
+                                    <div style="max-height: 200px; overflow-y: auto;" class="border rounded p-2 bg-light mb-2">
+                                        <table class="table table-sm table-borderless mb-0 align-middle" id="modalComponentsTable">
+                                            <thead>
+                                                <tr class="text-xs text-muted border-bottom">
+                                                    <th>Item</th>
+                                                    <th style="width: 90px;">Cant.</th>
+                                                    <th style="width: 35px;"></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="modalComponentsBody">
+                                                <!-- Rows injected by JS -->
+                                            </tbody>
+                                        </table>
+                                        <div id="noComponentsPlaceholder" class="text-center text-muted text-xs py-3">
+                                            No hay componentes añadidos.
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="modal_kit_cost" class="text-xs text-muted mb-1">Costo Estimado del Kit ($)</label>
+                                        <input type="number" step="0.01" name="cost" id="modal_kit_cost" class="form-control form-control-sm" value="0.00" min="0">
+                                        <small class="text-muted text-xs">Costo de adquisición de este compuesto.</small>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
-                        <button type="submit" class="btn btn-primary" id="saveProductBtn">
-                            <i class="fas fa-save"></i> Guardar Producto
+                    <div class="modal-footer bg-light">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-sm btn-primary" id="saveQuickItemBtn">
+                            <i class="fas fa-save"></i> Guardar Ítem
                         </button>
                     </div>
                 </form>
@@ -402,16 +442,55 @@
         </div>
     </div>
 
+    <!-- Fuente de Datos para Autocompletar Componentes (Sólo productos simples) -->
+    <div style="display:none;" id="modal_simple_products_source">
+        <option value="">Seleccione...</option>
+        @foreach($products as $product)
+            @if(!$product->is_kit)
+                <option value="{{ $product->id }}">{{ $product->name }} ({{ $product->code ?? 'S/C' }})</option>
+            @endif
+        @endforeach
+    </div>
 @stop
 
 @section('css')
     <style>
         .select2-container--default .select2-selection--single {
-            height: 34px;
-            padding-top: 4px;
+            height: 38px;
+            padding-top: 5px;
+            border-color: #ced4da;
         }
         .select2-container--default .select2-selection--single .select2-selection__arrow {
-            height: 34px;
+            height: 36px;
+        }
+        .bg-gradient-primary {
+            background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%) !important;
+        }
+        .bg-gradient-white {
+            background: linear-gradient(180deg, #ffffff 0%, #f9fafb 100%) !important;
+        }
+        .item-row select.is-invalid + .select2-container {
+            border: 1px solid #dc3545 !important;
+            border-radius: 4px;
+        }
+        .text-xs {
+            font-size: 0.75rem !important;
+        }
+        .text-md {
+            font-size: 1rem !important;
+        }
+        .custom-switch .custom-control-label::before {
+            height: 1.5rem;
+            width: 2.75rem;
+            border-radius: 1rem;
+        }
+        .custom-switch .custom-control-label::after {
+            width: calc(1.5rem - 4px);
+            height: calc(1.5rem - 4px);
+            border-radius: 1rem;
+        }
+        .custom-switch .custom-control-input:checked ~ .custom-control-label::after {
+            transform: translateX(1.25rem);
         }
     </style>
 @endsection
@@ -419,172 +498,229 @@
 @section('js')
     <script>
         let itemIndex = 1;
-        let currentProductSelect = null;
+        let activeRowForModal = null;
 
-        function addProductOption(product) {
-            const newOption = new Option(
-                `${product.name} (${product.code})`, 
-                product.id, 
-                false, 
-                false
-            );
-            newOption.dataset.unit = product.unit ? product.unit.abbreviation : 'und';
-            return newOption;
-        }
-
-        function refreshProductSelects() {
-            $.get('{{ route("admin.products.search") }}', function(products) {
-                $('.select2-product').each(function() {
-                    const currentVal = $(this).val();
-                    $(this).empty();
-                    $(this).append('<option value="">Seleccione...</option>');
-                    products.forEach(function(product) {
-                        $(this).append(addProductOption(product));
-                    }, $(this));
-                    $(this).val(currentVal).trigger('change');
-                });
-            });
-        }
-
-        function initSelect2() {
-            $('.select2-product').select2({
-                theme: 'bootstrap4',
-                width: '100%',
-                allowClear: true
-            });
-        }
-        
-        $(document).on('select2:open', function() {
-            setTimeout(function() {
-                var dropdown = document.querySelector('.select2-dropdown');
-                if (dropdown) {
-                    dropdown.style.maxHeight = '350px';
-                    dropdown.style.overflow = 'hidden';
-                    var results = dropdown.querySelector('.select2-results');
-                    if (results) {
-                        results.style.maxHeight = '350px';
-                        results.style.overflowY = 'auto';
-                    }
+        // Inicializar select2 en toda la página
+        function initSelect2(container = document) {
+            $(container).find('.select2').each(function() {
+                if (!$(this).data('select2')) {
+                    $(this).select2({
+                        theme: 'bootstrap4',
+                        width: '100%',
+                        allowClear: true
+                    });
                 }
-            }, 10);
-        });
-
-        function updateRemoveButtons() {
-            const rows = $('#itemsBody tr').length;
-            $('#itemsBody .remove-item').toggle(rows > 1);
-        }
-
-        
-        $("#addKitItem").click(function() {
-            $("#kitModal").modal("show");
-        });
-
-        $(document).on("click", ".create-kit-btn", function(e) {
-            e.preventDefault();
-            currentProductSelect = $(this).closest(".input-group").find(".select2-product");
-            $("#kitModal").modal("show");
-        });
-
-        $("#kitForm").on("submit", function(e) {
-            e.preventDefault();
-            const btn = $("#saveKitBtn");
-            btn.prop("disabled", true).html("<i class=\"fas fa-spinner fa-spin\"></i> Guardando...");
-            $.ajax({
-                url: '/admin/products/quick-store-kit',
-                method: "POST",
-                data: $(this).serialize(),
-                headers: {"X-CSRF-TOKEN": $("meta[name=\"csrf-token\"]").attr("content")},
-                success: function(response) {
-                    $("#kitModal").modal("hide");
-                    $("#kitForm")[0].reset();
-                    $("#kitModal .select2").val("").trigger("change");
-                    const row = "<tr><td><select name=\"items["+itemIndex+"][product_id]\" class=\"form-control select2-product form-control-sm\" required><option value=\""+response.product.id+"\" selected>"+response.product.name+" ("+response.product.code+") [KIT]</option></select></td><td><input type=\"number\" name=\"items["+itemIndex+"][quantity]\" class=\"form-control form-control-sm\" min=\"1\" value=\"1\" required></td><td><input type=\"text\" name=\"items["+itemIndex+"][notes]\" class=\"form-control form-control-sm\" placeholder=\"Opcional\"></td><td class=\"text-center\"><button type=\"button\" class=\"btn btn-sm btn-danger remove-item\"><i class=\"fas fa-times\"></i></button></td></tr>";
-                    $("#itemsBody").append(row);
-                    itemIndex++;
-                    initSelect2();
-                    updateRemoveButtons();
-                    Swal.fire({icon: "success", title: "¡Éxito!", text: response.message, timer: 2000, showConfirmButton: false});
-                },
-                error: function(xhr) { if(xhr.status===422){if(xhr.responseJSON.errors.code){$("#kitCodeError").show();}} else {Swal.fire({icon:"error",title:"Error",text:"Hubo un error al guardar el kit"});} },
-                complete: function() { btn.prop("disabled",false).html("<i class=\"fas fa-save\"></i> Guardar Kit"); }
             });
-        });
 
-        $("#kitModal").on("hidden.bs.modal", function() { $("#kitForm")[0].reset(); $("#kitCodeError").hide(); });
+            $(container).find('.select2-item-selector').each(function() {
+                if (!$(this).data('select2')) {
+                    $(this).select2({
+                        theme: 'bootstrap4',
+                        width: '100%',
+                        allowClear: true,
+                        placeholder: 'Seleccione un producto o kit...'
+                    }).on('change', function() {
+                        const row = $(this).closest('tr');
+                        const selectedOpt = $(this).find('option:selected');
+                        const isKit = selectedOpt.data('is-kit') == 1;
+                        const itemId = $(this).val();
+                        const unit = selectedOpt.data('unit') || 'und';
 
-        $("#kit_code").on("blur", function() { const c=$(this).val(); if(c){$.get("/admin/products/search",{search:c},function(p){const e=p.some(x=>x.code.toLowerCase()===c.toLowerCase());$("#kitCodeError").toggle(e);}); }});
-                function attachProductButtonEvents() {
-            $('.create-product-btn').off('click').on('click', function(e) {
-                e.preventDefault();
-                currentProductSelect = null;
-                $('#productModal').modal('show');
+                        // Actualizar indicador de unidad
+                        row.find('.row-unit-badge').text(unit);
+
+                        // Configurar inputs del form dinámico
+                        const index = row.data('index');
+                        const typeInput = row.find('.row-item-type');
+                        const productInput = row.find('.row-product-id');
+                        const kitInput = row.find('.row-kit-id');
+
+                        if (itemId === "") {
+                            productInput.val('');
+                            kitInput.val('');
+                            return;
+                        }
+
+                        if (isKit) {
+                            typeInput.val('kit');
+                            kitInput.val(itemId).attr('name', `items[${index}][kit_id]`);
+                            productInput.val('').removeAttr('name');
+                        } else {
+                            typeInput.val('product');
+                            productInput.val(itemId).attr('name', `items[${index}][product_id]`);
+                            kitInput.val('').removeAttr('name');
+                        }
+                    });
+                }
             });
         }
 
-        $('#addItem').click(function() {
+        // Agregar fila al repetidor de ítems
+        function addItemRow() {
+            const productOptions = $('#itemsBody tr:first-child select.item-selector').html();
             const row = `
-                <tr>
+                <tr class="item-row" data-index="${itemIndex}">
                     <td>
-                        <select name="items[${itemIndex}][product_id]" class="form-control select2-product form-control-sm" required>
-                            <option value="">Seleccione...</option>
-                            @foreach($products as $product)
-                                <option value="{{ $product->id }}" data-unit="{{ $product->unit->abbreviation ?? 'und' }}">
-                                    {{ $product->name }} ({{ $product->code ?? 'S/C' }})
-                                </option>
-                            @endforeach
+                        <input type="hidden" name="items[${itemIndex}][item_type]" class="row-item-type" value="product">
+                        <input type="hidden" name="items[${itemIndex}][product_id]" class="row-product-id" value="">
+                        <input type="hidden" name="items[${itemIndex}][kit_id]" class="row-kit-id" value="">
+                        
+                        <select class="form-control form-control-sm select2-item-selector item-selector" required style="width: 100%;">
+                            ${productOptions}
                         </select>
                     </td>
                     <td>
-                        <input type="number" name="items[${itemIndex}][quantity]" class="form-control form-control-sm" min="1" value="1" required>
+                        <div class="input-group input-group-sm">
+                            <input type="number" name="items[${itemIndex}][quantity]" class="form-control form-control-sm text-center row-quantity" min="1" value="1" required>
+                            <div class="input-group-append">
+                                <span class="input-group-text row-unit-badge text-muted text-xs bg-light">und</span>
+                            </div>
+                        </div>
                     </td>
                     <td>
-                        <input type="text" name="items[${itemIndex}][notes]" class="form-control form-control-sm" placeholder="Opcional">
+                        <input type="text" name="items[${itemIndex}][notes]" class="form-control form-control-sm" placeholder="Especificaciones adicionales...">
                     </td>
                     <td class="text-center">
-                        <button type="button" class="btn btn-sm btn-danger remove-item">
-                            <i class="fas fa-times"></i>
+                        <button type="button" class="btn btn-sm btn-outline-danger remove-item" title="Eliminar fila">
+                            <i class="fas fa-trash-alt"></i>
                         </button>
                     </td>
                 </tr>
             `;
+
             $('#itemsBody').append(row);
+            const newRow = $('#itemsBody tr:last-child');
+            initSelect2(newRow);
             itemIndex++;
-            initSelect2();
             updateRemoveButtons();
-        });
+            updateTotalItemsCount();
+        }
 
-        $(document).on('click', '.remove-item', function() {
+        function updateRemoveButtons() {
+            const rows = $('#itemsBody tr.item-row').length;
+            $('#itemsBody tr.item-row .remove-item').toggle(rows > 1);
+        }
+
+        function updateTotalItemsCount() {
+            $('#totalItemsCount').text($('#itemsBody tr.item-row').length);
+        }
+
+        // Toggles del Modal de Producto Rápido
+        function toggleModalKitFields() {
+            const isKit = $('#modal_is_kit').is(':checked');
+            if (isKit) {
+                $('#productDetailsSection').slideUp(200);
+                $('#kitDetailsSection').slideDown(200);
+                // Si es kit, el stock mínimo y el precio no aplican directamente
+                $('#modal_price').prop('required', false);
+                $('#modalComponentsTable input, #modalComponentsTable select').prop('required', true);
+            } else {
+                $('#kitDetailsSection').slideUp(200);
+                $('#productDetailsSection').slideDown(200);
+                $('#modalComponentsTable input, #modalComponentsTable select').prop('required', false);
+            }
+        }
+
+        function toggleModalGenericFields() {
+            const isGeneric = $('#modal_is_generic').is(':checked');
+            if (isGeneric) {
+                $('#modal_brand_id').closest('.form-group').slideUp(200);
+                $('#modal_category_id').closest('.form-group').find('select').prop('required', false);
+                $('#modal_location_id').closest('.form-group').find('select').prop('required', false);
+                $('.modal-generic-marker').fadeOut(200);
+            } else {
+                $('#modal_brand_id').closest('.form-group').slideDown(200);
+                $('#modal_category_id').closest('.form-group').find('select').prop('required', true);
+                $('#modal_location_id').closest('.form-group').find('select').prop('required', true);
+                $('.modal-generic-marker').fadeIn(200);
+            }
+        }
+
+        // Componentes en el modal de kit
+        let modalComponentIndex = 0;
+        function addModalComponentRow() {
+            const options = $('#modal_simple_products_source').html();
+            const row = `
+                <tr class="modal-comp-row">
+                    <td>
+                        <select name="components[${modalComponentIndex}][child_id]" class="form-control form-control-sm select2-modal-comp" required>
+                            ${options}
+                        </select>
+                    </td>
+                    <td>
+                        <input type="number" name="components[${modalComponentIndex}][quantity]" class="form-control form-control-sm text-center" min="1" value="1" required>
+                    </td>
+                    <td class="text-center">
+                        <button type="button" class="btn btn-sm btn-link text-danger remove-modal-comp" title="Eliminar"><i class="fas fa-times-circle"></i></button>
+                    </td>
+                </tr>
+            `;
+            $('#modalComponentsBody').append(row);
+            
+            // Inicializar Select2 con dropdownParent
+            $('#modalComponentsBody tr:last-child .select2-modal-comp').select2({
+                theme: 'bootstrap4',
+                width: '100%',
+                dropdownParent: $('#quickItemModal')
+            });
+
+            modalComponentIndex++;
+            $('#noComponentsPlaceholder').hide();
+        }
+
+        $(document).on('click', '.remove-modal-comp', function() {
             $(this).closest('tr').remove();
-            updateRemoveButtons();
+            if ($('#modalComponentsBody tr').length === 0) {
+                $('#noComponentsPlaceholder').show();
+            }
         });
 
-        $('#productForm').on('submit', function(e) {
+        // Al guardar nuevo ítem rápido (AJAX)
+        $('#quickItemForm').on('submit', function(e) {
             e.preventDefault();
             
-            const btn = $('#saveProductBtn');
-            btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Guardando...');
-            
+            const isKit = $('#modal_is_kit').is(':checked');
+            const url = isKit ? '{{ route("admin.products.quick-store-kit") }}' : '{{ route("admin.products.quick-store") }}';
+            const btn = $('#saveQuickItemBtn');
+            btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Guardando...');
+
             $.ajax({
-                url: '{{ route("admin.products.quick-store") }}',
+                url: url,
                 method: 'POST',
                 data: $(this).serialize(),
                 headers: {
                     'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
                 },
                 success: function(response) {
-                    $('#productModal').modal('hide');
-                    $('#productForm')[0].reset();
-                    $('#productModal .select2').val('').trigger('change');
+                    $('#quickItemModal').modal('hide');
                     
-                    const row = `<tr><td><select name="items[${itemIndex}][product_id]" class="form-control select2-product form-control-sm" required><option value="${response.product.id}" selected>${response.product.name} (${response.product.code})</option></select></td><td><input type="number" name="items[${itemIndex}][quantity]" class="form-control form-control-sm" min="1" value="1" required></td><td><input type="text" name="items[${itemIndex}][notes]" class="form-control form-control-sm" placeholder="Opcional"></td><td class="text-center"><button type="button" class="btn btn-sm btn-danger remove-item"><i class="fas fa-times"></i></button></td></tr>`;
-                    $("#itemsBody").append(row);
-                    itemIndex++;
-                    initSelect2();
-                    updateRemoveButtons();
+                    const product = response.product;
+                    const isKitNum = isKit ? 1 : 0;
+                    const badgeText = isKit ? ' [Kit]' : '';
                     
+                    // Inyectar el nuevo producto a todos los dropdowns de la RFQ
+                    const newOption = `<option value="${product.id}" data-is-kit="${isKitNum}" data-unit="${product.unit ? product.unit.abbreviation : 'und'}">${product.name} (${product.code ?? 'S/C'})${badgeText}</option>`;
+                    
+                    $('.item-selector').each(function() {
+                        const currentVal = $(this).val();
+                        if (isKit) {
+                            $(this).find('optgroup[label="Kits / Compuestos"]').append(newOption);
+                        } else {
+                            $(this).find('optgroup[label="Productos Individuales"]').append(newOption);
+                            // También agregar a los componentes del modal
+                            $('#modal_simple_products_source').append(`<option value="${product.id}">${product.name} (${product.code ?? 'S/C'})</option>`);
+                        }
+                        $(this).val(currentVal).trigger('change.select2');
+                    });
+
+                    // Seleccionar automáticamente en la fila activa
+                    if (activeRowForModal) {
+                        activeRowForModal.find('.item-selector').val(product.id).trigger('change');
+                    }
+
                     Swal.fire({
                         icon: 'success',
-                        title: '¡Éxito!',
+                        title: '¡Creado!',
                         text: response.message,
                         timer: 2000,
                         showConfirmButton: false
@@ -592,36 +728,57 @@
                 },
                 error: function(xhr) {
                     if (xhr.status === 422) {
-                        const errors = xhr.responseJSON.errors;
+                        const errors = xhr.responseJSON.errors || {};
                         if (errors.code) {
-                            $('#codeError').show();
+                            $('#modalCodeError').show();
+                            Swal.fire({
+                                icon: 'warning',
+                                title: 'Código Duplicado',
+                                text: 'El código ingresado ya está asignado a otro producto.'
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error de Validación',
+                                text: xhr.responseJSON.message || 'Complete los campos obligatorios.'
+                            });
                         }
                     } else {
                         Swal.fire({
                             icon: 'error',
                             title: 'Error',
-                            text: 'Hubo un error al guardar el producto'
+                            text: 'Hubo un error inesperado al guardar el ítem.'
                         });
                     }
                 },
                 complete: function() {
-                    btn.prop('disabled', false).html('<i class="fas fa-save"></i> Guardar Producto');
+                    btn.prop('disabled', false).html('<i class="fas fa-save"></i> Guardar Ítem');
                 }
             });
         });
 
-        $('#productModal').on('hidden.bs.modal', function() {
-            $('#productForm')[0].reset();
-            $('#codeError').hide();
-            $('#productModal .select2').val('').trigger('change');
+        // Configuración de eventos del modal
+        $('#modal_is_kit').on('change', toggleModalKitFields);
+        $('#modal_is_generic').on('change', toggleModalGenericFields);
+        $('#addModalComponentBtn').on('click', addModalComponentRow);
+
+        $('#quickItemModal').on('hidden.bs.modal', function() {
+            $('#quickItemForm')[0].reset();
+            $('#modalCodeError').hide();
+            $('#quickItemModal .select2').val('').trigger('change');
+            $('#modalComponentsBody').empty();
+            $('#noComponentsPlaceholder').show();
+            $('#modal_is_kit').prop('checked', false).trigger('change');
+            $('#modal_is_generic').prop('checked', false).trigger('change');
+            activeRowForModal = null;
         });
 
-        $('#product_code').on('blur', function() {
+        $('#modal_code').on('blur', function() {
             const code = $(this).val();
             if (code) {
                 $.get('{{ route("admin.products.search") }}', { search: code }, function(products) {
                     const exists = products.some(p => p.code.toLowerCase() === code.toLowerCase());
-                    $('#codeError').toggle(exists);
+                    $('#modalCodeError').toggle(exists);
                 });
             }
         });
@@ -629,17 +786,68 @@
         $(document).ready(function() {
             initSelect2();
             updateRemoveButtons();
-            attachProductButtonEvents();
 
-            // Modal de confirmación para guardar RFQ
-            document.getElementById('saveRfqBtn').addEventListener('click', function() {
+            $('#addItemRowBtn').on('click', addItemRow);
+
+            $(document).on('click', '.remove-item', function() {
+                $(this).closest('tr').remove();
+                updateRemoveButtons();
+                updateTotalItemsCount();
+            });
+
+            // Abrir modal y rastrear cuál fila abrió
+            $('#quickNewItemBtn').on('click', function() {
+                // Si la última fila está vacía, la usaremos para rellenar
+                const lastRow = $('#itemsBody tr.item-row:last-child');
+                const lastSelect = lastRow.find('.item-selector');
+                if (lastSelect.val() === "") {
+                    activeRowForModal = lastRow;
+                } else {
+                    // Si no está vacía, añadimos una fila y la usamos
+                    addItemRow();
+                    activeRowForModal = $('#itemsBody tr.item-row:last-child');
+                }
+                $('#quickItemModal').modal('show');
+            });
+
+            // Submit y confirmación de la RFQ
+            $('#saveRfqBtn').on('click', function(e) {
+                e.preventDefault();
+
+                // Validaciones previas de frontend
+                let valid = true;
+                if ($('#title').val().trim() === "") {
+                    $('#title').addClass('is-invalid');
+                    valid = false;
+                } else {
+                    $('#title').removeClass('is-invalid');
+                }
+
+                $('.item-selector').each(function() {
+                    if ($(this).val() === "") {
+                        $(this).addClass('is-invalid');
+                        valid = false;
+                    } else {
+                        $(this).removeClass('is-invalid');
+                    }
+                });
+
+                if (!valid) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Campos requeridos vacíos',
+                        text: 'Por favor complete todos los campos obligatorios del formulario.'
+                    });
+                    return;
+                }
+
                 confirmAction({
                     title: 'Crear Solicitud de Cotización',
-                    message: '¿Está seguro de crear esta Solicitud de Cotización?',
-                    alert: 'Verifique que todos los productos y cantidades sean correctos.',
+                    message: '¿Está seguro de registrar esta Solicitud de Cotización (RFQ)?',
+                    alert: 'Se creará en estado BORRADOR y podrá ser modificada posteriormente.',
                     confirmBtnClass: 'btn-primary',
                     onConfirm: function() {
-                        document.getElementById('rfqForm').submit();
+                        $('#rfqForm').submit();
                     }
                 });
             });

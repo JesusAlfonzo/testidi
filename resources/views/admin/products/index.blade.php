@@ -7,6 +7,19 @@
 @section('plugins.Responsive', true)
 @section('plugins.Select2', true)
 
+@section('css')
+<style>
+    .badge-purple {
+        background-color: #6f42c1;
+        color: white;
+    }
+    .btn-show-components:hover {
+        text-decoration: underline;
+        color: #0056b3;
+    }
+</style>
+@stop
+
 @section('content_header')
     <div class="d-flex justify-content-between">
         <h1><i class="fas fa-box-open"></i> Listado de Productos</h1>
@@ -31,7 +44,17 @@
         <div class="card-body">
             <form id="filterForm" method="GET" action="{{ route('admin.products.index') }}">
                 <div class="row">
-                    <div class="col-md-3">
+                    <div class="col-md-2">
+                        <div class="form-group">
+                            <label>Tipo de Ítem</label>
+                            <select name="type" class="form-control">
+                                <option value="">Todos</option>
+                                <option value="individual" {{ request('type') == 'individual' ? 'selected' : '' }}>Individuales</option>
+                                <option value="composite_kit" {{ request('type') == 'composite_kit' ? 'selected' : '' }}>Kits / Compuestos</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
                         <div class="form-group">
                             <label>Categoría</label>
                             <select name="category_id" class="form-control select2" style="width: 100%">
@@ -42,7 +65,7 @@
                             </select>
                         </div>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <div class="form-group">
                             <label>Ubicación</label>
                             <select name="location_id" class="form-control select2" style="width: 100%">
@@ -99,6 +122,7 @@
                                 <tr>
                                     <th>ID</th>
                                     <th>Nombre</th>
+                                    <th>Tipo</th>
                                     <th>Stock</th>
                                     <th>Acciones</th> 
                                     <th>Código</th>
@@ -156,6 +180,7 @@
                     "url": "{{ route('admin.products.index') }}",
                     "type": "GET",
                     "data": function(d) {
+                        d.type = $('select[name="type"]').val();
                         d.category_id = $('select[name="category_id"]').val();
                         d.location_id = $('select[name="location_id"]').val();
                         d.status = $('select[name="status"]').val();
@@ -166,7 +191,29 @@
 
                 "columns": [
                     { "data": "id", "name": "id" },
-                    { "data": "name", "name": "name" },
+                    { 
+                        "data": "name", 
+                        "name": "name",
+                        "render": function(data, type, row) {
+                            var badges = '';
+                            if (row.is_generic) {
+                                badges += ' <span class="badge badge-secondary" title="Producto Genérico"><i class="fas fa-tags"></i> Genérico</span>';
+                            }
+                            if (row.type === 'composite_kit') {
+                                return '<span class="text-primary font-weight-bold btn-show-components" style="cursor: pointer;" title="Haga clic para ver componentes"><i class="fas fa-cubes"></i> ' + data + '</span>' + badges;
+                            }
+                            return '<span>' + data + '</span>' + badges;
+                        }
+                    },
+                    { 
+                        "data": "type", 
+                        "name": "type",
+                        "render": function(data) {
+                            return data === 'composite_kit' 
+                                ? '<span class="badge badge-purple"><i class="fas fa-cubes"></i> Kit / Compuesto</span>' 
+                                : '<span class="badge badge-secondary"><i class="fas fa-cube"></i> Individual</span>';
+                        }
+                    },
                     { 
                         "data": "stock", 
                         "name": "stock",
@@ -220,18 +267,55 @@
                 },
 
                 "columnDefs": [
-                    { "orderable": false, "targets": [2] },
+                    { "orderable": false, "targets": [4] },
                     { "responsivePriority": 1, "targets": 0 },
-                    { "responsivePriority": 2, "targets": 2 },
-                    { "responsivePriority": 3, "targets": 1 },
-                    { "responsivePriority": 100, "targets": [3, 4, 5, 6, 7, 8] }
+                    { "responsivePriority": 2, "targets": 3 }, // stock
+                    { "responsivePriority": 3, "targets": 1 }, // name
+                    { "responsivePriority": 100, "targets": [2, 4, 5, 6, 7, 8, 9] }
                 ]
             });
 
             // Aplicar filtros cuando cambien los selects
-            $('#filterForm select').on('change', function() {
+            $('#filterForm select, #filterForm input').on('change', function() {
                 table.draw();
             });
+
+            // Manejador para expandir/colapsar fila secundaria del kit
+            $('#productsTable tbody').on('click', '.btn-show-components', function () {
+                var tr = $(this).closest('tr');
+                var row = table.row(tr);
+
+                if (row.child.isShown()) {
+                    row.child.hide();
+                    tr.removeClass('shown');
+                } else {
+                    row.child(formatComponents(row.data())).show();
+                    tr.addClass('shown');
+                }
+            });
+
+            function formatComponents(d) {
+                if (d.type !== 'composite_kit' || !d.components || d.components.length === 0) {
+                    return '<div class="p-2 text-muted">Este kit no tiene componentes asociados.</div>';
+                }
+                
+                var html = '<div class="p-3 bg-light rounded border">';
+                html += '<strong class="text-secondary"><i class="fas fa-tools"></i> Componentes del Kit compuesto:</strong>';
+                html += '<table class="table table-sm table-striped table-bordered mt-2 mb-0" style="background-color: white;">';
+                html += '<thead class="thead-light"><tr><th>Componente</th><th>Código</th><th style="width: 20%;" class="text-center">Cantidad requerida</th></tr></thead>';
+                html += '<tbody>';
+                
+                d.components.forEach(function(comp) {
+                    html += '<tr>';
+                    html += '<td>' + comp.name + '</td>';
+                    html += '<td>' + (comp.code || 'N/A') + '</td>';
+                    html += '<td class="text-center font-weight-bold">' + comp.quantity + '</td>';
+                    html += '</tr>';
+                });
+                
+                html += '</tbody></table></div>';
+                return html;
+            }
             
             setTimeout(function() { 
                 table.columns.adjust().responsive.recalc(); 

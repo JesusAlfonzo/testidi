@@ -29,20 +29,11 @@ class StoreRequestRequest extends FormRequest
             'items' => ['required', 'array', 'min:1'],
 
             // 3. Validación de cada Ítem dentro del Array
-            'items.*.item_type' => ['required', 'in:product,kit'],
+            'items.*.item_type' => ['required', 'in:product'],
             
-            // Validación condicional: product_id es requerido si item_type es 'product'
             'items.*.product_id' => [
-                'nullable',
-                'required_if:items.*.item_type,product',
+                'required',
                 'exists:products,id'
-            ],
-
-            // Validación condicional: kit_id es requerido si item_type es 'kit'
-            'items.*.kit_id' => [
-                'nullable',
-                'required_if:items.*.item_type,kit',
-                'exists:kits,id'
             ],
 
             'items.*.quantity' => ['required', 'integer', 'min:1'],
@@ -57,9 +48,6 @@ class StoreRequestRequest extends FormRequest
         $validator->after(function ($validator) {
             $items = $validator->getData()['items'] ?? [];
             
-            $kitIds = collect($items)->where('item_type', 'kit')->pluck('kit_id')->filter()->toArray();
-            $kitsDict = \App\Models\Kit::with('components')->whereIn('id', $kitIds)->get()->keyBy('id');
-            
             foreach ($items as $index => $item) {
                 if (($item['item_type'] ?? '') === 'product' && !empty($item['product_id'])) {
                     $product = \App\Models\Product::find($item['product_id']);
@@ -71,31 +59,6 @@ class StoreRequestRequest extends FormRequest
                         $validator->errors()->add("items.{$index}.quantity", "Stock insuficiente. Stock actual: {$product->stock}");
                     }
                 }
-                
-                if (($item['item_type'] ?? '') === 'kit' && !empty($item['kit_id'])) {
-                    $kit = $kitsDict->get($item['kit_id']);
-                    if (!$kit) {
-                        $validator->errors()->add("items.{$index}.kit_id", 'El kit no existe.');
-                    } elseif (!$kit->is_active) {
-                        $validator->errors()->add("items.{$index}.kit_id", 'El kit está inactivo.');
-                    } else {
-                        $requestedQty = $item['quantity'] ?? 0;
-                        $canAssemble = true;
-                        $insufficientComponents = [];
-                        
-                        foreach ($kit->components as $component) {
-                            $required = $component->pivot->quantity_required * $requestedQty;
-                            if ($component->stock < $required) {
-                                $canAssemble = false;
-                                $insufficientComponents[] = $component->name;
-                            }
-                        }
-                        
-                        if (!$canAssemble) {
-                            $validator->errors()->add("items.{$index}.quantity", "No hay stock suficiente para ensamblar el kit. Faltan: " . implode(', ', $insufficientComponents));
-                        }
-                    }
-                }
             }
         });
     }
@@ -105,8 +68,7 @@ class StoreRequestRequest extends FormRequest
         return [
             'items.required' => 'Debe agregar al menos un ítem a la solicitud.',
             'items.min' => 'Debe agregar al menos un ítem a la solicitud.',
-            'items.*.product_id.required_if' => 'Debe seleccionar un producto válido.',
-            'items.*.kit_id.required_if' => 'Debe seleccionar un kit válido.',
+            'items.*.product_id.required' => 'Debe seleccionar un producto válido.',
         ];
     }
 }

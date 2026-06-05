@@ -13,16 +13,21 @@ class ProductBatch extends Model
     protected $fillable = [
         'product_id',
         'stock_in_item_id',
+        'invoice_number',
         'batch_number',
-        'expiry_date',
+        'expiration_date',
         'serial_number',
         'quantity',
         'unit_cost',
+        'price',
+        'currency',
+        'tax_status',
     ];
 
     protected $casts = [
-        'expiry_date' => 'date',
+        'expiration_date' => 'date',
         'unit_cost' => 'decimal:2',
+        'price' => 'decimal:2',
     ];
 
     public function product(): BelongsTo
@@ -37,30 +42,30 @@ class ProductBatch extends Model
 
     public function isExpired(): bool
     {
-        return $this->expiry_date && $this->expiry_date->isPast();
+        return $this->expiration_date && $this->expiration_date->isPast();
     }
 
     public function isExpiringSoon(int $days = 30): bool
     {
-        if (!$this->expiry_date) {
+        if (!$this->expiration_date) {
             return false;
         }
-        return $this->expiry_date->between(now(), now()->addDays($days));
+        return $this->expiration_date->between(now(), now()->addDays($days));
     }
 
     public function getDaysUntilExpiry(): ?int
     {
-        if (!$this->expiry_date) {
+        if (!$this->expiration_date) {
             return null;
         }
-        return now()->startOfDay()->diffInDays($this->expiry_date, false);
+        return now()->startOfDay()->diffInDays($this->expiration_date, false);
     }
 
     public static function consumeFromOldestBatch(int $productId, int $quantityRequired): array
     {
         $batches = self::where('product_id', $productId)
             ->where('quantity', '>', 0)
-            ->orderBy('expiry_date', 'asc')
+            ->orderBy('expiration_date', 'asc')
             ->orderBy('id', 'asc')
             ->lockForUpdate()
             ->get();
@@ -81,7 +86,7 @@ class ProductBatch extends Model
                 'batch_id' => $batch->id,
                 'batch_number' => $batch->batch_number,
                 'quantity' => $takeFromBatch,
-                'expiry_date' => $batch->expiry_date,
+                'expiration_date' => $batch->expiration_date,
             ];
 
             $remaining -= $takeFromBatch;

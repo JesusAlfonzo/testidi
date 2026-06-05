@@ -5,8 +5,130 @@
 @section('plugins.Select2', true)
 @section('plugins.Sweetalert2', true)
 
+@section('css')
+    <style>
+        .card-custom {
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            border: none;
+            margin-bottom: 1.5rem;
+        }
+
+        .card-custom .card-header {
+            background-color: #ffffff;
+            border-bottom: 1px solid #f3f4f6;
+            padding: 1rem 1.25rem;
+            border-top-left-radius: 12px;
+            border-top-right-radius: 12px;
+        }
+
+        .card-custom .card-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #1f2937;
+        }
+
+        .select2-container--default .select2-selection--single {
+            height: 38px !important;
+            padding-top: 4px;
+            border: 1px solid #d1d5db !important;
+            border-radius: 6px !important;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 36px !important;
+        }
+
+        .form-control-custom {
+            border-radius: 6px !important;
+            border: 1px solid #d1d5db !important;
+            height: 38px !important;
+        }
+
+        .btn-custom {
+            border-radius: 6px !important;
+            font-weight: 600;
+            padding: 0.5rem 1.25rem;
+        }
+
+        /* Sticky sidebar styling */
+        .sticky-sidebar {
+            position: -webkit-sticky;
+            position: sticky;
+            top: 1rem;
+        }
+
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px dashed #e5e7eb;
+            font-size: 0.875rem;
+            color: #4b5563;
+        }
+
+        .total-row:last-child {
+            border-bottom: none;
+        }
+
+        .total-row-grand {
+            border-top: 1px solid #e5e7eb;
+            padding-top: 1rem;
+            margin-top: 0.5rem;
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: #111827;
+        }
+
+        .bs-equivalent-section {
+            background-color: #f0fdf4;
+            border-radius: 8px;
+            border: 1px solid #bbf7d0;
+            padding: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        .bs-equivalent-title {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #15803d;
+            text-transform: uppercase;
+            margin-bottom: 0.5rem;
+            letter-spacing: 0.5px;
+        }
+
+        #itemsTable th {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 700;
+            color: #4b5563;
+            background-color: #f9fafb;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 10px;
+        }
+
+        #itemsTable td {
+            padding: 10px;
+            vertical-align: middle;
+            border-bottom: 1px solid #f3f4f6;
+        }
+    </style>
+@stop
+
 @section('content_header')
-    <h1><i class="fas fa-shopping-cart"></i> Convertir RFQ {{ $rfq->code }} a Orden de Compra</h1>
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <div>
+            <h1 class="text-dark font-weight-bold" style="font-size: 1.75rem;">
+                <i class="fas fa-shopping-cart mr-2 text-primary"></i> Convertir RFQ {{ $rfq->code }} a OC
+            </h1>
+            <p class="text-muted mb-0">Genere la orden de compra precargando los datos negociados con el proveedor.</p>
+        </div>
+        <a href="{{ route('admin.rfq.show', $rfq) }}" class="btn btn-outline-secondary font-weight-bold btn-custom">
+            <i class="fas fa-arrow-left mr-1"></i> Volver a la RFQ
+        </a>
+    </div>
 @stop
 
 @section('content')
@@ -17,469 +139,331 @@
         $units = \App\Models\Unit::orderBy('name')->get();
         $locations = \App\Models\Location::orderBy('name')->get();
         $brands = \App\Models\Brand::orderBy('name')->get();
+
+        $selectedSupplierId = old('supplier_id', isset($offer) ? $offer->supplier_id : request('supplier_id'));
+        
+        $offerCurrency = 'USD';
+        $offerIvaExempt = false;
+        if (isset($offer) && $offer->items->isNotEmpty()) {
+            $offerCurrency = $offer->items->first()->currency;
+            $offerIvaExempt = $offer->items->contains(function($item) {
+                return $item->tax_status === 'exento';
+            });
+        } else {
+            $offerCurrency = request('currency', 'USD');
+            $offerIvaExempt = request('iva_exempt') == '1';
+        }
+        $selectedCurrency = old('currency', $offerCurrency);
+        $isIvaExempt = old('iva_exempt', $offerIvaExempt);
     @endphp
 
     <form action="{{ route('admin.rfq.store-po', $rfq) }}" method="POST" id="orderForm">
         @csrf
 
-        {{-- Información de la RFQ --}}
         <div class="row">
-            <div class="col-12">
-                <div class="card" style="border-left: 4px solid #6c757d;">
-                    <div class="card-header" style="background: linear-gradient(135deg, #6c757d 0%, #8a939d 100%);">
-                        <h3 class="card-title text-white">
-                            <i class="fas fa-file-invoice"></i> Información de la RFQ
-                        </h3>
-                    </div>
-                    <div class="card-body">
+            <!-- COLUMNA PRINCIPAL (70%) -->
+            <div class="col-lg-8">
+                <!-- Tarjeta: Información RFQ Referencia -->
+                <div class="card card-custom" style="background-color: #f8fafc; border: 1px solid #e2e8f0;">
+                    <div class="card-body py-3">
                         <div class="row">
-                            <div class="col-md-3"><strong>Código:</strong> {{ $rfq->code }}</div>
+                            <div class="col-md-3"><strong>Código RFQ:</strong> {{ $rfq->code }}</div>
                             <div class="col-md-3"><strong>Título:</strong> {{ $rfq->title }}</div>
                             <div class="col-md-3"><strong>Estado:</strong> {!! $rfq->status_badge !!}</div>
                             <div class="col-md-3"><strong>Fecha Requerida:</strong> {{ $rfq->date_required?->format('d/m/Y') ?? 'N/A' }}</div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
 
-        {{-- Información General OC --}}
-        <div class="row">
-            <div class="col-12">
-                <div class="card" style="border-left: 4px solid #6c757d;">
-                    <div class="card-header" style="background: linear-gradient(135deg, #6c757d 0%, #8a939d 100%);">
-                        <h3 class="card-title text-white">
-                            <i class="fas fa-info-circle"></i> Información General de la OC
-                        </h3>
+                <!-- Tarjeta: Información General de la OC -->
+                <div class="card card-custom">
+                    <div class="card-header border-0 pb-0">
+                        <h3 class="card-title text-primary"><i class="fas fa-info-circle mr-1"></i> Datos de la Orden de Compra</h3>
                     </div>
                     <div class="card-body">
                         <div class="row">
-                            <div class="col-12 col-md-3">
-                                <div class="form-group mb-2">
-                                    <label for="code" class="mb-1">Código OC</label>
-                                    <div class="input-group input-group-sm">
-                                        <div class="input-group-prepend">
-                                            <span class="input-group-text bg-secondary text-white"><i class="fas fa-hashtag"></i></span>
-                                        </div>
-                                        <input type="text" name="code" class="form-control" value="{{ $code }}" readonly>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-12 col-md-4">
-                                <div class="form-group mb-2">
-                                    <label for="supplier_id" class="mb-1">Proveedor (*)</label>
-                                    <select name="supplier_id" id="supplier_id" class="form-control form-control-sm select2-ajax" data-placeholder="Buscar proveedor..." data-url="{{ route('admin.purchaseOrders.searchSuppliers') }}" required>
-                                        <option value="">Seleccione un proveedor...</option>
-                                        @foreach($suppliers as $supplier)
-                                            <option value="{{ $supplier->id }}" {{ old('supplier_id') == $supplier->id ? 'selected' : '' }}>{{ $supplier->name }} | {{ $supplier->email ?? 'Sin email' }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-12 col-md-1 d-flex align-items-end pb-2">
-                                <button type="button" id="addSupplierBtn" class="btn btn-warning btn-sm text-dark mb-2" title="Crear Proveedor">
-                                    <i class="fas fa-plus"></i>
-                                </button>
-                            </div>
-                            <div class="col-12 col-md-4">
-                                <div class="form-group mb-2">
-                                    <label for="date_issued" class="mb-1">Fecha de Emisión (*)</label>
-                                    <div class="input-group input-group-sm">
-                                        <div class="input-group-prepend">
-                                            <span class="input-group-text bg-info text-white"><i class="fas fa-calendar"></i></span>
-                                        </div>
-                                        <input type="date" name="date_issued" class="form-control" value="{{ old('date_issued', date('Y-m-d')) }}" required>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        {{-- Entrega y Moneda --}}
-        <div class="row">
-            <div class="col-12 col-md-8">
-                <div class="card" style="border-left: 4px solid #3b82f6;">
-                    <div class="card-header" style="background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);">
-                        <h3 class="card-title text-white">
-                            <i class="fas fa-truck"></i> Entrega
-                        </h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-12 col-md-6">
-                                <div class="form-group mb-2">
-                                    <label for="delivery_date" class="mb-1">Fecha de Entrega</label>
-                                    <div class="input-group input-group-sm">
-                                        <div class="input-group-prepend">
-                                            <span class="input-group-text bg-info text-white"><i class="fas fa-calendar-check"></i></span>
-                                        </div>
-                                        <input type="date" name="delivery_date" class="form-control" value="{{ old('delivery_date') }}">
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-12 col-md-6">
-                                <div class="form-group mb-2">
-                                    <label for="delivery_address" class="mb-1">Dirección de Entrega</label>
-                                    <div class="input-group input-group-sm">
-                                        <div class="input-group-prepend">
-                                            <span class="input-group-text bg-info text-white"><i class="fas fa-map-marker-alt"></i></span>
-                                        </div>
-                                        <input type="text" name="delivery_address" class="form-control" value="{{ old('delivery_address') }}" placeholder="Dirección donde recibir la mercancía">
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-12 col-md-4">
-                <div class="card" style="border-left: 4px solid #10b981;">
-                    <div class="card-header" style="background: linear-gradient(135deg, #10b981 0%, #34d399 100%);">
-                        <h3 class="card-title text-white">
-                            <i class="fas fa-coins"></i> Moneda
-                        </h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-12">
-                                <div class="form-group mb-2">
-                                    <label for="currency" class="mb-1">Moneda</label>
-                                    <select name="currency" id="currency" class="form-control form-control-sm select2">
-                                        <option value="USD" {{ old('currency', 'USD') == 'USD' ? 'selected' : '' }}>💵 USD - Dólar</option>
-                                        <option value="EUR" {{ old('currency') == 'EUR' ? 'selected' : '' }}>💶 EUR - Euro</option>
-                                        <option value="Bs" {{ old('currency') == 'Bs' ? 'selected' : '' }}>🇻🇪 Bs - Bolívar</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-12">
-                                <div class="form-group mb-2">
-                                    <label for="exchange_rate" class="mb-1">Tasa de Cambio</label>
-                                    <div class="input-group input-group-sm">
-                                        <div class="input-group-prepend">
-                                            <span class="input-group-text bg-success text-white"><i class="fas fa-exchange-alt"></i></span>
-                                        </div>
-                                        <input type="number" step="0.0001" name="exchange_rate" id="exchangeRate" class="form-control" value="{{ old('exchange_rate', 1) }}">
-                                    </div>
-                                </div>
+                            <div class="col-md-4 mb-3">
                                 <div class="form-group mb-0">
-                                    <div class="custom-control custom-checkbox">
-                                        <input type="checkbox" class="custom-control-input" id="iva_exempt" name="iva_exempt" value="1">
-                                        <label class="custom-control-label" for="iva_exempt">Exento de IVA (16%)</label>
+                                    <label for="code" class="text-xs font-weight-bold text-secondary mb-1">Código OC</label>
+                                    <input type="text" name="code" class="form-control form-control-custom font-weight-bold" value="{{ $code }}" readonly style="background-color: #f3f4f6;">
+                                </div>
+                            </div>
+                            <div class="col-md-5 mb-3">
+                                <div class="form-group mb-0">
+                                    <label for="supplier_id" class="text-xs font-weight-bold text-secondary mb-1">Proveedor (*)</label>
+                                    <div class="input-group">
+                                        <select name="supplier_id" id="supplier_id" class="form-control form-control-custom select2-ajax" data-placeholder="Buscar proveedor..." data-url="{{ route('admin.purchaseOrders.searchSuppliers') }}" required>
+                                            <option value="">Seleccione un proveedor...</option>
+                                            @foreach($suppliers as $supplier)
+                                                <option value="{{ $supplier->id }}" {{ $selectedSupplierId == $supplier->id ? 'selected' : '' }}>
+                                                    {{ $supplier->name }} | {{ $supplier->email ?? 'Sin email' }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        <div class="input-group-append">
+                                            <button type="button" id="addSupplierBtn" class="btn btn-outline-primary" title="Crear Proveedor" style="border-top-right-radius: 6px; border-bottom-right-radius: 6px;">
+                                                <i class="fas fa-plus"></i>
+                                            </button>
+                                        </div>
                                     </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="form-group mb-0">
+                                    <label for="date_issued" class="text-xs font-weight-bold text-secondary mb-1">Fecha Emisión (*)</label>
+                                    <input type="date" name="date_issued" class="form-control form-control-custom" value="{{ old('date_issued', date('Y-m-d')) }}" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row border-top pt-3 mt-1">
+                            <div class="col-md-4 mb-3">
+                                <div class="form-group mb-0">
+                                    <label for="delivery_date" class="text-xs font-weight-bold text-secondary mb-1">Fecha de Entrega</label>
+                                    <input type="date" name="delivery_date" class="form-control form-control-custom" value="{{ old('delivery_date') }}">
+                                </div>
+                            </div>
+                            <div class="col-md-8 mb-3">
+                                <div class="form-group mb-0">
+                                    <label for="delivery_address" class="text-xs font-weight-bold text-secondary mb-1">Dirección de Entrega</label>
+                                    <input type="text" name="delivery_address" class="form-control form-control-custom" value="{{ old('delivery_address') }}" placeholder="Dirección donde recibir la mercancía">
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
 
-        {{-- Items (Productos de la RFQ) --}}
-        <div class="row">
-            <div class="col-12">
-                <div class="card" style="border-left: 4px solid #ef4444;">
-                    <div class="card-header" style="background: linear-gradient(135deg, #ef4444 0%, #f87171 100%);">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h3 class="card-title text-white">
-                                <i class="fas fa-boxes"></i> Items de la Orden
-                            </h3>
-                            <div>
-                                <button type="button" class="btn btn-sm btn-outline-light text-light mr-2" data-toggle="modal" data-target="#productModal">
-                                    <i class="fas fa-plus"></i> Crear Producto
-                                </button>
-                                <button type="button" class="btn btn-sm btn-warning text-dark" data-toggle="modal" data-target="#kitModal">
-                                    <i class="fas fa-plus"></i> Agregar Kit
-                                </button>
-                            </div>
-                        </div>
+                <!-- Tarjeta: Items de la RFQ -->
+                <div class="card card-custom">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h3 class="card-title text-primary"><i class="fas fa-boxes mr-1"></i> Ítems Solicitados</h3>
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive">
-                            <table class="table table-bordered table-striped mb-0" id="itemsTable">
-                                <thead class="bg-light">
+                            <table class="table mb-0" id="itemsTable">
+                                <thead>
                                     <tr>
-                                        <th style="width: 35%">Producto</th>
-                                        <th style="width: 12%">Cantidad</th>
-                                        <th style="width: 18%">Costo Unit.</th>
-                                        <th style="width: 17%">Total</th>
-                                        <th style="width: 18%">Equivalente Bs</th>
+                                        <th style="width: 40%">Producto</th>
+                                        <th style="width: 15%">Cantidad</th>
+                                        <th style="width: 20%">Costo Unit.</th>
+                                        <th style="width: 15%" class="text-right">Total</th>
+                                        <th style="width: 10%" class="text-center"></th>
                                     </tr>
                                 </thead>
                                 <tbody id="itemsBody">
                                     @foreach($rfq->items as $index => $item)
                                         <tr>
                                             <td>
-                                                <input type="hidden" name="items[{{ $index }}][product_id]" value="{{ $item->product_id }}">
-                                                <strong>{{ $item->product->name ?? 'N/A' }}</strong><br>
-                                                <small class="text-muted">{{ $item->product->code ?? 'S/C' }}</small>
+                                                <input type="hidden" name="items[{{ $index }}][item_type]" value="{{ $item->item_type }}">
+                                                @if($item->item_type === 'kit')
+                                                    <input type="hidden" name="items[{{ $index }}][kit_id]" value="{{ $item->kit_id }}">
+                                                    <strong>{{ $item->kit->name ?? 'N/A' }}</strong>
+                                                    <span class="badge badge-info ml-1 text-xxs">Kit</span>
+                                                @else
+                                                    <input type="hidden" name="items[{{ $index }}][product_id]" value="{{ $item->product_id }}">
+                                                    <strong>{{ $item->product->name ?? 'N/A' }}</strong><br>
+                                                    <small class="text-muted">{{ $item->product->code ?? 'S/C' }}</small>
+                                                @endif
                                             </td>
-                                            <td>
-                                                <input type="hidden" name="items[{{ $index }}][quantity]" value="{{ $item->quantity }}">
+                                            <td class="align-middle">
+                                                <input type="hidden" name="items[{{ $index }}][quantity]" value="{{ $item->quantity }}" class="item-qty">
                                                 <span class="badge badge-primary">{{ $item->quantity }}</span>
-                                                {{ $item->product->unit->abbreviation ?? 'und' }}
+                                                @if($item->item_type === 'kit')
+                                                    kit
+                                                @else
+                                                    {{ $item->product->unit->abbreviation ?? 'und' }}
+                                                @endif
                                             </td>
                                             <td>
-                                                <input type="number" step="0.01" name="items[{{ $index }}][unit_cost]" class="form-control form-control-sm item-cost" min="0" value="{{ old("items.$index.unit_cost", 0) }}" required>
+                                                @php
+                                                    $productId = $item->item_type === 'kit' ? ($item->kit_id ?? $item->product_id) : $item->product_id;
+                                                    $itemOffer = isset($offer) ? $offer->items->firstWhere('product_id', $productId) : null;
+                                                    $defaultCost = $itemOffer ? $itemOffer->unit_price : request('costs.' . $item->id, old("items.$index.unit_cost", 0));
+                                                @endphp
+                                                <input type="number" step="0.01" name="items[{{ $index }}][unit_cost]" class="form-control form-control-custom item-cost" min="0" value="{{ old("items.$index.unit_cost", $defaultCost) }}" required>
                                             </td>
-                                            <td class="text-right align-middle">
-                                                <span class="item-total font-weight-bold">0.00</span>
+                                            <td class="text-right align-middle font-weight-bold text-dark">
+                                                <span class="item-total">0.00</span>
                                             </td>
-                                            <td class="text-right align-middle">
-                                                <span class="item-bs">0.00</span>
+                                            <td class="text-center align-middle">
+                                                <button type="button" class="btn btn-sm btn-outline-danger remove-item" style="display:none;">
+                                                    <i class="fas fa-trash-alt"></i>
+                                                </button>
                                             </td>
                                         </tr>
                                     @endforeach
                                 </tbody>
-                                <tfoot>
-                                    <tr class="bg-success-light">
-                                        <th colspan="3" class="text-right">TOTAL GENERAL:</th>
-                                        <th class="text-right"><span id="grandTotal" class="h5 text-success">$0.00</span></th>
-                                        <th class="text-right"><span id="grandTotalBs" class="h5 text-success">Bs 0.00</span></th>
-                                    </tr>
-                                    <tr class="bg-info-light" id="rowIva">
-                                        <th colspan="3" class="text-right">IVA 16%:</th>
-                                        <th class="text-right"></th>
-                                        <th class="text-right"><span id="ivaBs" class="h5 text-info">Bs 0.00</span></th>
-                                    </tr>
-                                    <tr class="bg-info-light" id="rowIvaExempt" style="display: none;">
-                                        <th colspan="3" class="text-right">IVA:</th>
-                                        <th class="text-right"></th>
-                                        <th class="text-right"><span id="ivaExemptBadge" class="badge badge-info">Exento</span></th>
-                                    </tr>
-                                    <tr class="bg-info" id="rowTotalBs">
-                                        <th colspan="3" class="text-right">TOTAL Bs (con IVA):</th>
-                                        <th class="text-right"></th>
-                                        <th class="text-right"><span id="totalBs" class="h5 text-white">Bs 0.00</span></th>
-                                    </tr>
-                                </tfoot>
                             </table>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
 
-        {{-- Notas y Términos --}}
-        <div class="row">
-            <div class="col-12 col-md-6">
-                <div class="card" style="border-left: 4px solid #9ca3af;">
-                    <div class="card-header" style="background: linear-gradient(135deg, #9ca3af 0%, #d1d5db 100%);">
-                        <h3 class="card-title text-white">
-                            <i class="fas fa-sticky-note"></i> Términos y Condiciones
-                        </h3>
+                <!-- Tarjeta: Notas y Términos -->
+                <div class="card card-custom">
+                    <div class="card-header border-0 pb-0">
+                        <h3 class="card-title text-secondary"><i class="fas fa-file-alt mr-1"></i> Términos y Notas</h3>
                     </div>
                     <div class="card-body">
-                        <div class="form-group mb-0">
-                            <textarea name="terms" id="terms" rows="3" class="form-control form-control-sm" placeholder="Condiciones de pago, garantías, etc.">{{ old('terms') }}</textarea>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <div class="form-group mb-0">
+                                    <label for="terms" class="text-xs font-weight-bold text-secondary mb-1">Términos y Condiciones</label>
+                                    <textarea name="terms" id="terms" rows="3" class="form-control form-control-custom" placeholder="Condiciones de pago, garantías, tiempos de envío..." style="height: auto !important;"></textarea>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="form-group mb-0">
+                                    <label for="notes" class="text-xs font-weight-bold text-secondary mb-1">Notas Internas</label>
+                                    <textarea name="notes" id="notes" rows="3" class="form-control form-control-custom" placeholder="Comentarios internos (no se imprimen en el PDF)..." style="height: auto !important;"></textarea>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="col-12 col-md-6">
-                <div class="card" style="border-left: 4px solid #9ca3af;">
-                    <div class="card-header" style="background: linear-gradient(135deg, #9ca3af 0%, #d1d5db 100%);">
-                        <h3 class="card-title text-white">
-                            <i class="fas fa-sticky-note"></i> Notas Internas
-                        </h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="form-group mb-0">
-                            <textarea name="notes" id="notes" rows="3" class="form-control form-control-sm">{{ old('notes') }}</textarea>
+
+            <!-- COLUMNA LATERAL (30%) - Configuración de Costos y Totales -->
+            <div class="col-lg-4">
+                <div class="sticky-sidebar">
+                    <!-- Tarjeta de Totales -->
+                    <div class="card card-custom bg-white">
+                        <div class="card-header border-0 pb-0">
+                            <h3 class="card-title text-primary"><i class="fas fa-coins mr-1"></i> Totales de la Orden</h3>
+                        </div>
+                        <div class="card-body">
+                            <!-- Selectores de Configuración -->
+                            <div class="form-group mb-3">
+                                <label for="currency" class="text-xs font-weight-bold text-secondary mb-1">Moneda</label>
+                                <select name="currency" id="currency" class="form-control form-control-custom select2">
+                                    <option value="USD" {{ $selectedCurrency == 'USD' ? 'selected' : '' }}>💵 USD - Dólar</option>
+                                    <option value="EUR" {{ $selectedCurrency == 'EUR' ? 'selected' : '' }}>💶 EUR - Euro</option>
+                                    <option value="Bs" {{ $selectedCurrency == 'Bs' ? 'selected' : '' }}>🇻🇪 Bs - Bolívar</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group mb-3" id="exchangeRateGroup">
+                                <label for="exchange_rate" class="text-xs font-weight-bold text-secondary mb-1">Tasa de Cambio (Bs / divisa)</label>
+                                <input type="number" step="0.0001" name="exchange_rate" id="exchangeRate" class="form-control form-control-custom font-weight-bold" value="{{ old('exchange_rate', 1) }}">
+                            </div>
+
+                            <div class="form-group mb-3">
+                                <div class="custom-control custom-switch">
+                                    <input type="checkbox" class="custom-control-input" id="iva_exempt" name="iva_exempt" value="1" {{ $isIvaExempt ? 'checked' : '' }}>
+                                    <label class="custom-control-label text-xs font-weight-bold text-secondary" for="iva_exempt" style="cursor: pointer;">
+                                        Exento de IVA (16%)
+                                    </label>
+                                </div>
+                            </div>
+
+                            <hr class="my-3">
+
+                            <!-- Desglose de Totales en Moneda Original -->
+                            <div class="total-row">
+                                <span class="font-weight-bold text-secondary">Subtotal:</span>
+                                <span id="grandTotal" class="font-weight-bold text-dark">$0.00</span>
+                            </div>
+                            <div class="total-row" id="rowIva">
+                                <span class="font-weight-bold text-secondary">IVA (16%):</span>
+                                <span id="ivaVal" class="font-weight-bold text-dark">$0.00</span>
+                            </div>
+                            <div class="total-row" id="rowIvaExempt" style="display: none;">
+                                <span class="font-weight-bold text-secondary">IVA:</span>
+                                <span class="badge badge-info">Exento</span>
+                            </div>
+                            <div class="total-row-grand">
+                                <span>Total General:</span>
+                                <span id="grandTotalFinal" class="text-primary">$0.00</span>
+                            </div>
+
+                            <!-- Equivalente en Bs (VES) - Solo si moneda != Bs -->
+                            <div class="bs-equivalent-section" id="bsEquivalentSection">
+                                <div class="bs-equivalent-title"><i class="fas fa-coins mr-1"></i> Equivalente en Bolívares (VES)</div>
+                                <div class="total-row bg-transparent py-1 border-0">
+                                    <span class="text-success font-weight-bold">Subtotal VES:</span>
+                                    <span id="grandTotalBs" class="font-weight-bold text-success">Bs 0.00</span>
+                                </div>
+                                <div class="total-row bg-transparent py-1 border-0" id="rowIvaBs">
+                                    <span class="text-success font-weight-bold">IVA VES:</span>
+                                    <span id="ivaBs" class="font-weight-bold text-success">Bs 0.00</span>
+                                </div>
+                                <div class="total-row bg-transparent py-1 border-0 total-row-grand pt-2 mt-1 border-top" style="font-size: 1rem;">
+                                    <span class="text-success">Total VES:</span>
+                                    <span id="totalBs" class="text-success">Bs 0.00</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
-            </div>
-        </div>
 
-        {{-- Botones --}}
-        <div class="row">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-body d-flex justify-content-end">
-                        <a href="{{ route('admin.rfq.show', $rfq) }}" class="btn btn-secondary btn-lg mr-2">
-                            <i class="fas fa-times"></i> Cancelar
-                        </a>
-                        <button type="button" class="btn btn-success btn-lg" id="saveOrderBtn">
-                            <i class="fas fa-shopping-cart"></i> Crear Orden de Compra
-                        </button>
+                    <!-- Tarjeta de Acciones -->
+                    <div class="card card-custom">
+                        <div class="card-body d-flex flex-column p-3">
+                            <button type="button" class="btn btn-success btn-block btn-custom font-weight-bold mb-2 shadow-sm" id="saveOrderBtn">
+                                <i class="fas fa-shopping-cart mr-1"></i> Crear Orden de Compra
+                            </button>
+                            <a href="{{ route('admin.rfq.show', $rfq) }}" class="btn btn-block btn-outline-secondary font-weight-bold btn-custom">
+                                <i class="fas fa-times mr-1"></i> Cancelar
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </form>
 
-    {{-- Modal: Crear Proveedor --}}
+    <!-- Modal para crear Proveedor rápido -->
     <div class="modal fade" id="supplierModal" tabindex="-1" role="dialog" aria-labelledby="supplierModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg" role="document">
-            <div class="modal-content">
-                <div class="modal-header" style="background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);">
-                    <h5 class="modal-title text-white" id="supplierModalLabel"><i class="fas fa-building"></i> Crear Nuevo Proveedor</h5>
+            <div class="modal-content" style="border-radius: 12px; border: none; overflow: hidden;">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title font-weight-bold" id="supplierModalLabel"><i class="fas fa-building mr-1"></i> Crear Nuevo Proveedor</h5>
                     <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
                 <form id="supplierForm">
-                    <div class="modal-body">
+                    <div class="modal-body p-4">
                         <div class="row">
-                            <div class="col-12 col-md-6">
-                                <div class="form-group">
-                                    <label for="supplier_name">Nombre (*)</label>
-                                    <input type="text" name="name" id="supplier_name" class="form-control" required>
+                            <div class="col-12 col-md-6 mb-3">
+                                <div class="form-group mb-0">
+                                    <label for="supplier_name" class="text-xs font-weight-bold text-secondary mb-1">Nombre (*)</label>
+                                    <input type="text" name="name" id="supplier_name" class="form-control form-control-custom" required>
                                 </div>
                             </div>
-                            <div class="col-12 col-md-6">
-                                <div class="form-group">
-                                    <label for="supplier_tax_id">RIF / Tax ID (*)</label>
-                                    <input type="text" name="tax_id" id="supplier_tax_id" class="form-control" required>
+                            <div class="col-12 col-md-6 mb-3">
+                                <div class="form-group mb-0">
+                                    <label for="supplier_tax_id" class="text-xs font-weight-bold text-secondary mb-1">RIF / Tax ID (*)</label>
+                                    <input type="text" name="tax_id" id="supplier_tax_id" class="form-control form-control-custom" required>
                                     <small class="text-danger" id="supplierTaxIdError" style="display:none;">El RIF ya existe</small>
                                 </div>
                             </div>
                         </div>
                         <div class="row">
-                            <div class="col-12 col-md-6">
-                                <div class="form-group">
-                                    <label for="supplier_email">Email</label>
-                                    <input type="email" name="email" id="supplier_email" class="form-control">
+                            <div class="col-12 col-md-6 mb-3">
+                                <div class="form-group mb-0">
+                                    <label for="supplier_email" class="text-xs font-weight-bold text-secondary mb-1">Email</label>
+                                    <input type="email" name="email" id="supplier_email" class="form-control form-control-custom">
                                 </div>
                             </div>
-                            <div class="col-12 col-md-6">
-                                <div class="form-group">
-                                    <label for="supplier_phone">Teléfono</label>
-                                    <input type="text" name="phone" id="supplier_phone" class="form-control">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-12">
-                                <div class="form-group">
-                                    <label for="supplier_address">Dirección</label>
-                                    <textarea name="address" id="supplier_address" rows="2" class="form-control"></textarea>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
-                        <button type="button" class="btn btn-warning text-dark" id="saveSupplierBtn">
-                            <i class="fas fa-save"></i> Guardar Proveedor
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    {{-- Modal: Crear Producto --}}
-    <div class="modal fade" id="productModal" tabindex="-1" role="dialog" aria-labelledby="productModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg" role="document">
-            <div class="modal-content">
-                <div class="modal-header" style="background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);">
-                    <h5 class="modal-title text-white" id="productModalLabel"><i class="fas fa-box"></i> Crear Nuevo Producto</h5>
-                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <form id="productForm">
-                    <div class="modal-body">
-                        <div class="row">
-                            <div class="col-12 col-md-6">
-                                <div class="form-group">
-                                    <label for="product_code">Código/SKU (*)</label>
-                                    <input type="text" name="code" id="product_code" class="form-control" required>
-                                    <small class="text-danger" id="codeError" style="display:none;">El código ya existe</small>
-                                </div>
-                            </div>
-                            <div class="col-12 col-md-6">
-                                <div class="form-group">
-                                    <label for="product_name">Nombre (*)</label>
-                                    <input type="text" name="name" id="product_name" class="form-control" required>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-12 col-md-6">
-                                <div class="form-group">
-                                    <label for="product_category_id">Categoría (*)</label>
-                                    <select name="category_id" id="product_category_id" class="form-control select2" required>
-                                        <option value="">Seleccione...</option>
-                                        @foreach($categories as $category)
-                                            <option value="{{ $category->id }}">{{ $category->name }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-12 col-md-6">
-                                <div class="form-group">
-                                    <label for="product_unit_id">Unidad (*)</label>
-                                    <select name="unit_id" id="product_unit_id" class="form-control select2" required>
-                                        <option value="">Seleccione...</option>
-                                        @foreach($units as $unit)
-                                            <option value="{{ $unit->id }}">{{ $unit->name }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-12 col-md-6">
-                                <div class="form-group">
-                                    <label for="product_location_id">Ubicación (*)</label>
-                                    <select name="location_id" id="product_location_id" class="form-control select2" required>
-                                        <option value="">Seleccione...</option>
-                                        @foreach($locations as $location)
-                                            <option value="{{ $location->id }}">{{ $location->name }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-12 col-md-6">
-                                <div class="form-group">
-                                    <label for="product_brand_id">Marca</label>
-                                    <select name="brand_id" id="product_brand_id" class="form-control select2">
-                                        <option value="">Seleccione...</option>
-                                        @foreach($brands as $brand)
-                                            <option value="{{ $brand->id }}">{{ $brand->name }}</option>
-                                        @endforeach
-                                    </select>
+                            <div class="col-12 col-md-6 mb-3">
+                                <div class="form-group mb-0">
+                                    <label for="supplier_phone" class="text-xs font-weight-bold text-secondary mb-1">Teléfono</label>
+                                    <input type="text" name="phone" id="supplier_phone" class="form-control form-control-custom">
                                 </div>
                             </div>
                         </div>
                         <div class="row">
                             <div class="col-12">
-                                <div class="form-group">
-                                    <label for="product_description">Descripción</label>
-                                    <textarea name="description" id="product_description" rows="2" class="form-control"></textarea>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-12 col-md-4">
-                                <div class="form-group">
-                                    <label for="product_cost">Costo</label>
-                                    <input type="number" step="0.01" name="cost" id="product_cost" class="form-control" value="0" min="0">
-                                </div>
-                            </div>
-                            <div class="col-12 col-md-4">
-                                <div class="form-group">
-                                    <label for="product_price">Precio</label>
-                                    <input type="number" step="0.01" name="price" id="product_price" class="form-control" value="0" min="0">
-                                </div>
-                            </div>
-                            <div class="col-12 col-md-4">
-                                <div class="form-group">
-                                    <label for="product_min_stock">Stock Mínimo</label>
-                                    <input type="number" name="min_stock" id="product_min_stock" class="form-control" value="0" min="0">
+                                <div class="form-group mb-0">
+                                    <label for="supplier_address" class="text-xs font-weight-bold text-secondary mb-1">Dirección</label>
+                                    <textarea name="address" id="supplier_address" rows="2" class="form-control form-control-custom" style="height: auto !important;"></textarea>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
-                        <button type="submit" class="btn btn-primary" id="saveProductBtn">
-                            <i class="fas fa-save"></i> Guardar Producto
+                    <div class="modal-footer bg-light p-3">
+                        <button type="button" class="btn btn-secondary font-weight-bold btn-custom" data-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-primary font-weight-bold btn-custom" id="saveSupplierBtn">
+                            <i class="fas fa-save mr-1"></i> Guardar Proveedor
                         </button>
                     </div>
                 </form>
@@ -487,125 +471,15 @@
         </div>
     </div>
 
-    {{-- Modal: Crear Kit --}}
-    <div class="modal fade" id="kitModal" tabindex="-1" role="dialog" aria-labelledby="kitModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg" role="document">
-            <div class="modal-content">
-                <div class="modal-header" style="background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);">
-                    <h5 class="modal-title text-white" id="kitModalLabel"><i class="fas fa-boxes"></i> Crear Nuevo Kit</h5>
-                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <form id="kitForm">
-                    <div class="modal-body">
-                        <div class="row">
-                            <div class="col-12 col-md-6">
-                                <div class="form-group">
-                                    <label for="kit_code">Código/SKU (*)</label>
-                                    <input type="text" name="code" id="kit_code" class="form-control" required>
-                                    <small class="text-danger" id="kitCodeError" style="display:none;">El código ya existe</small>
-                                </div>
-                            </div>
-                            <div class="col-12 col-md-6">
-                                <div class="form-group">
-                                    <label for="kit_name">Nombre (*)</label>
-                                    <input type="text" name="name" id="kit_name" class="form-control" required>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-12 col-md-6">
-                                <div class="form-group">
-                                    <label for="kit_category_id">Categoría (*)</label>
-                                    <select name="category_id" id="kit_category_id" class="form-control select2" required>
-                                        <option value="">Seleccione...</option>
-                                        @foreach($categories as $category)
-                                            <option value="{{ $category->id }}">{{ $category->name }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-12 col-md-6">
-                                <div class="form-group">
-                                    <label for="kit_unit_id">Unidad (*)</label>
-                                    <select name="unit_id" id="kit_unit_id" class="form-control select2" required>
-                                        <option value="">Seleccione...</option>
-                                        @foreach($units as $unit)
-                                            <option value="{{ $unit->id }}">{{ $unit->name }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-12 col-md-6">
-                                <div class="form-group">
-                                    <label for="kit_brand_id">Marca</label>
-                                    <select name="brand_id" id="kit_brand_id" class="form-control select2">
-                                        <option value="">Seleccione...</option>
-                                        @foreach($brands as $brand)
-                                            <option value="{{ $brand->id }}">{{ $brand->name }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-12 col-md-6">
-                                <div class="form-group">
-                                    <label for="kit_location_id">Ubicación (*)</label>
-                                    <select name="location_id" id="kit_location_id" class="form-control select2" required>
-                                        <option value="">Seleccione...</option>
-                                        @foreach($locations as $location)
-                                            <option value="{{ $location->id }}">{{ $location->name }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-12 col-md-6">
-                                <div class="form-group">
-                                    <label for="kit_cost">Costo</label>
-                                    <input type="number" step="0.01" name="cost" id="kit_cost" class="form-control" value="0" min="0">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
-                        <button type="submit" class="btn btn-warning" id="saveKitBtn">
-                            <i class="fas fa-save"></i> Guardar Kit
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-@stop
 
-@section('css')
-    <style>
-        .select2-container--default .select2-selection--single {
-            height: 34px;
-            padding-top: 4px;
-        }
-        .select2-container--default .select2-selection--single .select2-selection__arrow {
-            height: 34px;
-        }
-        .bg-success-light {
-            background-color: #d4edda;
-        }
-    </style>
 @stop
 
 @section('js')
 <script>
-    let currentProductSelect = null;
-
     function getCurrencySymbol(currency) {
         switch(currency) {
-            case 'USD': return '$';
-            case 'EUR': return '€';
+            case 'USD': return '$ ';
+            case 'EUR': return '€ ';
             case 'Bs': return 'Bs ';
             default: return currency + ' ';
         }
@@ -613,62 +487,96 @@
 
     function calculateTotals() {
         const currency = $('#currency').val();
-        const exchangeRate = parseFloat($('#exchangeRate').val()) || 0;
+        const exchangeRate = parseFloat($('#exchangeRate').val()) || 1;
         const symbol = getCurrencySymbol(currency);
-        const isBs = currency === 'Bs';
+        const isBs = currency === 'Bs' || currency === 'VES';
         const isIvaExempt = $('#iva_exempt').is(':checked');
 
-        let grandTotal = 0;
-        let grandTotalBs = 0;
+        // Mostrar/ocultar input de tasa de cambio y equivalentes de VES de forma elegante (condicional)
+        if (isBs) {
+            $('#exchangeRateGroup').slideUp(200);
+            $('#exchangeRate').val(1);
+            $('#bsEquivalentSection').slideUp(200);
+        } else {
+            $('#exchangeRateGroup').slideDown(200);
+            $('#bsEquivalentSection').slideDown(200);
+        }
 
+        let subtotal = 0;
+        let taxableSubtotal = 0;
+
+        // Computar el array de filas activas en el ciclo de vida de la tabla
         $('#itemsBody tr').each(function() {
-            const qty = parseFloat($(this).find('input[name$="[quantity]"]').val()) || 0;
+            const qty = parseFloat($(this).find('.item-qty').val()) || 0;
             const cost = parseFloat($(this).find('.item-cost').val()) || 0;
             const total = qty * cost;
-            const totalBs = isBs ? total : (total * exchangeRate);
 
-            $(this).find('.item-total').text(symbol + total.toFixed(2));
-            $(this).find('.item-bs').text('Bs ' + totalBs.toFixed(2));
-            grandTotal += total;
-            grandTotalBs += totalBs;
+            $(this).find('.item-total').text(total.toFixed(2));
+            subtotal += total;
+
+            // Determinar exención de IVA a nivel de fila (si existiera switch/select de fila)
+            let rowExempt = isIvaExempt;
+            if (!rowExempt) {
+                const rowSwitch = $(this).find('.row-iva-switch, .item-tax-status, .item-iva');
+                if (rowSwitch.length) {
+                    if (rowSwitch.is(':checkbox')) {
+                        rowExempt = rowSwitch.is(':checked');
+                    } else {
+                        rowExempt = rowSwitch.val() === 'exento';
+                    }
+                }
+            }
+
+            if (!rowExempt) {
+                taxableSubtotal += total;
+            }
         });
 
-        $('#grandTotal').text(symbol + grandTotal.toFixed(2));
-        $('#grandTotalBs').text('Bs ' + grandTotalBs.toFixed(2));
+        $('#grandTotal').text(symbol + subtotal.toFixed(2));
 
-        const ivaRate = isIvaExempt ? 0 : 0.16;
-        const ivaBs = grandTotalBs * ivaRate;
-        const totalBs = grandTotalBs + ivaBs;
+        const ivaVal = taxableSubtotal * 0.16;
+        const grandTotalFinal = subtotal + ivaVal;
 
-        $('#ivaBs').text('Bs ' + ivaBs.toFixed(2));
-        $('#totalBs').text('Bs ' + totalBs.toFixed(2));
+        $('#ivaVal').text(symbol + ivaVal.toFixed(2));
+        $('#grandTotalFinal').text(symbol + grandTotalFinal.toFixed(2));
 
-        if (isIvaExempt) {
+        if (ivaVal === 0) {
             $('#rowIva').hide();
             $('#rowIvaExempt').show();
+            $('#rowIvaBs').hide();
         } else {
             $('#rowIva').show();
             $('#rowIvaExempt').hide();
+            $('#rowIvaBs').show();
+        }
+
+        // Equivalente en Bs (VES)
+        if (!isBs) {
+            const subtotalBs = subtotal * exchangeRate;
+            const ivaBs = ivaVal * exchangeRate;
+            const totalBs = subtotalBs + ivaBs;
+
+            $('#grandTotalBs').text('Bs ' + subtotalBs.toFixed(2));
+            $('#ivaBs').text('Bs ' + ivaBs.toFixed(2));
+            $('#totalBs').text('Bs ' + totalBs.toFixed(2));
         }
     }
 
-    $(document).on('input', '.item-cost, #exchangeRate', calculateTotals);
+    function updateRemoveButtons() {
+        const rows = $('#itemsBody tr').length;
+        $('#itemsBody .remove-item').toggle(rows > 1);
+    }
 
-    $('#iva_exempt').change(function() {
+    // Registro de eventos para cálculos dinámicos y reactivos (incluyendo switches de fila y general)
+    $(document).on('input change', '.item-qty, .item-cost, .row-iva-switch, .item-tax-status, .item-iva, #iva_exempt, #currency, #exchangeRate', function() {
         calculateTotals();
     });
 
-    $('#currency').change(function() {
-        const currency = $(this).val();
-        const exchangeInput = $('#exchangeRate');
-        if (currency === 'Bs') {
-            exchangeInput.val(1).prop('readonly', true);
-        } else {
-            if (parseFloat(exchangeInput.val()) === 1 || exchangeInput.val() === '') {
-                exchangeInput.val('').prop('readonly', false);
-            }
-        }
+    // Evento obligatorio de eliminación de fila (recalcula totales de forma infalible)
+    $(document).on('click', '.remove-item', function() {
+        $(this).closest('tr').remove();
         calculateTotals();
+        updateRemoveButtons();
     });
 
     function initSelect2() {
@@ -714,9 +622,15 @@
 
     $('#saveOrderBtn').on('click', function(e) {
         e.preventDefault();
-        if (confirm('¿Crear Orden de Compra basada en RFQ {{ $rfq->code }}?')) {
-            $('#orderForm')[0].submit();
-        }
+        confirmAction({
+            title: 'Convertir RFQ a Orden de Compra',
+            message: '¿Está seguro de generar esta orden de compra desde la RFQ?',
+            alert: 'Verifique los costos negociados con el proveedor antes de confirmar.',
+            confirmBtnClass: 'btn-success',
+            onConfirm: function() {
+                $('#orderForm')[0].submit();
+            }
+        });
     });
 
     $('#addSupplierBtn').on('click', function() {
@@ -762,101 +676,13 @@
         $('#supplierTaxIdError').hide();
     });
 
-    $('#productForm').on('submit', function(e) {
-        e.preventDefault();
-        const btn = $('#saveProductBtn');
-        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Guardando...');
 
-        $.ajax({
-            url: '{{ route("admin.products.quick-store") }}',
-            method: 'POST',
-            data: $(this).serialize(),
-            headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
-            success: function(response) {
-                $('#productModal').modal('hide');
-                $('#productForm')[0].reset();
-                $('#productModal .select2').val('').trigger('change');
-                Swal.fire({ icon: 'success', title: '¡Éxito!', text: response.message, timer: 2000, showConfirmButton: false });
-            },
-            error: function(xhr) {
-                if (xhr.status === 422) {
-                    const errors = xhr.responseJSON.errors;
-                    if (errors && errors.code) $('#codeError').show();
-                } else {
-                    Swal.fire({ icon: 'error', title: 'Error', text: 'Hubo un error al guardar el producto.' });
-                }
-            },
-            complete: function() {
-                btn.prop('disabled', false).html('<i class="fas fa-save"></i> Guardar Producto');
-            }
-        });
-    });
-
-    $('#productModal').on('hidden.bs.modal', function() {
-        $('#productForm')[0].reset();
-        $('#codeError').hide();
-        $('#productModal .select2').val('').trigger('change');
-    });
-
-    $('#product_code').on('blur', function() {
-        const code = $(this).val();
-        if (code) {
-            $.get('{{ route("admin.products.search") }}', { search: code }, function(products) {
-                const exists = products.some(p => p.code.toLowerCase() === code.toLowerCase());
-                $('#codeError').toggle(exists);
-            });
-        }
-    });
-
-    $('#kitForm').on('submit', function(e) {
-        e.preventDefault();
-        const btn = $('#saveKitBtn');
-        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Guardando...');
-
-        $.ajax({
-            url: '{{ route("admin.products.quick-store-kit") }}',
-            method: 'POST',
-            data: $(this).serialize(),
-            headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
-            success: function(response) {
-                $('#kitModal').modal('hide');
-                $('#kitForm')[0].reset();
-                $('#kitModal .select2').val('').trigger('change');
-                Swal.fire({ icon: 'success', title: '¡Éxito!', text: response.message, timer: 2000, showConfirmButton: false });
-            },
-            error: function(xhr) {
-                if (xhr.status === 422) {
-                    if (xhr.responseJSON.errors && xhr.responseJSON.errors.code) {
-                        $('#kitCodeError').show();
-                    }
-                } else {
-                    Swal.fire({ icon: 'error', title: 'Error', text: 'Hubo un error al guardar el kit.' });
-                }
-            },
-            complete: function() {
-                btn.prop('disabled', false).html('<i class="fas fa-save"></i> Guardar Kit');
-            }
-        });
-    });
-
-    $('#kitModal').on('hidden.bs.modal', function() {
-        $('#kitForm')[0].reset();
-        $('#kitCodeError').hide();
-    });
-
-    $('#kit_code').on('blur', function() {
-        const code = $(this).val();
-        if (code) {
-            $.get('{{ route("admin.products.search") }}', { search: code }, function(products) {
-                const exists = products.some(p => p.code.toLowerCase() === code.toLowerCase());
-                $('#kitCodeError').toggle(exists);
-            });
-        }
-    });
 
     $(function() {
         initSelect2();
+        updateRemoveButtons();
         calculateTotals();
     });
 </script>
-@stop
+@include('admin.partials.confirm-action')
+@endsection

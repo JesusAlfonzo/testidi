@@ -337,7 +337,7 @@
                     @if($purchaseOrder->is_foreign_currency)
                     <td class="text-right">Bs {{ number_format($item->equivalent_bs, 2) }}</td>
                     @endif
-                    <td class="text-center">{{ $item->product->unit->abbreviation ?? 'und' }}</td>
+                    <td class="text-center">{{ $item->item_type === 'kit' ? 'kit' : ($item->product->unit->abbreviation ?? 'und') }}</td>
                     <td class="text-right">{{ $purchaseOrder->currency_symbol }}{{ number_format($item->total_cost, 2) }}</td>
                 </tr>
             @endforeach

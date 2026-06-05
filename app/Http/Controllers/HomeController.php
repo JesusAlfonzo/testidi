@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 use Spatie\Permission\Models\Role;
-use Spatie\Activitylog\Models\Activity;
+use App\Models\Activity;
 
 class HomeController extends Controller
 {
@@ -27,254 +27,183 @@ class HomeController extends Controller
     }
 
     /**
-     * Método principal que despacha al usuario a su dashboard correspondiente.
+     * Detects the role and renders the specialized dashboard.
      */
     public function index()
     {
         $user = Auth::user();
 
-        // 1. Superadmin (Vista Global + Sistema)
+        // 1. Administrador General (Superadmin)
         if ($user->hasRole('Superadmin') || $user->hasRole('Super Administrador')) {
-            return $this->superAdminDashboard();
+            return $this->adminDashboard();
         } 
-        // 2. Logística (Vista Operativa de Inventario)
-        elseif ($user->hasRole('Logistica') || $user->hasRole('Encargado Inventario')) {
-            return $this->logisticaDashboard();
-        } 
-        // 3. Supervisor (Vista de Auditoría/Métricas)
+        // 2. Administrador de Salidas (Supervisor)
         elseif ($user->hasRole('Supervisor')) {
-            return $this->supervisorDashboard();
+            return $this->salidasDashboard();
+        }
+        // 3. Compras y Procura (Logística o Encargado)
+        elseif ($user->hasRole('Logistica') || $user->hasRole('Encargado Inventario')) {
+            return $this->comprasDashboard();
         } 
-        // 4. Solicitante (Vista Personal)
+        // 4. Empleado / Solicitante (Personal)
         elseif ($user->hasRole('Solicitante')) {
-            return $this->solicitanteDashboard($user);
+            return $this->empleadoDashboard($user);
         }
 
-        // 5. Fallback: Vista de respaldo para usuarios sin rol definido
+        // Fallback
         return view('home'); 
     }
 
     // ----------------------------------------------------------------------
-    // LÓGICA DE VISTAS POR ROL
+    // 1. DASHBOARD: ADMINISTRADOR GENERAL
     // ----------------------------------------------------------------------
-
-    private function superAdminDashboard()
+    private function adminDashboard()
     {
-        $data = $this->getGlobalInventoryStats();
+        $totalProducts = Product::where('is_active', true)->count();
+        $lowStockCount = Product::where('is_active', true)->whereColumn('stock', '<=', 'min_stock')->count();
+
+        // Rendimiento de solicitudes (Aprobadas vs Rechazadas)
+        $chartApproved = InventoryRequest::where('status', 'Approved')->count();
+        $chartRejected = InventoryRequest::where('status', 'Rejected')->count();
+        $chartPending = InventoryRequest::where('status', 'Pending')->count();
+
+        // Alertas de vencimiento crítico (FEFO < 60 días)
+        $expiringProducts = ProductBatch::where('quantity', '>', 0)
+            ->whereNotNull('expiration_date')
+            ->whereDate('expiration_date', '<=', Carbon::now()->addDays(60))
+            ->with('product')
+            ->orderBy('expiration_date', 'asc')
+            ->get();
         
-        $data['usersCount'] = User::count();
-        $data['rolesCount'] = Role::count();
-        
-        return view('admin.dashboards.superadmin', $data);
-    }
+        $expiringCount = $expiringProducts->count();
 
-    private function logisticaDashboard()
-    {
-        $data = $this->getOperationalStats();
-        return view('admin.dashboards.logistica', $data);
-    }
+        // Volumen mensual de Entradas (StockIn) vs Consumos/Salidas (Requests) de los últimos 6 meses
+        $monthlyStats = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $monthDate = Carbon::now()->subMonths($i);
+            $monthName = $monthDate->isoFormat('MMMM');
+            
+            $entries = \App\Models\StockInItem::whereHas('stockIn', function($q) use ($monthDate) {
+                    $q->whereMonth('entry_date', $monthDate->month)
+                      ->whereYear('entry_date', $monthDate->year);
+                })
+                ->sum('quantity');
 
-    private function supervisorDashboard()
-    {
-        $data = $this->getOperationalStats();
-        return view('admin.dashboards.supervisor', $data);
-    }
+            $exits = \App\Models\RequestItem::whereHas('request', function($q) use ($monthDate) {
+                    $q->where('status', 'Approved')
+                      ->whereMonth('processed_at', $monthDate->month)
+                      ->whereYear('processed_at', $monthDate->year);
+                })
+                ->sum('quantity_requested');
 
-    private function solicitanteDashboard($user)
-    {
-        $myPendingCount = InventoryRequest::where('requester_id', $user->id)->where('status', 'Pending')->count();
-        $myApprovedCount = InventoryRequest::where('requester_id', $user->id)->where('status', 'Approved')->count();
-        $myRejectedCount = InventoryRequest::where('requester_id', $user->id)->where('status', 'Rejected')->count();
-        
-        $myRecentRequests = InventoryRequest::where('requester_id', $user->id)
-                                            ->orderBy('created_at', 'desc')
-                                            ->take(5)
-                                            ->get();
+            $monthlyStats[] = [
+                'month' => ucfirst($monthName),
+                'entries' => (int) $entries,
+                'exits' => (int) $exits,
+            ];
+        }
 
-        return view('admin.dashboards.solicitante', compact(
-            'myPendingCount', 
-            'myApprovedCount', 
-            'myRejectedCount', 
-            'myRecentRequests'
+        // Feed de auditoría traducido al español mediante accesor del modelo
+        $recentActivity = Activity::with(['causer', 'subject'])
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get();
+
+        return view('admin.dashboards.admin', compact(
+            'totalProducts',
+            'lowStockCount',
+            'chartApproved',
+            'chartRejected',
+            'chartPending',
+            'expiringProducts',
+            'expiringCount',
+            'monthlyStats',
+            'recentActivity'
         ));
     }
 
     // ----------------------------------------------------------------------
-    // HELPER: ESTADÍSTICAS OPERATIVAS (Sin datos financieros - para Logística y Supervisor)
+    // 2. DASHBOARD: ADMINISTRADOR DE SALIDAS (SUPERVISOR)
     // ----------------------------------------------------------------------
-    private function getOperationalStats()
+    private function salidasDashboard()
     {
-        $sevenDaysAgo = Carbon::now()->subDays(7);
+        // Contador destacado de solicitudes pendientes de aprobación
+        $pendingRequestsCount = InventoryRequest::where('status', 'Pending')->count();
 
-        $dailyRequests = InventoryRequest::select(
-                DB::raw('DATE(requested_at) as date'), 
-                DB::raw('count(*) as count')
-            )
-            ->where('requested_at', '>=', $sevenDaysAgo)
-            ->groupBy('date')
-            ->orderBy('date')
+        // Alertas de vencimiento prioritario (FEFO) ordenadas ascendentemente por expiration_date
+        $expiringProducts = ProductBatch::where('quantity', '>', 0)
+            ->whereNotNull('expiration_date')
+            ->with('product')
+            ->orderBy('expiration_date', 'asc')
+            ->limit(10)
             ->get();
-            
-        $lineChartLabels = [];
-        $lineChartData = [];
-        
-        for ($i = 6; $i >= 0; $i--) {
-            $date = Carbon::now()->subDays($i)->format('Y-m-d');
-            $record = $dailyRequests->firstWhere('date', $date);
-            $lineChartLabels[] = Carbon::parse($date)->isoFormat('ddd D'); 
-            $lineChartData[] = $record ? $record->count : 0;
-        }
 
-        return [
-            'totalProducts' => Product::where('is_active', true)->count(),
-            'lowStockCount' => Product::where('is_active', true)->whereColumn('stock', '<=', 'min_stock')->count(),
-            'pendingRequests' => InventoryRequest::where('status', 'Pending')->count(),
-            'approvedRequestsToday' => InventoryRequest::where('status', 'Approved')->whereDate('processed_at', Carbon::today())->count(),
-            
-            'inventoryStats' => [
-                'products' => Product::count(),
-                'categories' => Category::count(),
-                'brands' => Brand::count(),
-                'units' => Unit::count(),
-                'locations' => Location::count(),
-                'suppliers' => Supplier::count(),
-            ],
-            
-            'chartApproved' => InventoryRequest::where('status', 'Approved')->count(),
-            'chartRejected' => InventoryRequest::where('status', 'Rejected')->count(),
-            'chartPending' => InventoryRequest::where('status', 'Pending')->count(),
-            
-            'lineChartLabels' => $lineChartLabels,
-            'lineChartData' => $lineChartData,
-            
-            'lowStockProducts' => Product::where('is_active', true)
-                                         ->whereColumn('stock', '<=', 'min_stock')
-                                         ->orderBy('stock', 'asc')
-                                         ->limit(5)
-                                         ->get(),
-            
-            // Alerta de productos por vencer
-            'expiringProducts' => ProductBatch::where('quantity', '>', 0)
-                ->whereDate('expiry_date', '<=', Carbon::now()->addDays(30))
-                ->whereDate('expiry_date', '>=', Carbon::now())
-                ->with('product')
-                ->orderBy('expiry_date', 'asc')
-                ->limit(5)
-                ->get(),
-        ];
+        // Solicitudes críticas que requieran descomposición de kits
+        $criticalRequests = InventoryRequest::where('status', 'Pending')
+            ->whereHas('items', function ($query) {
+                $query->whereHas('product', function ($q) {
+                    $q->whereColumn('stock', '<', 'request_items.quantity_requested')
+                      ->whereHas('parentKits');
+                });
+            })
+            ->with(['items.product.parentKits', 'requester'])
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        return view('admin.dashboards.salidas', compact(
+            'pendingRequestsCount',
+            'expiringProducts',
+            'criticalRequests'
+        ));
     }
 
     // ----------------------------------------------------------------------
-    // HELPER: ESTADÍSTICAS GLOBALES (Para Admin)
+    // 3. DASHBOARD: COMPRAS Y PROCURA (LOGÍSTICA)
     // ----------------------------------------------------------------------
-    private function getGlobalInventoryStats()
+    private function comprasDashboard()
     {
-        $sevenDaysAgo = Carbon::now()->subDays(7);
+        // RFQs activas (enviadas a proveedores)
+        $activeRfqsCount = RequestForQuotation::where('status', 'sent')->count();
 
-        // 1. Datos para Gráfico de Líneas (Solicitudes últimos 7 días)
-        $dailyRequests = InventoryRequest::select(
-                DB::raw('DATE(requested_at) as date'), 
-                DB::raw('count(*) as count')
-            )
-            ->where('requested_at', '>=', $sevenDaysAgo)
-            ->groupBy('date')
-            ->orderBy('date')
+        // Órdenes de Compra (PO) pendientes por recibir mercancía física ('issued')
+        $pendingPosCount = PurchaseOrder::where('status', 'issued')->count();
+
+        // Productos que han alcanzado o cruzado su 'min_stock' para reabastecimiento
+        $lowStockProducts = Product::where('is_active', true)
+            ->whereColumn('stock', '<=', 'min_stock')
+            ->orderBy('stock', 'asc')
             ->get();
-            
-        $lineChartLabels = [];
-        $lineChartData = [];
-        
-        for ($i = 6; $i >= 0; $i--) {
-            $date = Carbon::now()->subDays($i)->format('Y-m-d');
-            $record = $dailyRequests->firstWhere('date', $date);
-            $lineChartLabels[] = Carbon::parse($date)->isoFormat('ddd D'); 
-            $lineChartData[] = $record ? $record->count : 0;
-        }
 
-        // 2-5. OPTIMIZADO: Una sola consulta por modelo con CASE
-        $orderStats = PurchaseOrder::select('status', DB::raw('count(*) as count'))
-            ->groupBy('status')
-            ->pluck('count', 'status')
-            ->toArray();
-        
-        $rfqStats = RequestForQuotation::select('status', DB::raw('count(*) as count'))
-            ->groupBy('status')
-            ->pluck('count', 'status')
-            ->toArray();
-        
-        // 6. Actividad reciente del sistema (últimos 10)
-        $user = Auth::user();
-        $activityQuery = Activity::with('causer');
-        
-        // Si no es admin, solo mostrar su propia actividad
-        if (!$user->isSuperAdmin()) {
-            $activityQuery->where('causer_id', $user->id);
-        }
-        
-        $recentActivity = $activityQuery->orderBy('created_at', 'desc')->limit(10)->get();
+        return view('admin.dashboards.compras', compact(
+            'activeRfqsCount',
+            'pendingPosCount',
+            'lowStockProducts'
+        ));
+    }
 
-        return [
-            // KPIs Inventario
-            'totalProducts' => Product::where('is_active', true)->count(),
-            'totalStockValue' => Product::where('is_active', true)->sum(DB::raw('stock * cost')),
-            'lowStockCount' => Product::where('is_active', true)->whereColumn('stock', '<=', 'min_stock')->count(),
-            'pendingRequests' => InventoryRequest::where('status', 'Pending')->count(),
-            'approvedRequestsToday' => InventoryRequest::where('status', 'Approved')->whereDate('processed_at', Carbon::today())->count(),
-            
-            // Stats Inventario (consultas simples, necesarias)
-            'inventoryStats' => [
-                'products' => Product::count(),
-                'categories' => Category::count(),
-                'brands' => Brand::count(),
-                'units' => Unit::count(),
-                'locations' => Location::count(),
-                'suppliers' => Supplier::count(),
-            ],
-            
-            // Stats Órdenes de Compra
-            'orderStats' => [
-                'draft' => $orderStats['draft'] ?? 0,
-                'issued' => $orderStats['issued'] ?? 0,
-                'received' => $orderStats['received'] ?? 0,
-                'cancelled' => $orderStats['cancelled'] ?? 0,
-            ],
-            
-            // Stats RFQs
-            'rfqStats' => [
-                'draft' => $rfqStats['draft'] ?? 0,
-                'sent' => $rfqStats['sent'] ?? 0,
-                'partial' => $rfqStats['partial'] ?? 0,
-                'completed' => $rfqStats['completed'] ?? 0,
-                'cancelled' => $rfqStats['cancelled'] ?? 0,
-            ],
-            
-            // Datos Gráfico Donut Solicitudes
-            'chartApproved' => InventoryRequest::where('status', 'Approved')->count(),
-            'chartRejected' => InventoryRequest::where('status', 'Rejected')->count(),
-            'chartPending' => InventoryRequest::where('status', 'Pending')->count(),
-            
-            // Datos Gráfico Línea
-            'lineChartLabels' => $lineChartLabels,
-            'lineChartData' => $lineChartData,
-            
-            // Tabla Top 5 Stock Bajo
-            'lowStockProducts' => Product::where('is_active', true)
-                                         ->whereColumn('stock', '<=', 'min_stock')
-                                         ->orderBy('stock', 'asc')
-                                         ->limit(5)
-                                         ->get(),
+    // ----------------------------------------------------------------------
+    // 4. DASHBOARD: EMPLEADO / SOLICITANTE
+    // ----------------------------------------------------------------------
+    private function empleadoDashboard($user)
+    {
+        // Resumen de mis solicitudes creadas (Totales, Aprobadas, Pendientes, Rechazadas)
+        $myRequestsCount = InventoryRequest::where('requester_id', $user->id)->count();
+        $myApprovedCount = InventoryRequest::where('requester_id', $user->id)->where('status', 'Approved')->count();
+        $myPendingCount = InventoryRequest::where('requester_id', $user->id)->where('status', 'Pending')->count();
+        $myRejectedCount = InventoryRequest::where('requester_id', $user->id)->where('status', 'Rejected')->count();
 
-            // Alerta de productos por vencer
-            'expiringProducts' => ProductBatch::where('quantity', '>', 0)
-                ->whereDate('expiry_date', '<=', Carbon::now()->addDays(30))
-                ->whereDate('expiry_date', '>=', Carbon::now())
-                ->with('product')
-                ->orderBy('expiry_date', 'asc')
-                ->limit(5)
-                ->get(),
+        // Tabla minimalista con el estado en tiempo real de mis pedidos (últimos 10)
+        $myRecentRequests = InventoryRequest::where('requester_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get();
 
-            // Actividad reciente
-            'recentActivity' => $recentActivity,
-        ];
+        return view('admin.dashboards.empleado', compact(
+            'myRequestsCount',
+            'myApprovedCount',
+            'myPendingCount',
+            'myRejectedCount',
+            'myRecentRequests'
+        ));
     }
 }

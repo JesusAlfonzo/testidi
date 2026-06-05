@@ -194,11 +194,10 @@ $start = $request->input('start', 0);
 
     public function create()
     {
-        // Cargar productos y kits activos para el selector
-        $products = Product::where('is_active', true)->orderBy('name')->get(['id', 'name', 'code', 'stock']);
-        $kits = Kit::where('is_active', true)->orderBy('name')->get(['id', 'name']);
+        // Cargar todos los productos y kits activos
+        $products = Product::where('is_active', true)->orderBy('name')->get(['id', 'name', 'code', 'stock', 'type', 'is_kit']);
         
-        return view('admin.requests.create', compact('products', 'kits'));
+        return view('admin.requests.create', compact('products'));
     }
 
     // Lógica: Guardar la solicitud y sus items
@@ -222,39 +221,21 @@ $start = $request->input('start', 0);
             // 2. OPTIMIZACIÓN N+1: Preparar datos en memoria para precios
             $itemsCollection = collect($validatedData['items']);
             
-            // Extraer IDs
-            $productIds = $itemsCollection->where('item_type', 'product')->pluck('product_id')->filter()->toArray();
-            $kitIds = $itemsCollection->where('item_type', 'kit')->pluck('kit_id')->filter()->toArray();
-
-            // Cargar diccionarios de precios
+            $productIds = $itemsCollection->pluck('product_id')->filter()->toArray();
             $productsDict = Product::whereIn('id', $productIds)->get()->keyBy('id');
-            $kitsDict = Kit::whereIn('id', $kitIds)->get()->keyBy('id');
 
             $itemsToStore = [];
 
             foreach ($validatedData['items'] as $item) {
-                $price = 0;
-                $productId = null;
-                $kitId = null;
-
-                // Lógica para PRODUCTO
-                if ($item['item_type'] === 'product') {
-                    $productId = $item['product_id'];
-                    $prod = $productsDict->get($productId);
-                    $price = $prod ? $prod->cost : 0; 
-                } 
-                // Lógica para KIT
-                elseif ($item['item_type'] === 'kit') {
-                    $kitId = $item['kit_id'];
-                    $kit = $kitsDict->get($kitId);
-                    $price = $kit ? $kit->unit_price : 0;
-                }
+                $productId = $item['product_id'];
+                $prod = $productsDict->get($productId);
+                $price = $prod ? $prod->cost : 0; 
 
                 // Preparamos el array para guardar
                 $itemsToStore[] = [
                     'product_id' => $productId,
-                    'kit_id' => $kitId,
-                    'item_type' => $item['item_type'],
+                    'kit_id' => null,
+                    'item_type' => 'product',
                     'quantity_requested' => $item['quantity'],
                     'unit_price_at_request' => $price,
                 ];
@@ -283,10 +264,45 @@ $start = $request->input('start', 0);
             'requester',
             'approver',
             'items.product.unit',
-            'items.kit.components.unit',
+            'items.product.components.unit',
         ]);
 
-        return view('admin.requests.show', compact('request'));
+        $decomposableKits = [];
+        if ($request->status === 'Pending') {
+            foreach ($request->items as $item) {
+                if ($item->item_type === 'product' && $item->product) {
+                    $prod = $item->product;
+                    if ($prod->stock < $item->quantity_requested) {
+                        // Buscar kits compuestos que contienen a este componente
+                        $kits = Product::with('components')
+                            ->where('type', 'composite_kit')
+                            ->whereHas('components', function ($query) use ($prod) {
+                                $query->where('child_id', $prod->id);
+                            })
+                            ->get();
+
+                        foreach ($kits as $kit) {
+                            $kitBatches = ProductBatch::where('product_id', $kit->id)
+                                ->where('quantity', '>', 0)
+                                ->get();
+
+                            if ($kitBatches->isNotEmpty()) {
+                                $relation = $kit->components()->where('child_id', $prod->id)->first();
+                                $qtyInKit = $relation ? $relation->pivot->quantity : 1;
+
+                                $decomposableKits[$prod->id][] = [
+                                    'kit' => $kit,
+                                    'batches' => $kitBatches,
+                                    'quantity_in_kit' => $qtyInKit,
+                                ];
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return view('admin.requests.show', compact('request', 'decomposableKits'));
     }
 
     // Método especializado para APROBAR o RECHAZAR una solicitud
@@ -328,7 +344,7 @@ $start = $request->input('start', 0);
     public function pdf(RequestModel $request)
     {
         try {
-            $request->load(['requester', 'items.product.unit', 'items.kit']);
+            $request->load(['requester', 'items.product.unit']);
             
             return \PDF::loadView('admin.requests.pdf', compact('request'))->stream('solicitud-' . $request->id . '.pdf');
         } catch (\Exception $e) {

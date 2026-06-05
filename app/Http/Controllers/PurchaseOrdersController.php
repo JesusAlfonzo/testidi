@@ -85,15 +85,39 @@ class PurchaseOrdersController extends Controller
             $perPage = 15;
         }
 
+        $query = PurchaseOrder::with(['supplier', 'creator', 'items']);
+
+        if ($request->filled('supplier_id')) {
+            $query->where('supplier_id', $request->supplier_id);
+        }
+
+        if ($request->filled('status')) {
+            $statusSearch = $request->status;
+            if ($statusSearch === 'partially_received') {
+                $query->where('status', 'issued')
+                      ->whereHas('items', function($q) {
+                          $q->where('quantity_received', '>', 0)
+                            ->orWhere('quantity_replaced', '>', 0);
+                      });
+            } elseif ($statusSearch === 'issued') {
+                $query->where('status', 'issued')
+                      ->whereDoesntHave('items', function($q) {
+                          $q->where('quantity_received', '>', 0)
+                            ->orWhere('quantity_replaced', '>', 0);
+                      });
+            } else {
+                $query->where('status', $statusSearch);
+            }
+        }
+
         if ($request->get('view_all') === 'true') {
-            $orders = PurchaseOrder::with(['supplier', 'creator'])
-                ->latest()
+            $orders = $query->latest()
                 ->paginate(PurchaseOrder::count())
                 ->appends($request->except('page'));
         } else {
-            $orders = PurchaseOrder::with(['supplier', 'creator'])
-                ->latest()
-                ->paginate($perPage);
+            $orders = $query->latest()
+                ->paginate($perPage)
+                ->appends($request->except('page'));
         }
 
         return view('admin.purchaseOrders.index', compact('orders', 'perPage'));
@@ -101,14 +125,29 @@ class PurchaseOrdersController extends Controller
 
     protected function indexDataTables(\Illuminate\Http\Request $request)
     {
-        $query = PurchaseOrder::with(['supplier']);
+        $query = PurchaseOrder::with(['supplier', 'items']);
 
         if ($request->filled('supplier_id')) {
             $query->where('supplier_id', $request->supplier_id);
         }
 
         if ($request->filled('status')) {
-            $query->where('status', $request->status);
+            $statusSearch = $request->status;
+            if ($statusSearch === 'partially_received') {
+                $query->where('status', 'issued')
+                      ->whereHas('items', function($q) {
+                          $q->where('quantity_received', '>', 0)
+                            ->orWhere('quantity_replaced', '>', 0);
+                      });
+            } elseif ($statusSearch === 'issued') {
+                $query->where('status', 'issued')
+                      ->whereDoesntHave('items', function($q) {
+                          $q->where('quantity_received', '>', 0)
+                            ->orWhere('quantity_replaced', '>', 0);
+                      });
+            } else {
+                $query->where('status', $statusSearch);
+            }
         }
 
         $start = $request->input('start', 0);
@@ -120,13 +159,13 @@ class PurchaseOrdersController extends Controller
         $orderDir = $request->input('order.0.dir', 'desc');
         
         // Mapear índice de DataTables al campo de ordenamiento
-        // 0: code, 1: supplier (supplier_id), 2: total, 3: status, 4: date_issued
+        // 0: expand_btn, 1: code, 2: supplier, 3: total, 4: status, 5: date
         $columnMap = [
-            0 => 'code',           // code
-            1 => 'supplier',      // supplier_id - usar join
-            2 => 'total',         // total
-            3 => 'status',        // status
-            4 => 'created_at',  // date_issued -> usar created_at que es más confiable
+            1 => 'code',           // code
+            2 => 'supplier',      // supplier_id - usar join
+            3 => 'total',         // total
+            4 => 'status',        // status
+            5 => 'created_at',  // date_issued -> usar created_at que es más confiable
         ];
         $orderCol = $columnMap[$orderColumn] ?? 'created_at';
 
@@ -158,26 +197,39 @@ class PurchaseOrdersController extends Controller
         $orders = $query->offset($start)->limit($length)->get();
 
         $data = $orders->map(function ($item) {
+            $isPartial = $item->isPartiallyReceived();
+
             $statusLabel = match($item->status) {
                 'draft' => 'Borrador',
-                'issued' => 'Emitida',
-                'completed' => 'Completada',
+                'issued' => $isPartial ? 'Parcialmente Recibida' : 'Emitida',
+                'completed' => 'Cerrada / Recibida',
                 'cancelled' => 'Anulada',
                 default => ucfirst($item->status)
             };
+            
             $statusClass = match($item->status) {
                 'draft' => 'secondary',
-                'issued' => 'info',
+                'issued' => $isPartial ? 'warning text-dark' : 'info',
                 'completed' => 'success',
-                'cancelled' => 'danger',
+                'cancelled' => 'danger-light',
                 default => 'secondary'
             };
+
             return [
+                'expand_btn' => '<button class="btn btn-xs btn-outline-primary toggle-child-row" title="Ver productos"><i class="fas fa-plus"></i></button>',
                 'code' => $item->code,
                 'supplier' => $item->supplier->name ?? 'N/A',
                 'total' => $item->currency . ' ' . number_format($item->total, 2),
                 'status' => '<span class="badge badge-' . $statusClass . '">' . $statusLabel . '</span>',
                 'date' => $item->date_issued->format('d/m/Y'),
+                'items_list' => $item->items->map(function($poItem) {
+                    return [
+                        'code' => $poItem->product_code ?? 'S/C',
+                        'name' => $poItem->product_name ?? 'Producto',
+                        'quantity' => $poItem->quantity,
+                        'quantity_received' => $poItem->quantity_received,
+                    ];
+                }),
                 'actions' => view('admin.purchaseOrders.partials.actions', ['order' => $item])->render(),
             ];
         });
@@ -194,9 +246,10 @@ class PurchaseOrdersController extends Controller
     {
         $suppliers = Supplier::orderBy('name')->get();
         $products = Product::with(['category', 'unit'])->get();
+        $kits = \App\Models\Kit::where('is_active', true)->orderBy('name')->get();
         $code = PurchaseOrder::generateCode();
 
-        return view('admin.purchaseOrders.create', compact('suppliers', 'products', 'code'));
+        return view('admin.purchaseOrders.create', compact('suppliers', 'products', 'kits', 'code'));
     }
 
     public function store(Request $request)
@@ -209,7 +262,9 @@ class PurchaseOrdersController extends Controller
             'exchange_rate' => 'required|numeric|min:0',
             'iva_exempt' => 'nullable|boolean',
             'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.item_type' => 'required|in:product,kit',
+            'items.*.product_id' => 'required_if:items.*.item_type,product|nullable|exists:products,id',
+            'items.*.kit_id' => 'required_if:items.*.item_type,kit|nullable|exists:kits,id',
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.unit_cost' => 'required|numeric|min:0',
         ]);
@@ -241,18 +296,45 @@ class PurchaseOrdersController extends Controller
                 'created_by' => auth()->id(),
             ]);
 
-            $productIds = array_column($request->items, 'product_id');
+            $productIds = [];
+            $kitIds = [];
+            foreach ($request->items as $item) {
+                if ($item['item_type'] === 'product') {
+                    $productIds[] = $item['product_id'];
+                } else {
+                    $kitIds[] = $item['kit_id'];
+                }
+            }
             $products = Product::whereIn('id', $productIds)->get()->keyBy('id');
+            $kits = \App\Models\Kit::whereIn('id', $kitIds)->get()->keyBy('id');
 
             foreach ($request->items as $item) {
-                $product = $products->get($item['product_id']);
                 $equivalentBs = $calc->calculateItemEquivalentBs($item['unit_cost'], $request->currency, $request->exchange_rate);
+
+                $product_name = '';
+                $product_code = '';
+                $product_id = null;
+                $kit_id = null;
+
+                if ($item['item_type'] === 'product') {
+                    $product = $products->get($item['product_id']);
+                    $product_id = $item['product_id'];
+                    $product_name = $product->name;
+                    $product_code = $product->code;
+                } else {
+                    $kit = $kits->get($item['kit_id']);
+                    $kit_id = $item['kit_id'];
+                    $product_name = $kit->name;
+                    $product_code = 'KIT-' . $kit->id;
+                }
 
                 PurchaseOrderItem::create([
                     'purchase_order_id' => $order->id,
-                    'product_id' => $item['product_id'],
-                    'product_name' => $product->name,
-                    'product_code' => $product->code,
+                    'item_type' => $item['item_type'],
+                    'product_id' => $product_id,
+                    'kit_id' => $kit_id,
+                    'product_name' => $product_name,
+                    'product_code' => $product_code,
                     'quantity' => $item['quantity'],
                     'quantity_received' => 0,
                     'unit_cost' => $item['unit_cost'],
@@ -275,7 +357,7 @@ class PurchaseOrdersController extends Controller
 
     public function show(PurchaseOrder $purchaseOrder)
     {
-        $purchaseOrder->load(['supplier', 'creator', 'approver', 'items.product', 'stockIns.items.product']);
+        $purchaseOrder->load(['supplier', 'creator', 'approver', 'items.product', 'items.kit', 'stockIns.items.product']);
 
         return view('admin.purchaseOrders.show', compact('purchaseOrder'));
     }
@@ -286,11 +368,12 @@ class PurchaseOrdersController extends Controller
             return back()->with('error', 'Solo se pueden editar órdenes en estado borrador.');
         }
 
-        $purchaseOrder->load('items.product');
+        $purchaseOrder->load('items.product', 'items.kit');
         $suppliers = Supplier::orderBy('name')->get();
         $products = Product::with(['category', 'unit'])->get();
+        $kits = \App\Models\Kit::where('is_active', true)->orderBy('name')->get();
 
-        return view('admin.purchaseOrders.edit', compact('purchaseOrder', 'suppliers', 'products'));
+        return view('admin.purchaseOrders.edit', compact('purchaseOrder', 'suppliers', 'products', 'kits'));
     }
 
     public function update(Request $request, PurchaseOrder $purchaseOrder)
@@ -307,7 +390,9 @@ class PurchaseOrdersController extends Controller
             'exchange_rate' => 'required|numeric|min:0',
             'iva_exempt' => 'nullable|boolean',
             'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.item_type' => 'required|in:product,kit',
+            'items.*.product_id' => 'required_if:items.*.item_type,product|nullable|exists:products,id',
+            'items.*.kit_id' => 'required_if:items.*.item_type,kit|nullable|exists:kits,id',
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.unit_cost' => 'required|numeric|min:0',
         ]);
@@ -338,18 +423,45 @@ class PurchaseOrdersController extends Controller
                 'notes' => $request->notes,
             ]);
 
-            $productIds = array_column($request->items, 'product_id');
+            $productIds = [];
+            $kitIds = [];
+            foreach ($request->items as $item) {
+                if ($item['item_type'] === 'product') {
+                    $productIds[] = $item['product_id'];
+                } else {
+                    $kitIds[] = $item['kit_id'];
+                }
+            }
             $products = Product::whereIn('id', $productIds)->get()->keyBy('id');
+            $kits = \App\Models\Kit::whereIn('id', $kitIds)->get()->keyBy('id');
 
             foreach ($request->items as $item) {
-                $product = $products->get($item['product_id']);
                 $equivalentBs = $calc->calculateItemEquivalentBs($item['unit_cost'], $request->currency, $request->exchange_rate);
+
+                $product_name = '';
+                $product_code = '';
+                $product_id = null;
+                $kit_id = null;
+
+                if ($item['item_type'] === 'product') {
+                    $product = $products->get($item['product_id']);
+                    $product_id = $item['product_id'];
+                    $product_name = $product->name;
+                    $product_code = $product->code;
+                } else {
+                    $kit = $kits->get($item['kit_id']);
+                    $kit_id = $item['kit_id'];
+                    $product_name = $kit->name;
+                    $product_code = 'KIT-' . $kit->id;
+                }
 
                 PurchaseOrderItem::create([
                     'purchase_order_id' => $purchaseOrder->id,
-                    'product_id' => $item['product_id'],
-                    'product_name' => $product->name,
-                    'product_code' => $product->code,
+                    'item_type' => $item['item_type'],
+                    'product_id' => $product_id,
+                    'kit_id' => $kit_id,
+                    'product_name' => $product_name,
+                    'product_code' => $product_code,
                     'quantity' => $item['quantity'],
                     'quantity_received' => 0,
                     'unit_cost' => $item['unit_cost'],

@@ -106,4 +106,36 @@ describe('StoreUpdateProductRequest - Validaciones', function () {
         
         expect($validator->errors()->has('is_active'))->toBeFalse();
     });
+
+    test('valida que category_id y location_id sean obligatorios para productos estrictos (is_generic = false)', function () {
+        $request = StoreUpdateProductRequest::create('/admin/products', 'POST', [
+            'is_generic' => false,
+        ]);
+        
+        $validator = Validator::make($request->all(), $request->rules());
+        
+        expect($validator->fails())->toBeTrue();
+        expect($validator->errors()->has('category_id'))->toBeTrue();
+        expect($validator->errors()->has('location_id'))->toBeTrue();
+    });
+
+    test('valida que category_id y location_id sean opcionales para productos genéricos (is_generic = true)', function () {
+        $request = StoreUpdateProductRequest::create('/admin/products', 'POST', [
+            'is_generic' => true,
+            'unit_id' => \App\Models\Unit::factory()->create()->id,
+            'code' => 'GEN-001',
+            'name' => 'Generic Pencil',
+            'cost' => 10,
+            'price' => 12,
+            'stock' => 100,
+            'min_stock' => 10,
+            'is_active' => true,
+        ]);
+        
+        $validator = Validator::make($request->all(), $request->rules());
+        
+        expect($validator->fails())->toBeFalse();
+        expect($validator->errors()->has('category_id'))->toBeFalse();
+        expect($validator->errors()->has('location_id'))->toBeFalse();
+    });
 });

@@ -83,12 +83,29 @@ class PurchaseOrder extends Model
     public function getStatusBadgeAttribute(): string
     {
         return match ($this->status) {
-            'draft' => '<span class="badge bg-secondary">Borrador</span>',
-            'issued' => '<span class="badge bg-primary">Emitida</span>',
-            'completed' => '<span class="badge bg-success">Completada</span>',
-            'cancelled' => '<span class="badge bg-danger">Cancelada</span>',
-            default => '<span class="badge bg-secondary">' . $this->status . '</span>',
+            'draft' => '<span class="badge badge-secondary">Borrador</span>',
+            'issued' => $this->isPartiallyReceived() 
+                ? '<span class="badge badge-warning">Parcialmente Recibida</span>' 
+                : '<span class="badge badge-info">Emitida</span>',
+            'completed' => '<span class="badge badge-success">Cerrada / Recibida</span>',
+            'cancelled' => '<span class="badge badge-danger">Anulada</span>',
+            default => '<span class="badge badge-secondary">' . ucfirst($this->status) . '</span>',
         };
+    }
+
+    public function isPartiallyReceived(): bool
+    {
+        if ($this->status !== 'issued') {
+            return false;
+        }
+
+        foreach ($this->items as $item) {
+            if ($item->quantity_received > 0 || $item->quantity_replaced > 0) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function isEditable(): bool

@@ -13,7 +13,7 @@ class UnitFactory extends Factory
     {
         return [
             'name' => fake()->uuid(),
-            'abbreviation' => fake()->lexify('???'),
+            'abbreviation' => fake()->unique()->lexify('???'),
             'user_id' => \App\Models\User::factory(),
         ];
     }

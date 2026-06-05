@@ -38,6 +38,16 @@
                             <td>{{ $product->name }}</td>
                         </tr>
                         <tr>
+                            <th>Tipo Producto:</th>
+                            <td>
+                                @if($product->is_generic)
+                                    <span class="badge badge-secondary"><i class="fas fa-tags"></i> Genérico</span>
+                                @else
+                                    <span class="badge badge-primary"><i class="fas fa-microscope"></i> Estricto</span>
+                                @endif
+                            </td>
+                        </tr>
+                        <tr>
                             <th>Categoría:</th>
                             <td>{{ $product->category->name ?? 'N/A' }}</td>
                         </tr>
@@ -133,9 +143,9 @@
                                             <td>{{ $batch->serial_number ?? '-' }}</td>
                                             <td><span class="badge badge-info">{{ $batch->quantity }}</span></td>
                                             <td>
-                                                @if($batch->expiry_date)
-                                                    <span class="badge {{ \Carbon\Carbon::parse($batch->expiry_date)->isPast() ? 'badge-danger' : 'badge-warning' }}">
-                                                        {{ \Carbon\Carbon::parse($batch->expiry_date)->format('d/m/Y') }}
+                                                @if($batch->expiration_date)
+                                                    <span class="badge {{ \Carbon\Carbon::parse($batch->expiration_date)->isPast() ? 'badge-danger' : 'badge-warning' }}">
+                                                        {{ \Carbon\Carbon::parse($batch->expiration_date)->format('d/m/Y') }}
                                                     </span>
                                                 @else
                                                     -

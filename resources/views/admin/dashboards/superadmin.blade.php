@@ -574,7 +574,7 @@
                         <tr>
                             <td>{{ $batch->product->name ?? 'N/A' }}</td>
                             <td>{{ $batch->batch_number ?? 'Sin lote' }}</td>
-                            <td>{{ $batch->expiry_date->format('d/m/Y') }}</td>
+                            <td>{{ $batch->expiration_date ? $batch->expiration_date->format('d/m/Y') : '-' }}</td>
                             <td>{{ $batch->quantity }}</td>
                             <td>
                                 @php $daysLeft = $batch->getDaysUntilExpiry(); @endphp

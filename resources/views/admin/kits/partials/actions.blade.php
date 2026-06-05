@@ -1,3 +1,7 @@
+@can('kits_ver')
+    <a href="{{ route('admin.kits.show', $kit) }}" class="btn btn-default text-info" title="Ver"><i class="fas fa-eye"></i></a>
+@endcan
+
 @can('kits_editar')
     <a href="{{ route('admin.kits.edit', $kit) }}" class="btn btn-default text-primary" title="Editar"><i class="fas fa-edit"></i></a>
 @endcan

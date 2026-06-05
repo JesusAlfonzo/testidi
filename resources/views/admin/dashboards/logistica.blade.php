@@ -265,8 +265,8 @@
         </a>
     </div>
     <div class="col-6 col-md-3">
-        <a href="{{ route('admin.kits.create') }}" class="quick-action-btn d-block bg-white shadow-sm text-decoration-none">
-            <div class="quick-action-icon" style="color: #6c757d;"><i class="fas fa-box-open"></i></div>
+        <a href="{{ route('admin.products.create', ['type' => 'composite_kit']) }}" class="quick-action-btn d-block bg-white shadow-sm text-decoration-none">
+            <div class="quick-action-icon" style="color: #6f42c1;"><i class="fas fa-cubes"></i></div>
             <div class="quick-action-label">Nuevo Kit</div>
         </a>
     </div>
@@ -446,7 +446,7 @@ $(function() {
                         <tr>
                             <td>{{ $batch->product->name ?? 'N/A' }}</td>
                             <td>{{ $batch->batch_number ?? 'Sin lote' }}</td>
-                            <td>{{ $batch->expiry_date->format('d/m/Y') }}</td>
+                            <td>{{ $batch->expiration_date ? $batch->expiration_date->format('d/m/Y') : '-' }}</td>
                             <td>{{ $batch->quantity }}</td>
                             <td>
                                 @php $daysLeft = $batch->getDaysUntilExpiry(); @endphp

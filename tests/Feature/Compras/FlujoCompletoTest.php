@@ -61,7 +61,7 @@ describe('RFQ - Solicitudes de Cotización', function () {
             'date_required' => now()->addDays(30)->format('Y-m-d'),
             'delivery_deadline' => now()->addDays(45)->format('Y-m-d'),
             'items' => [
-                ['product_id' => $product->id, 'quantity' => 10],
+                ['item_type' => 'product', 'product_id' => $product->id, 'quantity' => 10],
             ],
         ]);
 
@@ -88,7 +88,7 @@ describe('RFQ - Solicitudes de Cotización', function () {
         $response = $this->put(route('admin.rfq.update', $rfq), [
             'title' => 'Nuevo título',
             'items' => [
-                ['product_id' => $product->id, 'quantity' => 10],
+                ['item_type' => 'product', 'product_id' => $product->id, 'quantity' => 10],
             ],
         ]);
 
@@ -117,7 +117,7 @@ describe('Órdenes de Compra', function () {
             'currency' => 'USD',
             'exchange_rate' => 17.15,
             'items' => [
-                ['product_id' => $product->id, 'quantity' => 10, 'unit_cost' => 100.00],
+                ['item_type' => 'product', 'product_id' => $product->id, 'quantity' => 10, 'unit_cost' => 100.00],
             ],
         ]);
 
@@ -148,7 +148,7 @@ describe('Órdenes de Compra', function () {
             'currency' => 'USD',
             'exchange_rate' => 17.15,
             'items' => [
-                ['product_id' => $product->id, 'quantity' => 5, 'unit_cost' => 100.00],
+                ['item_type' => 'product', 'product_id' => $product->id, 'quantity' => 5, 'unit_cost' => 100.00],
             ],
         ]);
 
@@ -190,7 +190,7 @@ describe('Flujo Completo', function () {
             'currency' => 'USD',
             'exchange_rate' => 17.15,
             'items' => [
-                ['product_id' => $product->id, 'quantity' => 10, 'unit_cost' => 100.00],
+                ['item_type' => 'product', 'product_id' => $product->id, 'quantity' => 10, 'unit_cost' => 100.00],
             ],
         ]);
 

@@ -24,6 +24,7 @@ class RequestForQuotation extends Model
         'status',
         'notes',
         'created_by',
+        'priority',
     ];
 
     protected $casts = [
@@ -34,6 +35,11 @@ class RequestForQuotation extends Model
     public function items(): HasMany
     {
         return $this->hasMany(RfqItem::class, 'rfq_id');
+    }
+
+    public function supplierOffers(): HasMany
+    {
+        return $this->hasMany(RfqSupplierOffer::class, 'rfq_id');
     }
 
     public function purchaseOrder(): HasOne

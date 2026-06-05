@@ -107,8 +107,7 @@
                         <table class="table table-bordered table-striped" id="itemsTable">
                             <thead class="thead-light">
                                 <tr>
-                                    <th width="5%">Tipo</th>
-                                    <th width="40%">Producto / Kit</th>
+                                    <th width="45%">Producto / Kit</th>
                                     <th width="15%">Stock Actual</th>
                                     <th width="15%">Cantidad Solicitada</th>
                                     <th width="5%"></th>
@@ -202,24 +201,14 @@
         const tbody = document.getElementById('itemsBody');
         const tr = document.createElement('tr');
         
-        const productOptions = `@foreach($products as $p)<option value="{{ $p->id }}" data-stock="{{ $p->stock }}">{{ $p->name }} ({{ $p->code }})</option>@endforeach`;
-        const kitOptions = `@foreach($kits as $k)<option value="{{ $k->id }}">{{ $k->name }}</option>@endforeach`;
+        const productOptions = `@foreach($products as $p)<option value="{{ $p->id }}" data-stock="{{ $p->stock }}">{{ $p->name }} ({{ $p->code }}){{ $p->is_kit ? ' [Kit]' : '' }}</option>@endforeach`;
         
         tr.innerHTML = `
-            <td>
-                <select name="items[${itemIndex}][item_type]" class="form-control form-control-sm type-selector" onchange="toggleType(this)">
-                    <option value="product">Producto</option>
-                    <option value="kit">Kit</option>
-                </select>
-            </td>
+            <input type="hidden" name="items[${itemIndex}][item_type]" value="product">
             <td>
                 <select name="items[${itemIndex}][product_id]" class="form-control form-control-sm select2-product" onchange="updateStock(this)">
                     <option value="">Seleccione...</option>
                     ${productOptions}
-                </select>
-                <select name="items[${itemIndex}][kit_id]" class="form-control form-control-sm select2-kit" style="display:none;">
-                    <option value="">Seleccione...</option>
-                    ${kitOptions}
                 </select>
             </td>
             <td>
@@ -251,45 +240,6 @@
         });
         
         itemIndex++;
-    }
-
-    function toggleType(select) {
-        const row = select.closest('tr');
-        const productSelect = row.querySelector('.select2-product');
-        const kitSelect = row.querySelector('.select2-kit');
-        const stockDisplay = row.querySelector('.stock-display');
-        
-        if (select.value === 'product') {
-            productSelect.style.display = 'block';
-            productSelect.style.width = '100%';
-            kitSelect.style.display = 'none';
-            kitSelect.required = false;
-            kitSelect.value = '';
-            stockDisplay.textContent = '-';
-            
-            if (typeof $ !== 'undefined' && $.fn.select2) {
-                $(kitSelect).select2('destroy');
-                $(productSelect).select2({
-                    theme: 'bootstrap4',
-                    width: '100%'
-                });
-            }
-        } else {
-            productSelect.style.display = 'none';
-            kitSelect.style.display = 'block';
-            kitSelect.style.width = '100%';
-            productSelect.required = false;
-            productSelect.value = '';
-            stockDisplay.textContent = 'N/A';
-            
-            if (typeof $ !== 'undefined' && $.fn.select2) {
-                $(productSelect).select2('destroy');
-                $(kitSelect).select2({
-                    theme: 'bootstrap4',
-                    width: '100%'
-                });
-            }
-        }
     }
 
     function updateStock(selectElement) {

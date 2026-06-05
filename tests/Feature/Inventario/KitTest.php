@@ -72,4 +72,27 @@ describe('Kit - Kits de Productos', function () {
 
         expect($activeKits->contains($kit))->toBeTrue();
     });
+
+    test('calculo correcto de stock disponible de kits', function () {
+        $product1 = Product::factory()->create(['stock' => 10]);
+        $product2 = Product::factory()->create(['stock' => 3]);
+
+        $kit = Kit::create([
+            'code' => 'KIT-STOCK-TEST',
+            'name' => 'Kit Stock Test',
+            'is_active' => true,
+        ]);
+
+        $kit->components()->attach($product1->id, ['quantity_required' => 2]);
+        $kit->components()->attach($product2->id, ['quantity_required' => 1]);
+
+        // product1 formable: floor(10 / 2) = 5
+        // product2 formable: floor(3 / 1) = 3
+        // Min = 3
+        expect($kit->fresh()->available_stock)->toBe(3);
+        
+        // Update product2 stock to 0
+        $product2->update(['stock' => 0]);
+        expect($kit->fresh()->available_stock)->toBe(0);
+    });
 });

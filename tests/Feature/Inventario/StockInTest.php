@@ -22,7 +22,7 @@ function stockInItemData(Product $product, int $quantity = 1, float $cost = 10):
         'quantity' => $quantity,
         'unit_cost' => $cost,
         'batch_number' => 'LOTE-' . now()->format('Ymd'),
-        'expiry_date' => now()->addYear()->format('Y-m-d'),
+        'expiration_date' => now()->addYear()->format('Y-m-d'),
         'warehouse_location' => 'Almacén Principal',
     ];
 }

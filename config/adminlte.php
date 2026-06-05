@@ -352,12 +352,6 @@ return [
                     'can'  => 'productos_ver',
                 ],
                 [
-                    'text' => 'Kits / Paquetes',
-                    'url'  => 'admin/kits',
-                    'icon' => 'fas fa-fw fa-cubes',
-                    'can'  => 'kits_ver',
-                ],
-                [
                     'text' => 'Entradas de Stock',
                     'url'  => 'admin/stock-in',
                     'icon' => 'fas fa-fw fa-arrow-alt-circle-up',

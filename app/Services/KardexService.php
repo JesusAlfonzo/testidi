@@ -108,8 +108,36 @@ class KardexService
                 });
         }
 
-        // 3. FUSIONAR, ORDENAR Y CALCULAR SALDOS
-        $movimientos = $entradas->concat($salidas)->sortBy('timestamp')->values();
+        // 3. OBTENER MOVIMIENTOS INTERNOS DE DESCOMPOSICIÓN DESDE EL HISTORIAL DE ACTIVIDAD
+        $internalMovements = \Spatie\Activitylog\Models\Activity::where('subject_type', Product::class)
+            ->where('subject_id', $product->id)
+            ->get()
+            ->filter(function ($activity) {
+                return Str::contains($activity->description, 'descomposición') || 
+                       Str::contains($activity->description, 'Descomposición');
+            })
+            ->map(function ($activity) use ($product) {
+                $properties = $activity->properties;
+                $quantity = $properties['quantity'] ?? 0;
+                $type = $properties['type'] ?? 'adjustment';
+
+                $kardexType = $type === 'in' ? 'ENTRADA (DESCOMPOSICIÓN)' : 'SALIDA (DESCOMPOSICIÓN)';
+                $qtySign = $type === 'in' ? $quantity : -$quantity;
+
+                return [
+                    'date'      => $activity->created_at,
+                    'type'      => $kardexType,
+                    'quantity'  => $qtySign,
+                    'unit_price' => $product->cost,
+                    'reference' => 'DES-' . $activity->id,
+                    'user'      => $activity->causer->name ?? 'Sistema',
+                    'notes'     => $activity->description,
+                    'timestamp' => $activity->created_at->timestamp,
+                ];
+            });
+
+        // 4. FUSIONAR, ORDENAR Y CALCULAR SALDOS
+        $movimientos = $entradas->concat($salidas)->concat($internalMovements)->sortBy('timestamp')->values();
 
         if ($movimientos->isEmpty()) {
             return [[

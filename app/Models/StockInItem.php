@@ -12,11 +12,12 @@ class StockInItem extends Model
 
     protected $fillable = [
         'stock_in_id',
+        'purchase_order_item_id',
         'product_id',
         'quantity',
         'unit_cost',
         'batch_number',
-        'expiry_date',
+        'expiration_date',
         'serial_number',
         'warehouse_location',
         'notes',
@@ -26,7 +27,7 @@ class StockInItem extends Model
     ];
 
     protected $casts = [
-        'expiry_date' => 'date',
+        'expiration_date' => 'date',
         'unit_cost' => 'decimal:2',
     ];
 
@@ -38,6 +39,11 @@ class StockInItem extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function purchaseOrderItem(): BelongsTo
+    {
+        return $this->belongsTo(PurchaseOrderItem::class, 'purchase_order_item_id');
     }
 
     public function replacedItem(): BelongsTo

@@ -71,11 +71,12 @@
                             <thead>
                                 <tr>
                                     <th style="width: 10%">ID</th>
-                                    <th style="width: 40%">Nombre</th>
+                                    <th style="width: 25%">Nombre</th>
                                     <th style="width: 15%">Precio Unitario</th>
-                                    <th style="width: 10%">Componentes</th>
+                                    <th style="width: 15%">Disponibles (Kits)</th>
+                                    <th style="width: 25%">Componentes (Individuales)</th>
                                     <th style="width: 10%">Activo</th>
-                                    <th style="width: 15%">Acciones</th>
+                                    <th style="width: 10%">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -115,7 +116,8 @@
                     { data: 'id', name: 'id', orderable: true },
                     { data: 'name', name: 'name', orderable: true },
                     { data: 'unit_price', name: 'unit_price', orderable: true },
-                    { data: 'components_count', name: 'components_count', orderable: false },
+                    { data: 'available_stock', name: 'available_stock', orderable: false, searchable: false },
+                    { data: 'components_detail', name: 'components_detail', orderable: false, searchable: false },
                     { data: 'is_active', name: 'is_active', orderable: true },
                     { data: 'actions', name: 'actions', orderable: false, searchable: false }
                 ],
@@ -140,11 +142,11 @@
                 },
 
                 columnDefs: [
-                    { orderable: false, targets: [3, 5] },
+                    { orderable: false, targets: [3, 4, 6] },
                     { responsivePriority: 1, targets: 1 },
-                    { responsivePriority: 2, targets: 5 },
+                    { responsivePriority: 2, targets: 6 },
                     { responsivePriority: 3, targets: 0 },
-                    { responsivePriority: 100, targets: [2, 3, 4] }
+                    { responsivePriority: 100, targets: [2, 3, 4, 5] }
                 ]
             });
 

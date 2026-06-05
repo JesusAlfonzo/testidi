@@ -36,7 +36,7 @@ describe('FIFO - First In First Out', function () {
             'product_id' => $product->id,
             'batch_number' => 'BATCH-001',
             'quantity' => 10,
-            'expiry_date' => now()->addDays(10),
+            'expiration_date' => now()->addDays(10),
             'unit_cost' => 10,
         ]);
 
@@ -44,7 +44,7 @@ describe('FIFO - First In First Out', function () {
             'product_id' => $product->id,
             'batch_number' => 'BATCH-002',
             'quantity' => 20,
-            'expiry_date' => now()->addDays(30),
+            'expiration_date' => now()->addDays(30),
             'unit_cost' => 10,
         ]);
 
@@ -73,7 +73,7 @@ describe('FIFO - First In First Out', function () {
             'product_id' => $product->id,
             'batch_number' => 'BATCH-001',
             'quantity' => 10,
-            'expiry_date' => now()->addDays(30),
+            'expiration_date' => now()->addDays(30),
             'unit_cost' => 10,
         ]);
 

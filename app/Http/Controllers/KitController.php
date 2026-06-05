@@ -64,21 +64,62 @@ class KitController extends Controller
 
         $orderColumn = $request->input('order.0.column', 1);
         $orderDir = $request->input('order.0.dir', 'asc');
-        $columns = ['id', 'name', 'unit_price', 'is_active'];
+        $columns = [
+            0 => 'id',
+            1 => 'name',
+            2 => 'unit_price',
+            3 => null,
+            4 => null,
+            5 => 'is_active',
+            6 => null,
+        ];
         
-        if (isset($columns[$orderColumn])) {
+        if (isset($columns[$orderColumn]) && $columns[$orderColumn] !== null) {
             $query->orderBy($columns[$orderColumn], $orderDir);
         }
 
         $kits = $query->offset($start)->limit($length)->get();
 
         $data = $kits->map(function ($kit) {
+            $availableStock = $kit->available_stock;
+            
+            // Renderizar insignia de stock del kit con diseño responsivo y premium
+            if ($availableStock > 5) {
+                $stockBadge = '<span class="badge badge-success py-2 px-3" style="font-size: 0.9rem;"><i class="fas fa-check-circle"></i> ' . $availableStock . ' kits</span>';
+            } elseif ($availableStock > 0) {
+                $stockBadge = '<span class="badge badge-warning text-dark py-2 px-3" style="font-size: 0.9rem;"><i class="fas fa-exclamation-triangle"></i> ' . $availableStock . ' kits</span>';
+            } else {
+                $stockBadge = '<span class="badge badge-danger py-2 px-3" style="font-size: 0.9rem;"><i class="fas fa-times-circle"></i> Sin stock</span>';
+            }
+
+            // Mapear los componentes con su stock actual y cantidad requerida
+            $componentsHtml = '<ul class="list-unstyled mb-0" style="font-size: 0.85rem; line-height: 1.5;">';
+            if ($kit->components->isEmpty()) {
+                $componentsHtml .= '<li class="text-muted"><i class="fas fa-info-circle"></i> Sin componentes</li>';
+            } else {
+                foreach ($kit->components as $component) {
+                    $stock = $component->stock ?? 0;
+                    $req = $component->pivot->quantity_required;
+                    $badgeClass = $stock >= $req ? 'badge-success' : 'badge-danger';
+                    
+                    $componentsHtml .= sprintf(
+                        '<li><span class="badge %s" style="min-width: 50px; font-weight: 500;">%d / %d</span> <span class="text-secondary">%s</span></li>',
+                        $badgeClass,
+                        $stock,
+                        $req,
+                        e($component->name)
+                    );
+                }
+            }
+            $componentsHtml .= '</ul>';
+
             return [
                 'id' => $kit->id,
                 'name' => $kit->name,
                 'unit_price' => number_format($kit->unit_price, 2),
                 'is_active' => $kit->is_active,
-                'components_count' => $kit->components->count(),
+                'available_stock' => $stockBadge,
+                'components_detail' => $componentsHtml,
                 'actions' => view('admin.kits.partials.actions', ['kit' => $kit])->render(),
             ];
         });

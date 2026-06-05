@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\RequestForQuotation;
 use App\Models\RfqItem;
 use App\Models\Product;
+use App\Models\RfqSupplierOffer;
+use App\Models\RfqSupplierOfferItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -31,10 +33,22 @@ class RequestForQuotationController extends Controller
             $perPage = 15;
         }
 
-        $query = RequestForQuotation::with(['creator', 'items.product']);
+        $query = RequestForQuotation::with(['creator', 'items.product', 'purchaseOrder'])
+            ->withCount('supplierOffers');
 
         if ($request->filled('status')) {
-            $query->where('status', $request->status);
+            $statusSearch = $request->status;
+            if ($statusSearch === 'po') {
+                $query->has('purchaseOrder');
+            } elseif (in_array($statusSearch, ['sent', 'closed'])) {
+                $query->where('status', $statusSearch)->doesntHave('purchaseOrder');
+            } else {
+                $query->where('status', $statusSearch);
+            }
+        }
+
+        if ($request->filled('priority')) {
+            $query->where('priority', $request->priority);
         }
 
         if ($request->get('view_all') === 'true') {
@@ -48,31 +62,38 @@ class RequestForQuotationController extends Controller
 
     protected function indexDataTables(\Illuminate\Http\Request $request)
     {
-        $query = RequestForQuotation::with(['creator', 'items']);
+        $query = RequestForQuotation::with(['creator', 'items.product.unit', 'purchaseOrder'])
+            ->withCount('supplierOffers');
 
         $start = $request->input('start', 0);
         $length = $request->input('length', 15);
         $search = $request->input('search.value', '');
         
-        // Aceptar filtro de status desde form o desde DataTables column search
-        $statusSearch = $request->input('status', $request->input('columns.status.search.value', ''));
+        $statusSearch = $request->input('status');
+        $prioritySearch = $request->input('priority');
 
         if ($statusSearch) {
-            $query->where('status', $statusSearch);
+            if ($statusSearch === 'po') {
+                $query->has('purchaseOrder');
+            } elseif (in_array($statusSearch, ['sent', 'closed'])) {
+                $query->where('status', $statusSearch)->doesntHave('purchaseOrder');
+            } else {
+                $query->where('status', $statusSearch);
+            }
         }
 
-        $orderColumn = $request->input('order.0.column', 0);
+        if ($prioritySearch) {
+            $query->where('priority', $prioritySearch);
+        }
+
+        $orderColumn = $request->input('order.0.column', 1);
         $orderDir = $request->input('order.0.dir', 'desc');
-        $columns = ['code', 'title', 'status', 'date_required', 'items_count'];
+        $columns = ['expand_btn', 'code', 'title', 'status', 'priority', 'date_required', 'supplier_offers_count'];
         
-        if (isset($columns[$orderColumn])) {
+        if (isset($columns[$orderColumn]) && $columns[$orderColumn] !== 'expand_btn') {
             $orderCol = $columns[$orderColumn];
-            if ($orderCol === 'items_count') {
-                $query->withCount('items');
-                $query->orderBy('items_count', $orderDir);
-            } elseif ($orderCol === 'status') {
-                // Ordenar por status alfabéticamente
-                $query->orderBy('status', $orderDir);
+            if ($orderCol === 'supplier_offers_count') {
+                $query->orderBy('supplier_offers_count', $orderDir);
             } else {
                 $query->orderBy($orderCol, $orderDir);
             }
@@ -93,26 +114,58 @@ class RequestForQuotationController extends Controller
         $rfqs = $query->offset($start)->limit($length)->get();
 
         $data = $rfqs->map(function ($item) {
-            $statusLabel = match($item->status) {
-                'draft' => 'Borrador',
-                'sent' => 'Enviada',
-                'closed' => 'Cerrada',
-                'cancelled' => 'Cancelada',
-                default => ucfirst($item->status)
+            $hasPO = $item->purchaseOrder !== null;
+            
+            $statusLabel = 'Borrador';
+            $statusClass = 'secondary';
+            
+            if ($hasPO) {
+                $statusLabel = 'Convertida a PO';
+                $statusClass = 'success';
+            } elseif ($item->status === 'closed') {
+                $statusLabel = 'Cotizada';
+                $statusClass = 'purple';
+            } elseif ($item->status === 'sent') {
+                $statusLabel = 'Enviada';
+                $statusClass = 'warning text-dark';
+            } elseif ($item->status === 'cancelled') {
+                $statusLabel = 'Cancelada';
+                $statusClass = 'danger';
+            }
+
+            $priorityLabel = match($item->priority) {
+                'alta' => 'Alta',
+                'media' => 'Media',
+                'baja' => 'Baja',
+                default => 'Baja'
             };
-            $statusClass = match($item->status) {
-                'draft' => 'secondary',
-                'sent' => 'info',
-                'closed' => 'success',
-                'cancelled' => 'danger',
+            $priorityClass = match($item->priority) {
+                'alta' => 'danger-light',
+                'media' => 'info',
+                'baja' => 'secondary',
                 default => 'secondary'
             };
+
+            $offersLabel = $item->supplier_offers_count > 0 
+                ? '<span class="badge badge-pill badge-info py-1 px-2 font-weight-bold shadow-sm"><i class="fas fa-file-invoice-dollar mr-1"></i> ' . $item->supplier_offers_count . ' ' . ($item->supplier_offers_count == 1 ? 'Oferta' : 'Ofertas') . '</span>'
+                : '<span class="text-muted text-xs">Sin ofertas</span>';
+
             return [
+                'expand_btn' => '<button class="btn btn-xs btn-outline-primary toggle-child-row" title="Ver productos"><i class="fas fa-plus"></i></button>',
                 'code' => $item->code,
                 'title' => $item->title,
                 'status' => '<span class="badge badge-' . $statusClass . '">' . $statusLabel . '</span>',
+                'priority' => '<span class="badge badge-' . $priorityClass . '">' . $priorityLabel . '</span>',
                 'date_required' => $item->date_required ? $item->date_required->format('d/m/Y') : '-',
-                'items_count' => '<span class="badge badge-info">' . $item->items->count() . '</span>',
+                'supplier_offers_count' => $offersLabel,
+                'items_list' => $item->items->map(function($rfqItem) {
+                    return [
+                        'code' => $rfqItem->product->code ?? 'S/C',
+                        'name' => $rfqItem->product->name ?? 'Producto',
+                        'quantity' => $rfqItem->quantity,
+                        'unit' => $rfqItem->product->unit->abbreviation ?? 'und'
+                    ];
+                }),
                 'actions' => view('admin.rfq.partials.actions', ['rfq' => $item])->render(),
             ];
         });
@@ -131,10 +184,13 @@ class RequestForQuotationController extends Controller
             ->where('is_active', true)
             ->orderBy('name')
             ->get();
+        $kits = \App\Models\Kit::where('is_active', true)
+            ->orderBy('name')
+            ->get();
 
         $code = RequestForQuotation::generateCode();
 
-        return view('admin.rfq.create', compact('products', 'code'));
+        return view('admin.rfq.create', compact('products', 'kits', 'code'));
     }
 
     public function store(Request $request)
@@ -146,8 +202,11 @@ class RequestForQuotationController extends Controller
             'delivery_deadline' => 'nullable|date',
             'notes' => 'nullable|string',
             'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.item_type' => 'required|in:product,kit',
+            'items.*.product_id' => 'required_if:items.*.item_type,product|nullable|exists:products,id',
+            'items.*.kit_id' => 'required_if:items.*.item_type,kit|nullable|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
+            'priority' => 'nullable|string|in:baja,media,alta',
         ]);
 
         try {
@@ -162,12 +221,16 @@ class RequestForQuotationController extends Controller
                 'notes' => $request->notes,
                 'status' => 'draft',
                 'created_by' => auth()->id(),
+                'priority' => $request->priority ?? 'baja',
             ]);
 
             foreach ($request->items as $item) {
+                $productId = $item['item_type'] === 'kit' ? $item['kit_id'] : $item['product_id'];
                 RfqItem::create([
                     'rfq_id' => $rfq->id,
-                    'product_id' => $item['product_id'],
+                    'item_type' => 'product',
+                    'product_id' => $productId,
+                    'kit_id' => null,
                     'quantity' => $item['quantity'],
                     'notes' => $item['notes'] ?? null,
                 ]);
@@ -188,9 +251,10 @@ class RequestForQuotationController extends Controller
 
     public function show(RequestForQuotation $rfq)
     {
-        $rfq->load(['creator', 'items.product.category', 'items.product.unit']);
+        $rfq->load(['creator', 'items.product.category', 'items.product.unit', 'items.kit', 'supplierOffers.items']);
+        $suppliers = \App\Models\Supplier::orderBy('name')->get();
 
-        return view('admin.rfq.show', compact('rfq'));
+        return view('admin.rfq.show', compact('rfq', 'suppliers'));
     }
 
     public function edit(RequestForQuotation $rfq)
@@ -199,13 +263,16 @@ class RequestForQuotationController extends Controller
             return back()->with('error', 'Solo se pueden editar solicitudes en estado borrador.');
         }
 
-        $rfq->load('items.product');
+        $rfq->load('items.product', 'items.kit');
         $products = Product::with(['category', 'unit'])
             ->where('is_active', true)
             ->orderBy('name')
             ->get();
+        $kits = \App\Models\Kit::where('is_active', true)
+            ->orderBy('name')
+            ->get();
 
-        return view('admin.rfq.edit', compact('rfq', 'products'));
+        return view('admin.rfq.edit', compact('rfq', 'products', 'kits'));
     }
 
     public function update(Request $request, RequestForQuotation $rfq)
@@ -221,8 +288,11 @@ class RequestForQuotationController extends Controller
             'delivery_deadline' => 'nullable|date',
             'notes' => 'nullable|string',
             'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.item_type' => 'required|in:product,kit',
+            'items.*.product_id' => 'required_if:items.*.item_type,product|nullable|exists:products,id',
+            'items.*.kit_id' => 'required_if:items.*.item_type,kit|nullable|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
+            'priority' => 'nullable|string|in:baja,media,alta',
         ]);
 
         try {
@@ -234,14 +304,18 @@ class RequestForQuotationController extends Controller
                 'date_required' => $request->date_required,
                 'delivery_deadline' => $request->delivery_deadline,
                 'notes' => $request->notes,
+                'priority' => $request->priority ?? 'baja',
             ]);
 
             $rfq->items()->delete();
 
             foreach ($request->items as $item) {
+                $productId = $item['item_type'] === 'kit' ? $item['kit_id'] : $item['product_id'];
                 RfqItem::create([
                     'rfq_id' => $rfq->id,
-                    'product_id' => $item['product_id'],
+                    'item_type' => 'product',
+                    'product_id' => $productId,
+                    'kit_id' => null,
                     'quantity' => $item['quantity'],
                     'notes' => $item['notes'] ?? null,
                 ]);
@@ -330,7 +404,7 @@ class RequestForQuotationController extends Controller
     public function pdf(RequestForQuotation $rfq)
     {
         try {
-            $rfq->load(['creator', 'items.product.category', 'items.product.unit']);
+            $rfq->load(['creator', 'items.product.category', 'items.product.unit', 'items.kit']);
 
             $pdf = Pdf::loadView('admin.rfq.pdf', compact('rfq'));
 
@@ -341,18 +415,79 @@ class RequestForQuotationController extends Controller
         }
     }
 
-    public function convertToPO(RequestForQuotation $rfq)
+    public function convertToPO(RequestForQuotation $rfq, Request $request)
     {
         if (!$rfq->canConvertToPO()) {
             return back()->with('error', 'Esta RFQ no puede convertirse a Orden de Compra.');
         }
 
-        $rfq->load('items.product');
+        $rfq->load('items.product', 'items.kit');
         $suppliers = \App\Models\Supplier::orderBy('name')->get();
         $products = \App\Models\Product::with(['category', 'unit'])->get();
+        $kits = \App\Models\Kit::where('is_active', true)->orderBy('name')->get();
         $code = \App\Models\PurchaseOrder::generateCode();
 
-        return view('admin.rfq.convert-to-po', compact('rfq', 'suppliers', 'products', 'code'));
+        $offer = null;
+        if ($request->has('rfq_supplier_offer_id')) {
+            $offer = RfqSupplierOffer::with('items')->find($request->rfq_supplier_offer_id);
+        }
+
+        return view('admin.rfq.convert-to-po', compact('rfq', 'suppliers', 'products', 'kits', 'code', 'offer'));
+    }
+
+    public function saveSupplierOffer(Request $request, RequestForQuotation $rfq)
+    {
+        $request->validate([
+            'supplier_id' => 'required|exists:suppliers,id',
+            'notes' => 'nullable|string',
+            'items' => 'required|array',
+            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.unit_price' => 'required|numeric|min:0',
+            'items.*.currency' => 'required|string|in:USD,EUR,Bs',
+            'items.*.tax_status' => 'required|string|in:exento,gravado',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $offer = RfqSupplierOffer::updateOrCreate(
+                [
+                    'rfq_id' => $rfq->id,
+                    'supplier_id' => $request->supplier_id,
+                ],
+                [
+                    'notes' => $request->notes,
+                ]
+            );
+
+            $offer->items()->delete();
+
+            foreach ($request->items as $item) {
+                RfqSupplierOfferItem::create([
+                    'rfq_supplier_offer_id' => $offer->id,
+                    'product_id' => $item['product_id'],
+                    'unit_price' => $item['unit_price'],
+                    'currency' => $item['currency'],
+                    'tax_status' => $item['tax_status'],
+                ]);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Oferta guardada exitosamente.',
+                'offer_id' => $offer->id,
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            \Log::error('Error al guardar oferta de proveedor: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al guardar la oferta: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     public function storePOFromRFQ(Request $request, RequestForQuotation $rfq)
@@ -368,7 +503,9 @@ class RequestForQuotationController extends Controller
             'currency' => 'required|string|max:3',
             'exchange_rate' => 'required|numeric|min:0',
             'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.item_type' => 'required|in:product,kit',
+            'items.*.product_id' => 'required_if:items.*.item_type,product|nullable|exists:products,id',
+            'items.*.kit_id' => 'required_if:items.*.item_type,kit|nullable|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.unit_cost' => 'required|numeric|min:0',
         ]);
@@ -401,18 +538,27 @@ class RequestForQuotationController extends Controller
                 'iva_exempt' => $request->boolean('iva_exempt'),
             ]);
 
-            $productIds = array_column($request->items, 'product_id');
+            $productIds = [];
+            foreach ($request->items as $item) {
+                $productIds[] = $item['item_type'] === 'kit' ? $item['kit_id'] : $item['product_id'];
+            }
             $products = \App\Models\Product::whereIn('id', $productIds)->get()->keyBy('id');
 
             foreach ($request->items as $item) {
-                $product = $products->get($item['product_id']);
+                $productId = $item['item_type'] === 'kit' ? $item['kit_id'] : $item['product_id'];
                 $equivalentBs = $calc->calculateItemEquivalentBs($item['unit_cost'], $request->currency, $request->exchange_rate);
+
+                $product = $products->get($productId);
+                $product_name = $product ? $product->name : '';
+                $product_code = $product ? $product->code : '';
 
                 \App\Models\PurchaseOrderItem::create([
                     'purchase_order_id' => $order->id,
-                    'product_id' => $item['product_id'],
-                    'product_name' => $product->name,
-                    'product_code' => $product->code,
+                    'item_type' => 'product',
+                    'product_id' => $productId,
+                    'kit_id' => null,
+                    'product_name' => $product_name,
+                    'product_code' => $product_code,
                     'quantity' => $item['quantity'],
                     'quantity_received' => 0,
                     'unit_cost' => $item['unit_cost'],

@@ -28,14 +28,19 @@ class Product extends Model
         'track_expiry',
         'is_active',
         'is_kit',
+        'is_generic',
         'created_on_the_fly',
         'user_id',
+        'type',
+        'requires_serial',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
         'is_kit' => 'boolean',
+        'is_generic' => 'boolean',
         'created_on_the_fly' => 'boolean',
+        'requires_serial' => 'boolean',
     ];
 
     // Relaciones con los módulos maestros
@@ -70,19 +75,66 @@ class Product extends Model
         return $this->hasMany(ProductBatch::class);
     }
 
+    // Componentes de un kit compuesto
+    public function components()
+    {
+        return $this->belongsToMany(Product::class, 'product_kit_items', 'parent_id', 'child_id')
+                    ->withPivot('quantity')
+                    ->withTimestamps();
+    }
+
+    // Kits que contienen este producto
+    public function parentKits()
+    {
+        return $this->belongsToMany(Product::class, 'product_kit_items', 'child_id', 'parent_id')
+                    ->withPivot('quantity')
+                    ->withTimestamps();
+    }
+
+    /**
+     * Obtiene el stock disponible virtual para este kit basado en el stock de sus componentes.
+     */
+    public function getAvailableStockAttribute(): int
+    {
+        if ($this->type !== 'composite_kit') {
+            return $this->stock ?? 0;
+        }
+
+        if ($this->components->isEmpty()) {
+            return 0;
+        }
+
+        $minKits = null;
+
+        foreach ($this->components as $component) {
+            $required = $component->pivot->quantity;
+            if ($required <= 0) {
+                continue;
+            }
+            $stock = $component->stock ?? 0;
+            $formable = (int) floor($stock / $required);
+
+            if ($minKits === null || $formable < $minKits) {
+                $minKits = $formable;
+            }
+        }
+
+        return $minKits ?? 0;
+    }
+
     public static function getExpiringProducts(int $days = 30)
     {
         return self::where('track_expiry', true)
             ->whereHas('batches', function ($query) use ($days) {
                 $query->where('quantity', '>', 0)
-                    ->whereDate('expiry_date', '<=', now()->addDays($days))
-                    ->whereDate('expiry_date', '>=', now());
+                    ->whereDate('expiration_date', '<=', now()->addDays($days))
+                    ->whereDate('expiration_date', '>=', now());
             })
             ->with(['batches' => function ($query) use ($days) {
                 $query->where('quantity', '>', 0)
-                    ->whereDate('expiry_date', '<=', now()->addDays($days))
-                    ->whereDate('expiry_date', '>=', now())
-                    ->orderBy('expiry_date', 'asc');
+                    ->whereDate('expiration_date', '<=', now()->addDays($days))
+                    ->whereDate('expiration_date', '>=', now())
+                    ->orderBy('expiration_date', 'asc');
             }])
             ->get();
     }
@@ -92,12 +144,12 @@ class Product extends Model
         return self::where('track_expiry', true)
             ->whereHas('batches', function ($query) {
                 $query->where('quantity', '>', 0)
-                    ->whereDate('expiry_date', '<', now());
+                    ->whereDate('expiration_date', '<', now());
             })
             ->with(['batches' => function ($query) {
                 $query->where('quantity', '>', 0)
-                    ->whereDate('expiry_date', '<', now())
-                    ->orderBy('expiry_date', 'asc');
+                    ->whereDate('expiration_date', '<', now())
+                    ->orderBy('expiration_date', 'asc');
             }])
             ->get();
     }

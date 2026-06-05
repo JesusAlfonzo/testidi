@@ -26,6 +26,17 @@
                         <dt class="col-sm-4">Precio:</dt>
                         <dd class="col-sm-8">${{ number_format($kit->unit_price, 2) }}</dd>
 
+                        <dt class="col-sm-4">Kits Disponibles:</dt>
+                        <dd class="col-sm-8">
+                            @if($kit->available_stock > 5)
+                                <span class="badge badge-success py-1 px-2" style="font-size: 0.9rem;"><i class="fas fa-check-circle"></i> {{ $kit->available_stock }} kits</span>
+                            @elseif($kit->available_stock > 0)
+                                <span class="badge badge-warning text-dark py-1 px-2" style="font-size: 0.9rem;"><i class="fas fa-exclamation-triangle"></i> {{ $kit->available_stock }} kits</span>
+                            @else
+                                <span class="badge badge-danger py-1 px-2" style="font-size: 0.9rem;"><i class="fas fa-times-circle"></i> Sin stock</span>
+                            @endif
+                        </dd>
+
                         <dt class="col-sm-4">Descripción:</dt>
                         <dd class="col-sm-8">{{ $kit->description ?? 'N/A' }}</dd>
                         
@@ -54,22 +65,43 @@
                     </h3>
                 </div>
                 <div class="card-body p-0">
-                    <table class="table table-sm table-striped mb-0">
+                    <table class="table table-striped mb-0">
                         <thead class="bg-info">
                             <tr>
                                 <th>Producto</th>
-                                <th class="text-right">Cant. Requerida</th>
+                                <th class="text-center">Stock Individual</th>
+                                <th class="text-center">Cant. Requerida</th>
+                                <th class="text-right">Kits Formables</th>
                             </tr>
                         </thead>
                         <tbody>
                             @forelse($kit->components as $component)
-                                <tr>
-                                    <td>{{ $component->name }}</td>
-                                    <td class="text-right">{{ $component->pivot->quantity_required }}</td>
+                                @php
+                                    $stock = $component->stock ?? 0;
+                                    $required = $component->pivot->quantity_required;
+                                    $formable = $required > 0 ? (int) floor($stock / $required) : 0;
+                                    $isLimiting = $formable === $kit->available_stock && $kit->available_stock === 0;
+                                @endphp
+                                <tr class="{{ $isLimiting ? 'table-danger' : '' }}">
+                                    <td>
+                                        <strong>{{ $component->name }}</strong>
+                                        @if($isLimiting)
+                                            <span class="badge badge-danger ml-2"><i class="fas fa-exclamation-triangle"></i> Limitante</span>
+                                        @endif
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge {{ $stock >= $required ? 'badge-success' : 'badge-danger' }} py-1 px-2">
+                                            {{ $stock }}
+                                        </span>
+                                    </td>
+                                    <td class="text-center">{{ $required }}</td>
+                                    <td class="text-right font-weight-bold {{ $formable == 0 ? 'text-danger' : 'text-success' }}">
+                                        {{ $formable }}
+                                    </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="2" class="text-center">Este Kit no tiene componentes definidos.</td>
+                                    <td colspan="4" class="text-center">Este Kit no tiene componentes definidos.</td>
                                 </tr>
                             @endforelse
                         </tbody>

@@ -59,6 +59,9 @@ class StockInController extends Controller
         if ($request->filled('product_id')) {
             $query->where('product_id', $request->product_id);
         }
+        if ($request->filled('invoice_number')) {
+            $query->where('invoice_number', 'LIKE', '%' . $request->invoice_number . '%');
+        }
 
         if ($request->get('view_all') === 'true') {
             $stockIns = $query->paginate($perPage)->appends($request->except('page'));
@@ -86,6 +89,9 @@ class StockInController extends Controller
             $query->whereHas('items', function($q) use ($request) {
                 $q->where('product_id', $request->product_id);
             });
+        }
+        if ($request->filled('invoice_number')) {
+            $query->where('invoice_number', 'LIKE', '%' . $request->invoice_number . '%');
         }
 
         $start = $request->input('start', 0);
@@ -173,6 +179,7 @@ class StockInController extends Controller
             $reference .= ' <span class="badge badge-light">' . $itemCount . ' item' . ($itemCount > 1 ? 's' : '') . '</span>';
 
             return [
+                'id' => $item->id,
                 'date' => $item->entry_date ? $item->entry_date->format('d/m/Y') : '',
                 'reference' => $reference,
                 'quantity' => '<span class="badge badge-success">+' . $totalQty . '</span>',
@@ -181,6 +188,18 @@ class StockInController extends Controller
                 'supplier' => $item->supplier->name ?? 'Ajuste / N/A',
                 'document' => $doc,
                 'actions' => '<a href="' . route('admin.stock-in.show', $item->id) . '" class="btn btn-sm btn-info" title="Ver detalles"><i class="fas fa-eye"></i></a>',
+                'items_data' => $item->items->map(function ($subItem) {
+                    return [
+                        'product_name' => $subItem->product->name ?? 'N/A',
+                        'product_code' => $subItem->product->code ?? 'N/A',
+                        'quantity' => $subItem->quantity,
+                        'unit_cost' => '$' . number_format($subItem->unit_cost, 2),
+                        'batch_number' => $subItem->batch_number ?? 'N/A',
+                        'expiration_date' => $subItem->expiration_date ? \Carbon\Carbon::parse($subItem->expiration_date)->format('d/m/Y') : 'N/A',
+                        'warehouse_location' => $subItem->warehouse_location ?? 'N/A',
+                        'status' => $subItem->status === 'received' ? 'Recibido' : 'Rechazado'
+                    ];
+                })->toArray(),
             ];
         });
 
@@ -196,7 +215,7 @@ class StockInController extends Controller
     {
         $this->authorize('entradas_crear');
         
-        $products = Product::where('is_active', true)->orderBy('name')->pluck('name', 'id');
+        $products = Product::where('is_active', true)->orderBy('name')->get(['id', 'name', 'requires_serial']);
         $suppliers = Supplier::orderBy('name')->pluck('name', 'id');
         $locations = Location::orderBy('name')->pluck('name', 'id');
 
@@ -208,17 +227,20 @@ class StockInController extends Controller
             $order = PurchaseOrder::with(['supplier', 'items.product'])
                 ->find($request->order);
 
-            if ($order && $request->filled('item')) {
-                $orderItem = $order->items()
-                    ->where('id', $request->item)
-                    ->where(function ($q) {
-                        $q->whereColumn('quantity_received', '<', 'quantity');
-                    })
-                    ->first();
-            }
+            if ($order) {
+                if ($request->filled('item')) {
+                    $orderItem = $order->items()
+                        ->with('product')
+                        ->where('id', $request->item)
+                        ->where(function ($q) {
+                            $q->whereColumn('quantity_received', '<', 'quantity');
+                        })
+                        ->first();
+                }
 
-            if ($order && $request->filled('items')) {
-                $selectedItemIds = $request->input('items', []);
+                if ($request->filled('items')) {
+                    $selectedItemIds = $request->input('items', []);
+                }
             }
         }
 
@@ -263,14 +285,29 @@ class StockInController extends Controller
                     $firstProductId = $itemData['product_id'];
                 }
 
+                $poItemId = $itemData['purchase_order_item_id'] ?? null;
+                if (empty($poItemId) && !empty($validatedData['purchase_order_id'])) {
+                    $matchedPoItem = PurchaseOrderItem::where('purchase_order_id', $validatedData['purchase_order_id'])
+                        ->where('product_id', $itemData['product_id'])
+                        ->first();
+                    if ($matchedPoItem) {
+                        $poItemId = $matchedPoItem->id;
+                    }
+                }
+
+                $productModel = Product::find($itemData['product_id']);
+                $requiresSerial = $productModel ? $productModel->requires_serial : false;
+                $serialNumberInput = $requiresSerial ? ($itemData['serial_number'] ?? null) : null;
+
                 $stockInItem = StockInItem::create([
                     'stock_in_id' => $stockIn->id,
+                    'purchase_order_item_id' => $poItemId,
                     'product_id' => $itemData['product_id'],
                     'quantity' => $quantity,
                     'unit_cost' => $itemData['unit_cost'],
                     'batch_number' => $itemData['batch_number'] ?? null,
-                    'expiry_date' => $itemData['expiry_date'] ?? null,
-                    'serial_number' => $itemData['serial_number'] ?? null,
+                    'expiration_date' => $itemData['expiration_date'] ?? null,
+                    'serial_number' => $serialNumberInput,
                     'warehouse_location' => $itemData['warehouse_location'] ?? null,
                     'notes' => $itemData['notes'] ?? null,
                     'status' => $status,
@@ -278,28 +315,46 @@ class StockInController extends Controller
                 ]);
 
                 if ($status === 'received') {
-                    if (!empty($itemData['batch_number']) || !empty($itemData['expiry_date'])) {
-                        $batch = ProductBatch::where('product_id', $itemData['product_id'])
-                            ->where('batch_number', $itemData['batch_number'] ?? null)
-                            ->where('serial_number', $itemData['serial_number'] ?? null)
-                            ->first();
-
-                        if ($batch) {
-                            $batch->quantity += $quantity;
-                            $batch->stock_in_item_id = $stockInItem->id;
-                            $batch->expiry_date = $itemData['expiry_date'] ?? null;
-                            $batch->unit_cost = $itemData['unit_cost'];
-                            $batch->save();
+                    if (!empty($itemData['batch_number']) || !empty($itemData['expiration_date'])) {
+                        if ($requiresSerial) {
+                            $serials = array_filter(array_map('trim', explode(',', $serialNumberInput ?? '')));
+                            foreach ($serials as $serial) {
+                                ProductBatch::create([
+                                    'product_id' => $itemData['product_id'],
+                                    'stock_in_item_id' => $stockInItem->id,
+                                    'batch_number' => $itemData['batch_number'] ?? null,
+                                    'serial_number' => $serial,
+                                    'expiration_date' => $itemData['expiration_date'] ?? null,
+                                    'quantity' => 1,
+                                    'unit_cost' => $itemData['unit_cost'],
+                                    'invoice_number' => $stockIn->document_number,
+                                ]);
+                            }
                         } else {
-                            ProductBatch::create([
-                                'product_id' => $itemData['product_id'],
-                                'stock_in_item_id' => $stockInItem->id,
-                                'batch_number' => $itemData['batch_number'] ?? null,
-                                'serial_number' => $itemData['serial_number'] ?? null,
-                                'expiry_date' => $itemData['expiry_date'] ?? null,
-                                'quantity' => $quantity,
-                                'unit_cost' => $itemData['unit_cost'],
-                            ]);
+                            $batch = ProductBatch::where('product_id', $itemData['product_id'])
+                                ->where('batch_number', $itemData['batch_number'] ?? null)
+                                ->whereNull('serial_number')
+                                ->first();
+
+                            if ($batch) {
+                                $batch->quantity += $quantity;
+                                $batch->stock_in_item_id = $stockInItem->id;
+                                $batch->expiration_date = $itemData['expiration_date'] ?? null;
+                                $batch->unit_cost = $itemData['unit_cost'];
+                                $batch->invoice_number = $stockIn->document_number;
+                                $batch->save();
+                            } else {
+                                ProductBatch::create([
+                                    'product_id' => $itemData['product_id'],
+                                    'stock_in_item_id' => $stockInItem->id,
+                                    'batch_number' => $itemData['batch_number'] ?? null,
+                                    'serial_number' => null,
+                                    'expiration_date' => $itemData['expiration_date'] ?? null,
+                                    'quantity' => $quantity,
+                                    'unit_cost' => $itemData['unit_cost'],
+                                    'invoice_number' => $stockIn->document_number,
+                                ]);
+                            }
                         }
                     }
 
@@ -311,10 +366,8 @@ class StockInController extends Controller
                     $productsUpdated[$itemData['product_id']] = $product;
                 }
 
-                if (!empty($validatedData['purchase_order_id'])) {
-                    $orderItem = PurchaseOrderItem::where('purchase_order_id', $validatedData['purchase_order_id'])
-                        ->where('product_id', $itemData['product_id'])
-                        ->first();
+                if (!empty($poItemId)) {
+                    $orderItem = PurchaseOrderItem::find($poItemId);
 
                     if ($orderItem) {
                         if ($status === 'received') {
@@ -328,6 +381,13 @@ class StockInController extends Controller
             }
 
             if (!empty($validatedData['purchase_order_id'])) {
+                $affectedKitItems = PurchaseOrderItem::where('purchase_order_id', $validatedData['purchase_order_id'])
+                    ->where('item_type', 'kit')
+                    ->get();
+                foreach ($affectedKitItems as $kitItem) {
+                    $kitItem->recalculateKitQuantities();
+                }
+
                 $purchaseOrder = PurchaseOrder::with('items')->find($validatedData['purchase_order_id']);
                 if ($purchaseOrder && $purchaseOrder->isFullyReceived() && $purchaseOrder->status === 'issued') {
                     $purchaseOrder->update(['status' => 'completed']);
@@ -373,76 +433,174 @@ class StockInController extends Controller
         
         DB::beginTransaction();
         try {
+            $stockIn->load('items.product');
             $items = $stockIn->items;
 
+            // 1. Lectura y Bloqueo (Lock) + 2. Validación de existencias
+            $productsToLock = [];
             foreach ($items as $item) {
-                $product = Product::lockForUpdate()->find($item->product_id);
+                if ($item->status === 'received') {
+                    // Evitar bloquear el mismo producto múltiples veces si viene en más de una fila
+                    if (!isset($productsToLock[$item->product_id])) {
+                        $product = Product::lockForUpdate()->find($item->product_id);
+                        if (!$product) {
+                            DB::rollback();
+                            return redirect()->back()->with('error', 'Producto no encontrado.');
+                        }
+                        $productsToLock[$item->product_id] = $product;
+                    } else {
+                        $product = $productsToLock[$item->product_id];
+                    }
 
-                if (!$product) {
-                    DB::rollback();
-                    return redirect()->route('admin.stock-in.index')
-                        ->with('error', 'Producto no encontrado.');
-                }
+                    // Verificar stock general
+                    $newStock = $product->stock - $item->quantity;
+                    if ($newStock < 0) {
+                        DB::rollback();
+                        return redirect()->back()
+                            ->with('error', 'No es posible anular esta entrada. Parte del stock ya ha sido consumido o despachado del almacén.');
+                    }
 
-                $newStock = $product->stock - $item->quantity;
-                
-                if ($newStock < 0) {
-                    DB::rollback();
-                    return redirect()->route('admin.stock-in.index')
-                        ->with('error', "No se puede eliminar la entrada: El stock del producto {$product->name} (actual: {$product->stock}) quedaría negativo ({$newStock}) tras eliminar {$item->quantity} unidades.");
-                }
-
-                $product->stock = $newStock;
-                $product->save();
-
-                if (!empty($item->batch_number) || !empty($item->serial_number)) {
-                    $batch = ProductBatch::where('product_id', $item->product_id)
-                        ->where('batch_number', $item->batch_number)
-                        ->where('serial_number', $item->serial_number)
-                        ->first();
-
-                    if ($batch) {
-                        $batch->quantity -= $item->quantity;
-                        if ($batch->quantity <= 0) {
-                            $batch->delete();
-                        } else {
-                            $batch->save();
+                    // Verificar lotes y seriales
+                    $requiresSerial = $product->requires_serial;
+                    if ($requiresSerial || !empty($item->serial_number)) {
+                        $serials = array_filter(array_map('trim', explode(',', $item->serial_number ?? '')));
+                        foreach ($serials as $serial) {
+                            $batch = ProductBatch::where('product_id', $item->product_id)
+                                ->where('serial_number', $serial)
+                                ->first();
+                            if (!$batch || $batch->quantity < 1) {
+                                DB::rollback();
+                                return redirect()->back()
+                                    ->with('error', 'No es posible anular esta entrada. Parte del stock ya ha sido consumido o despachado del almacén.');
+                            }
+                        }
+                    } elseif (!empty($item->batch_number)) {
+                        $batch = ProductBatch::where('product_id', $item->product_id)
+                            ->where('batch_number', $item->batch_number)
+                            ->whereNull('serial_number')
+                            ->first();
+                        if (!$batch || $batch->quantity < $item->quantity) {
+                            DB::rollback();
+                            return redirect()->back()
+                                ->with('error', 'No es posible anular esta entrada. Parte del stock ya ha sido consumido o despachado del almacén.');
                         }
                     }
                 }
+            }
 
-                if ($stockIn->purchase_order_id) {
-                    $orderItem = PurchaseOrderItem::where('purchase_order_id', $stockIn->purchase_order_id)
-                        ->where('product_id', $item->product_id)
-                        ->first();
+            // 3. Reversa de Inventario y PO (Modificaciones de Datos)
+            $affectedProducts = [];
+            foreach ($items as $item) {
+                if ($item->status === 'received') {
+                    $product = $productsToLock[$item->product_id];
+                    $product->stock -= $item->quantity;
+                    $product->save();
 
-                    if ($orderItem) {
-                        $orderItem->quantity_received -= $item->quantity;
-                        if ($orderItem->quantity_received < 0) {
-                            $orderItem->quantity_received = 0;
+                    // Reversar de lotes/seriales
+                    $requiresSerial = $product->requires_serial;
+                    if ($requiresSerial || !empty($item->serial_number)) {
+                        $serials = array_filter(array_map('trim', explode(',', $item->serial_number ?? '')));
+                        foreach ($serials as $serial) {
+                            $batch = ProductBatch::where('product_id', $item->product_id)
+                                ->where('serial_number', $serial)
+                                ->first();
+                            if ($batch) {
+                                $batch->delete();
+                            }
                         }
-                        $orderItem->save();
+                    } elseif (!empty($item->batch_number)) {
+                        $batch = ProductBatch::where('product_id', $item->product_id)
+                            ->where('batch_number', $item->batch_number)
+                            ->whereNull('serial_number')
+                            ->first();
+                        if ($batch) {
+                            $batch->quantity -= $item->quantity;
+                            if ($batch->quantity <= 0) {
+                                $batch->delete();
+                            } else {
+                                $batch->save();
+                            }
+                        }
+                    }
+
+                    // Reversar cantidades recibidas en PO
+                    if ($item->purchase_order_item_id) {
+                        $orderItem = PurchaseOrderItem::find($item->purchase_order_item_id);
+                        if ($orderItem) {
+                            $orderItem->quantity_received -= $item->quantity;
+                            if ($orderItem->quantity_received < 0) {
+                                $orderItem->quantity_received = 0;
+                            }
+                            $orderItem->save();
+                        }
+                    }
+
+                    $affectedProducts[$product->id] = $product;
+                } elseif ($item->status === 'rejected') {
+                    // Reversar cantidades rechazadas en PO
+                    if ($item->purchase_order_item_id) {
+                        $orderItem = PurchaseOrderItem::find($item->purchase_order_item_id);
+                        if ($orderItem) {
+                            $orderItem->quantity_rejected -= $item->quantity;
+                            if ($orderItem->quantity_rejected < 0) {
+                                $orderItem->quantity_rejected = 0;
+                            }
+                            $orderItem->save();
+                        }
                     }
                 }
+            }
 
+            // Recalcular cantidades de kits si los hay
+            $affectedKitItemIds = [];
+            foreach ($items as $item) {
+                if ($item->purchase_order_item_id) {
+                    $orderItem = PurchaseOrderItem::find($item->purchase_order_item_id);
+                    if ($orderItem && $orderItem->item_type === 'kit') {
+                        $affectedKitItemIds[] = $orderItem->id;
+                    }
+                }
+            }
+
+            foreach (array_unique($affectedKitItemIds) as $poItemId) {
+                $orderItem = PurchaseOrderItem::find($poItemId);
+                if ($orderItem) {
+                    $orderItem->recalculateKitQuantities();
+                }
+            }
+
+            // Reabrir PO si era completed y ahora tiene pendientes
+            if ($stockIn->purchase_order_id) {
+                $purchaseOrder = PurchaseOrder::with('items')->find($stockIn->purchase_order_id);
+                if ($purchaseOrder) {
+                    $purchaseOrder->load('items');
+                    if ($purchaseOrder->status === 'completed' && !$purchaseOrder->isFullyReceived()) {
+                        $purchaseOrder->update(['status' => 'issued']);
+                    }
+                }
+            }
+
+            // Disparar eventos y limpiar caché para productos modificados
+            foreach ($affectedProducts as $product) {
                 event(new StockUpdated(
                     product: $product,
                     quantity: $product->stock,
-                    type: 'in',
+                    type: 'out',
                     referenceId: $stockIn->id,
                     referenceType: StockIn::class,
-                    notes: 'Eliminación de entrada de stock'
+                    notes: 'Anulación de entrada de stock'
                 ));
 
-                $this->cacheService->invalidateProductStock($item->product_id);
+                $this->cacheService->invalidateProductStock($product->id);
             }
 
+            // 4. [CRÍTICO] Eliminación Física del Registro al Final
             $stockIn->delete();
 
             DB::commit();
 
             return redirect()->route('admin.stock-in.index')
-                ->with('success', 'Entrada de stock eliminada y stock del producto corregido.');
+                ->with('success', 'Entrada de stock anulada correctamente y existencias revertidas.');
 
         } catch (\Exception $e) {
             DB::rollback();
@@ -472,7 +630,7 @@ class StockInController extends Controller
                 ->with('error', 'No hay productos rechazados para reemplazar en esta entrada.');
         }
 
-        $products = Product::where('is_active', true)->orderBy('name')->pluck('name', 'id');
+        $products = Product::where('is_active', true)->orderBy('name')->get(['id', 'name', 'requires_serial']);
         $suppliers = Supplier::orderBy('name')->pluck('name', 'id');
         $locations = Location::orderBy('name')->pluck('name', 'id');
 
@@ -498,7 +656,7 @@ class StockInController extends Controller
             'items.*.quantity' => ['required', 'integer', 'min:1'],
             'items.*.unit_cost' => ['required', 'numeric', 'min:0.01'],
             'items.*.batch_number' => ['nullable', 'string', 'max:50'],
-            'items.*.expiry_date' => ['nullable', 'date'],
+            'items.*.expiration_date' => ['nullable', 'date'],
             'items.*.serial_number' => ['nullable', 'string', 'max:100'],
             'items.*.warehouse_location' => ['nullable', 'string', 'max:100'],
             'items.*.notes' => ['nullable', 'string', 'max:255'],
@@ -539,42 +697,68 @@ class StockInController extends Controller
                     $firstProductId = $itemData['product_id'];
                 }
 
+                $rejectedItem = StockInItem::find($itemData['replaced_item_id']);
+                $poItemId = $rejectedItem ? $rejectedItem->purchase_order_item_id : null;
+
+                $productModel = Product::find($itemData['product_id']);
+                $requiresSerial = $productModel ? $productModel->requires_serial : false;
+                $serialNumberInput = $requiresSerial ? ($itemData['serial_number'] ?? null) : null;
+
                 $stockInItem = StockInItem::create([
                     'stock_in_id' => $stockIn->id,
+                    'purchase_order_item_id' => $poItemId,
                     'product_id' => $itemData['product_id'],
                     'quantity' => $quantity,
                     'unit_cost' => $itemData['unit_cost'],
                     'batch_number' => $itemData['batch_number'] ?? null,
-                    'expiry_date' => $itemData['expiry_date'] ?? null,
-                    'serial_number' => $itemData['serial_number'] ?? null,
+                    'expiration_date' => $itemData['expiration_date'] ?? null,
+                    'serial_number' => $serialNumberInput,
                     'warehouse_location' => $itemData['warehouse_location'] ?? null,
                     'notes' => $itemData['notes'] ?? null,
                     'status' => 'received',
                     'replaced_item_id' => $itemData['replaced_item_id'],
                 ]);
 
-                if (!empty($itemData['batch_number']) || !empty($itemData['expiry_date'])) {
-                    $batch = ProductBatch::where('product_id', $itemData['product_id'])
-                        ->where('batch_number', $itemData['batch_number'] ?? null)
-                        ->where('serial_number', $itemData['serial_number'] ?? null)
-                        ->first();
-
-                    if ($batch) {
-                        $batch->quantity += $quantity;
-                        $batch->stock_in_item_id = $stockInItem->id;
-                        $batch->expiry_date = $itemData['expiry_date'] ?? null;
-                        $batch->unit_cost = $itemData['unit_cost'];
-                        $batch->save();
+                if (!empty($itemData['batch_number']) || !empty($itemData['expiration_date'])) {
+                    if ($requiresSerial) {
+                        $serials = array_filter(array_map('trim', explode(',', $serialNumberInput ?? '')));
+                        foreach ($serials as $serial) {
+                            ProductBatch::create([
+                                'product_id' => $itemData['product_id'],
+                                'stock_in_item_id' => $stockInItem->id,
+                                'batch_number' => $itemData['batch_number'] ?? null,
+                                'serial_number' => $serial,
+                                'expiration_date' => $itemData['expiration_date'] ?? null,
+                                'quantity' => 1,
+                                'unit_cost' => $itemData['unit_cost'],
+                                'invoice_number' => $stockIn->document_number,
+                            ]);
+                        }
                     } else {
-                        ProductBatch::create([
-                            'product_id' => $itemData['product_id'],
-                            'stock_in_item_id' => $stockInItem->id,
-                            'batch_number' => $itemData['batch_number'] ?? null,
-                            'serial_number' => $itemData['serial_number'] ?? null,
-                            'expiry_date' => $itemData['expiry_date'] ?? null,
-                            'quantity' => $quantity,
-                            'unit_cost' => $itemData['unit_cost'],
-                        ]);
+                        $batch = ProductBatch::where('product_id', $itemData['product_id'])
+                            ->where('batch_number', $itemData['batch_number'] ?? null)
+                            ->whereNull('serial_number')
+                            ->first();
+
+                        if ($batch) {
+                            $batch->quantity += $quantity;
+                            $batch->stock_in_item_id = $stockInItem->id;
+                            $batch->expiration_date = $itemData['expiration_date'] ?? null;
+                            $batch->unit_cost = $itemData['unit_cost'];
+                            $batch->invoice_number = $stockIn->document_number;
+                            $batch->save();
+                        } else {
+                            ProductBatch::create([
+                                'product_id' => $itemData['product_id'],
+                                'stock_in_item_id' => $stockInItem->id,
+                                'batch_number' => $itemData['batch_number'] ?? null,
+                                'serial_number' => null,
+                                'expiration_date' => $itemData['expiration_date'] ?? null,
+                                'quantity' => $quantity,
+                                'unit_cost' => $itemData['unit_cost'],
+                                'invoice_number' => $stockIn->document_number,
+                            ]);
+                        }
                     }
                 }
 
@@ -585,16 +769,13 @@ class StockInController extends Controller
 
                 $productsUpdated[$itemData['product_id']] = $product;
 
-                $rejectedItem = StockInItem::find($itemData['replaced_item_id']);
                 if ($rejectedItem) {
                     $rejectedItem->status = 'replaced';
                     $rejectedItem->save();
                 }
 
-                if ($stockIn->purchase_order_id) {
-                    $orderItem = PurchaseOrderItem::where('purchase_order_id', $stockIn->purchase_order_id)
-                        ->where('product_id', $itemData['product_id'])
-                        ->first();
+                if ($poItemId) {
+                    $orderItem = PurchaseOrderItem::find($poItemId);
 
                     if ($orderItem) {
                         $orderItem->quantity_received += $quantity;
@@ -602,6 +783,15 @@ class StockInController extends Controller
                         $orderItem->quantity_rejected = max(0, $orderItem->quantity_rejected - $quantity);
                         $orderItem->save();
                     }
+                }
+            }
+
+            if ($stockIn->purchase_order_id) {
+                $affectedKitItems = PurchaseOrderItem::where('purchase_order_id', $stockIn->purchase_order_id)
+                    ->where('item_type', 'kit')
+                    ->get();
+                foreach ($affectedKitItems as $kitItem) {
+                    $kitItem->recalculateKitQuantities();
                 }
             }
 

@@ -6,31 +6,25 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class RfqItem extends Model
+class RfqSupplierOfferItem extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'rfq_id',
-        'item_type',
+        'rfq_supplier_offer_id',
         'product_id',
-        'kit_id',
-        'quantity',
-        'notes',
+        'unit_price',
+        'currency',
+        'tax_status',
     ];
 
-    public function rfq(): BelongsTo
+    public function offer(): BelongsTo
     {
-        return $this->belongsTo(RequestForQuotation::class, 'rfq_id');
+        return $this->belongsTo(RfqSupplierOffer::class, 'rfq_supplier_offer_id');
     }
 
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
-    }
-
-    public function kit(): BelongsTo
-    {
-        return $this->belongsTo(Kit::class);
     }
 }

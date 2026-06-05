@@ -223,10 +223,17 @@
             @foreach($rfq->items as $index => $item)
                 <tr>
                     <td class="text-center">{{ $index + 1 }}</td>
-                    <td>{{ $item->product->code ?? 'N/A' }}</td>
-                    <td><strong>{{ $item->product->name }}</strong></td>
-                    <td class="text-center">{{ $item->quantity }}</td>
-                    <td class="text-center">{{ $item->product->unit->abbreviation ?? 'und' }}</td>
+                    @if($item->item_type === 'kit')
+                        <td>S/C</td>
+                        <td><strong>{{ $item->kit->name ?? 'Kit Desconocido' }}</strong> <span style="font-size: 80%; color: #6c757d;">(Kit)</span></td>
+                        <td class="text-center">{{ $item->quantity }}</td>
+                        <td class="text-center">kit</td>
+                    @else
+                        <td>{{ $item->product->code ?? 'N/A' }}</td>
+                        <td><strong>{{ $item->product->name ?? 'Producto Desconocido' }}</strong></td>
+                        <td class="text-center">{{ $item->quantity }}</td>
+                        <td class="text-center">{{ $item->product->unit->abbreviation ?? 'und' }}</td>
+                    @endif
                     <td>{{ $item->notes ?? '-' }}</td>
                 </tr>
             @endforeach

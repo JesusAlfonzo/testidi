@@ -173,7 +173,7 @@
                                                 <input type="text" name="items[{{ $index }}][batch_number]" class="form-control form-control-sm" placeholder="Lote">
                                             </td>
                                             <td>
-                                                <input type="date" name="items[{{ $index }}][expiry_date]" class="form-control form-control-sm">
+                                                <input type="date" name="items[{{ $index }}][expiration_date]" class="form-control form-control-sm">
                                             </td>
                                             <td>
                                                 <input type="text" name="items[{{ $index }}][serial_number]" class="form-control form-control-sm" placeholder="Serie">

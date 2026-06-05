@@ -54,6 +54,7 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::resource('products', ProductController::class);
     Route::post('products/quick-store', [ProductController::class, 'quickStore'])->name('products.quick-store');
     Route::post('products/quick-store-kit', [ProductController::class, 'quickStoreKit'])->name('products.quick-store-kit');
+    Route::post('products/{product}/decompose', [ProductController::class, 'decompose'])->name('products.decompose');
     Route::get('products/search', [ProductController::class, 'search'])->name('products.search');
 
     // MÓDULO KITS
@@ -66,7 +67,8 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::post('rfq/{rfq}/mark-sent', [RequestForQuotationController::class, 'markAsSent'])->name('rfq.mark-sent');
     Route::post('rfq/{rfq}/mark-closed', [RequestForQuotationController::class, 'markAsClosed'])->name('rfq.mark-closed');
     Route::post('rfq/{rfq}/cancel', [RequestForQuotationController::class, 'cancel'])->name('rfq.cancel');
-    Route::get('rfq/{rfq}/convert-to-po', [RequestForQuotationController::class, 'convertToPO'])->name('rfq.convert-to-po');
+    Route::post('rfq/{rfq}/supplier-offers', [RequestForQuotationController::class, 'saveSupplierOffer'])->name('rfq.save-supplier-offer');
+    Route::match(['get', 'post'], 'rfq/{rfq}/convert-to-po', [RequestForQuotationController::class, 'convertToPO'])->name('rfq.convert-to-po');
     Route::post('rfq/{rfq}/store-po', [RequestForQuotationController::class, 'storePOFromRFQ'])->name('rfq.store-po');
 
     // MÓDULO ORDENES DE COMPRAS
