@@ -11,9 +11,9 @@
             <p class="text-muted mb-0">Comprobante de ingreso de mercancía a almacén.</p>
         </div>
         <div>
-            <button onclick="window.print();" class="btn btn-outline-primary mr-2 d-print-none">
-                <i class="fas fa-print mr-1"></i> Imprimir Acta
-            </button>
+            <a href="{{ route('admin.stock-in.pdf', $stockIn) }}" target="_blank" class="btn btn-outline-primary mr-2 d-print-none">
+                <i class="fas fa-file-pdf mr-1"></i> Descargar PDF
+            </a>
             <a href="{{ route('admin.stock-in.index') }}" class="btn btn-outline-secondary d-print-none">
                 <i class="fas fa-arrow-left mr-1"></i> Volver
             </a>
@@ -268,40 +268,200 @@
                 @can('entradas_eliminar')
                     <div class="card shadow-sm border-danger d-print-none">
                         <div class="card-body p-3">
-                            <button type="button" class="btn btn-danger btn-block font-weight-bold shadow-sm" onclick="confirmDelete('{{ route('admin.stock-in.destroy', $stockIn) }}', 'Entrada de Stock #{{ $stockIn->id }}')">
-                                <i class="fas fa-trash-alt mr-1"></i> Eliminar Entrada de Stock
+                            <button type="button" class="btn btn-danger btn-block font-weight-bold shadow-sm" data-toggle="modal" data-target="#revertModal">
+                                <i class="fas fa-undo-alt mr-1"></i> Revertir Stock
                             </button>
-                            <small class="text-muted d-block text-center mt-2">Esta acción revertirá los incrementos de stock en el inventario.</small>
+                            <small class="text-muted d-block text-center mt-2">Seleccione qué productos y qué cantidades desea revertir del inventario.</small>
                         </div>
                     </div>
                 @endcan
             </div>
         </div>
     </div>
+
+    {{-- Modal de Revertido Selectivo --}}
+    @can('entradas_eliminar')
+    <div class="modal fade" id="revertModal" tabindex="-1" role="dialog" aria-labelledby="revertModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title font-weight-bold" id="revertModalLabel">
+                        <i class="fas fa-undo-alt mr-1"></i> Revertir Stock - Entrada #{{ $stockIn->id }}
+                    </h5>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Cerrar">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted mb-3">
+                        Seleccione los productos y especifique las cantidades a revertir del inventario.
+                        Esta acción <strong>no se puede deshacer</strong>.
+                    </p>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover table-bordered mb-0">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th class="text-center" style="width: 40px;">
+                                        <div class="custom-control custom-checkbox">
+                                            <input type="checkbox" class="custom-control-input" id="selectAll">
+                                            <label class="custom-control-label" for="selectAll"></label>
+                                        </div>
+                                    </th>
+                                    <th>Producto</th>
+                                    <th class="text-center" style="width: 80px;">Código</th>
+                                    <th class="text-center" style="width: 80px;">Recibido</th>
+                                    <th class="text-center" style="width: 120px;">Cant. a Revertir</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($stockIn->items as $item)
+                                    @if($item->status === 'received')
+                                    <tr>
+                                        <td class="text-center align-middle">
+                                            <div class="custom-control custom-checkbox">
+                                                <input type="checkbox" class="custom-control-input revert-checkbox" id="revert-{{ $item->id }}" data-id="{{ $item->id }}" data-max="{{ $item->quantity }}">
+                                                <label class="custom-control-label" for="revert-{{ $item->id }}"></label>
+                                            </div>
+                                        </td>
+                                        <td class="align-middle">
+                                            <span class="font-weight-bold">{{ $item->product->name ?? 'N/A' }}</span>
+                                        </td>
+                                        <td class="text-center align-middle"><code>{{ $item->product->code ?? 'N/A' }}</code></td>
+                                        <td class="text-center align-middle font-weight-bold">{{ $item->quantity }}</td>
+                                        <td class="text-center align-middle">
+                                            <input type="number" class="form-control form-control-sm revert-quantity text-center font-weight-bold" value="{{ $item->quantity }}" min="1" max="{{ $item->quantity }}" disabled data-item-id="{{ $item->id }}" style="width: 100px; margin: 0 auto;">
+                                        </td>
+                                    </tr>
+                                    @endif
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-danger font-weight-bold" id="btnRevertSelected">
+                        <i class="fas fa-undo-alt mr-1"></i> Revertir Seleccionados
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endcan
 @stop
 
 @section('js')
 <script>
-function confirmDelete(url, name) {
-    Swal.fire({
-        title: '¿Está seguro de anular la ' + name + '?',
-        text: '¡ATENCIÓN! Esta acción es irreversible. Se validará que exista stock suficiente de cada producto y sus respectivos lotes para cubrir la reversa. Esto disminuirá el inventario actual y reabrirá la Orden de Compra asociada.',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#dc3545',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: 'Sí, anular y revertir stock',
-        cancelButtonText: 'Cancelar'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            var form = document.createElement('form');
-            form.method = 'POST';
-            form.action = url;
-            form.innerHTML = '@csrf @method("DELETE")';
-            document.body.appendChild(form);
-            form.submit();
-        }
+    $(document).ready(function() {
+        $.ajaxSetup({
+            headers: {
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+            }
+        });
+
+        // Select All / Deselect All
+        $('#selectAll').on('change', function() {
+            var isChecked = $(this).prop('checked');
+            $('.revert-checkbox').each(function() {
+                $(this).prop('checked', isChecked).trigger('change');
+            });
+        });
+
+        // Habilitar/deshabilitar quantity cuando se checkea un item
+        $(document).on('change', '.revert-checkbox', function() {
+            var qtyInput = $(this).closest('tr').find('.revert-quantity');
+            qtyInput.prop('disabled', !$(this).prop('checked'));
+            if (!$(this).prop('checked')) {
+                qtyInput.val(qtyInput.data('max'));
+            }
+
+            // Actualizar "Select All"
+            var total = $('.revert-checkbox').length;
+            var checked = $('.revert-checkbox:checked').length;
+            $('#selectAll').prop('checked', total === checked).prop('indeterminate', checked > 0 && checked < total);
+        });
+
+        // Validar quantity no exceda el máximo
+        $(document).on('input', '.revert-quantity', function() {
+            var max = parseInt($(this).attr('max'));
+            var val = parseInt($(this).val());
+            if (val > max) {
+                $(this).val(max);
+            }
+            if (val < 1 || isNaN(val)) {
+                $(this).val(1);
+            }
+        });
+
+        // Botón de revertir
+        $('#btnRevertSelected').on('click', function() {
+            var selectedItems = [];
+            $('.revert-checkbox:checked').each(function() {
+                var row = $(this).closest('tr');
+                var qtyInput = row.find('.revert-quantity');
+                selectedItems.push({
+                    id: $(this).data('id'),
+                    quantity: parseInt(qtyInput.val())
+                });
+            });
+
+            if (selectedItems.length === 0) {
+                Swal.fire('Selección vacía', 'Debe seleccionar al menos un producto para revertir.', 'warning');
+                return;
+            }
+
+            var productNames = [];
+            $('.revert-checkbox:checked').each(function() {
+                productNames.push($(this).closest('tr').find('td:nth-child(2)').text().trim());
+            });
+            var summary = productNames.join(', ');
+
+            Swal.fire({
+                title: '¿Confirmar reversión de stock?',
+                html: '<p>Se revertirán los siguientes productos:</p><p class="font-weight-bold text-danger">' + summary + '</p><p class="text-muted small">Esta acción no se puede deshacer.</p>',
+                type: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc3545',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Sí, revertir stock',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.value === true || result.isConfirmed) {
+                    var btn = $('#btnRevertSelected');
+                    btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Revirtiendo...');
+
+                    $.ajax({
+                        url: '{{ route("admin.stock-in.revert-items", $stockIn) }}',
+                        type: 'POST',
+                        data: {
+                            items: selectedItems
+                        },
+                        success: function(response) {
+                            $('#revertModal').modal('hide');
+                            Swal.fire('¡Revertido!', response.message, 'success').then(function() {
+                                location.reload();
+                            });
+                        },
+                        error: function(xhr) {
+                            var msg = 'No se pudo revertir el stock. Intente de nuevo.';
+                            if (xhr.responseJSON && xhr.responseJSON.message) {
+                                msg = xhr.responseJSON.message;
+                            }
+                            Swal.fire('Error', msg, 'error');
+                        },
+                        complete: function() {
+                            btn.prop('disabled', false).html('<i class="fas fa-undo-alt mr-1"></i> Revertir Seleccionados');
+                        }
+                    });
+                }
+            });
+        });
+
+        // Reset modal al cerrar
+        $('#revertModal').on('hidden.bs.modal', function() {
+            $('#selectAll').prop('checked', false);
+            $('.revert-checkbox').prop('checked', false).trigger('change');
+        });
     });
-}
 </script>
 @stop

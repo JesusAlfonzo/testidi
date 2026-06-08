@@ -36,8 +36,12 @@ class RequestController extends Controller
             return $this->indexDataTables($request);
         }
 
-        // 1. Cargar lista de usuarios para el filtro
-        $requesters = User::pluck('name', 'id');
+        // 2. Cargar lista de departamentos (destination_area)
+        $departments = RequestModel::whereNotNull('destination_area')
+            ->where('destination_area', '!=', '')
+            ->distinct()
+            ->orderBy('destination_area')
+            ->pluck('destination_area', 'destination_area');
 
         // Determinar cantidad por página
         $perPage = $request->get('per_page', 15);
@@ -45,38 +49,35 @@ class RequestController extends Controller
             $perPage = 15;
         }
 
-        // 2. Iniciar consulta base
+        // 3. Iniciar consulta base
         $query = RequestModel::with(['requester', 'approver', 'items.product'])
             ->orderBy('requested_at', 'desc');
 
-        // 3. Aplicar Filtros de Seguridad (Admin ve todas, usuarios normales solo las propias)
+        // 4. Aplicar Filtros de Seguridad (Admin ve todas, usuarios normales solo las propias)
         $user = auth()->user();
         if (!$user->isSuperAdmin() && !$user->can('solicitudes_aprobar')) {
             $query->where('requester_id', $user->id);
         }
 
-        // 4. Aplicar Filtros de Búsqueda
-        if ($request->filled('date_from')) {
-            $query->whereDate('requested_at', '>=', $request->date_from);
-        }
-        if ($request->filled('date_to')) {
-            $query->whereDate('requested_at', '<=', $request->date_to);
-        }
+        // 5. Aplicar Filtros de Búsqueda
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
-        if ($request->filled('requester_id')) {
-            $query->where('requester_id', $request->requester_id);
+        if ($request->filled('destination_area')) {
+            $query->where('destination_area', $request->destination_area);
+        }
+        if ($request->filled('priority')) {
+            $query->where('justification', 'like', '[' . strtoupper($request->priority) . ']%');
         }
 
-        // 5. Obtener resultados con paginación
+        // 6. Obtener resultados con paginación
         if ($request->get('view_all') === 'true') {
             $requests = $query->paginate($perPage)->appends($request->except('page'));
         } else {
             $requests = $query->paginate($perPage)->appends($request->except('per_page'));
         }
 
-        return view('admin.requests.index', compact('requests', 'requesters', 'perPage'));
+        return view('admin.requests.index', compact('requests', 'departments', 'perPage'));
     }
 
     protected function indexDataTables(HttpRequest $request)
@@ -90,50 +91,49 @@ class RequestController extends Controller
             $query->where('requester_id', $user->id);
         }
 
-        if ($request->filled('date_from')) {
-            $query->whereDate('requested_at', '>=', $request->date_from);
-        }
-        if ($request->filled('date_to')) {
-            $query->whereDate('requested_at', '<=', $request->date_to);
-        }
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
-        if ($request->filled('requester_id')) {
-            $query->where('requester_id', $request->requester_id);
+        if ($request->filled('destination_area')) {
+            $query->where('destination_area', $request->destination_area);
+        }
+        if ($request->filled('priority')) {
+            $query->where('justification', 'like', '[' . strtoupper($request->priority) . ']%');
         }
 
-$start = $request->input('start', 0);
+        $start = $request->input('start', 0);
         $length = $request->input('length', 15);
         $search = $request->input('search.value', '');
         
         // Siempre permitir ordenamiento
-        $orderColumn = (int) $request->input('order.0.column', 4);
+        $orderColumn = (int) $request->input('order.0.column', 6);
         $orderDir = $request->input('order.0.dir', 'desc');
         
         // Mapear índice de DataTables al campo de ordenamiento
-        // 0: id, 1: requester, 2: justification, 3: status, 4: date, 5: approver, 6: processed
+        // 0: id, 1: requester, 2: destination_area, 3: justification, 4: priority, 5: status, 6: date, 7: approver, 8: processed
         $columnMap = [
             0 => 'id',              // id
             1 => 'requester',      // requester_id - usar join
-            2 => 'justification',   // justification
-            3 => 'status',          // status
-            4 => 'requested_at',   // date
-            5 => 'approver',       // approver_id - usar join
-            6 => 'processed_at',    // processed
+            2 => 'destination_area', // destination_area
+            3 => 'justification',   // justification
+            4 => 'justification',   // priority
+            5 => 'status',          // status
+            6 => 'requested_at',   // date
+            7 => 'approver',       // approver_id - usar join
+            8 => 'processed_at',    // processed
         ];
         $orderCol = $columnMap[$orderColumn] ?? 'requested_at';
 
         // Ordenar por relaciones usando join
         try {
             if ($orderCol === 'requester') {
-                $query->join('users as requesters', 'solicitudes.requester_id', '=', 'requesters.id')
+                $query->join('users as requesters', 'requests.requester_id', '=', 'requesters.id')
                       ->orderBy('requesters.name', $orderDir)
-                      ->select('solicitudes.*');
+                      ->select('requests.*');
             } elseif ($orderCol === 'approver') {
-                $query->leftJoin('users as approvers', 'solicitudes.approver_id', '=', 'approvers.id')
+                $query->leftJoin('users as approvers', 'requests.approver_id', '=', 'approvers.id')
                       ->orderBy('approvers.name', $orderDir)
-                      ->select('solicitudes.*');
+                      ->select('requests.*');
             } else {
                 $query->orderBy($orderCol, $orderDir);
             }
@@ -144,6 +144,7 @@ $start = $request->input('start', 0);
         if ($search) {
             $query->where(function($q) use ($search) {
                 $q->whereRaw('LOWER(justification) LIKE ?', [strtolower("%{$search}%")])
+                  ->orWhereRaw('LOWER(destination_area) LIKE ?', [strtolower("%{$search}%")])
                   ->orWhereHas('requester', function($rq) use ($search) {
                       $rq->whereRaw('LOWER(name) LIKE ?', [strtolower("%{$search}%")]);
                   });
@@ -168,15 +169,36 @@ $start = $request->input('start', 0);
             } elseif ($item->status === 'Rejected') {
                 $statusLabel = 'Rechazada';
                 $statusClass = 'danger';
+            } elseif ($item->status === 'Draft') {
+                $statusLabel = 'Borrador';
+                $statusClass = 'secondary';
             } else {
                 $statusLabel = $item->status;
+            }
+            
+            $priorityLabel = 'Baja';
+            $priorityClass = 'secondary';
+            $displayJustification = $item->justification;
+
+            if (preg_match('/^\[(ALTA|MEDIA|BAJA)\]\s*(.*)$/i', $item->justification, $matches)) {
+                $priorityVal = strtolower($matches[1]);
+                $displayJustification = $matches[2];
+                if ($priorityVal === 'alta') {
+                    $priorityLabel = 'Alta';
+                    $priorityClass = 'danger';
+                } elseif ($priorityVal === 'media') {
+                    $priorityLabel = 'Media';
+                    $priorityClass = 'info';
+                }
             }
             
             return [
                 'id' => 'REQ-' . $item->id,
                 'date' => $item->requested_at->format('d/m/Y H:i'),
                 'requester' => $item->requester->name ?? 'N/A',
-                'justification' => Str::limit($item->justification, 50),
+                'destination_area' => $item->destination_area ?? 'N/A',
+                'justification' => Str::limit($displayJustification, 50),
+                'priority' => '<span class="badge badge-' . $priorityClass . '">' . $priorityLabel . '</span>',
                 'status' => '<span class="badge badge-' . $statusClass . '">' . $statusLabel . '</span>',
                 'approver' => $item->approver->name ?? '-',
                 'processed' => $item->processed_at ? $item->processed_at->format('d/m/Y') : '-',
@@ -210,11 +232,18 @@ $start = $request->input('start', 0);
         DB::beginTransaction();
         try {
             // 1. Crear la cabecera de la solicitud
+            $priority = $request->input('priority', 'baja');
+            $justification = $validatedData['justification'];
+            if ($priority) {
+                $justification = "[" . strtoupper($priority) . "] " . $justification;
+            }
+
             $requestModel = RequestModel::create([
                 'requester_id' => auth()->id(),
                 'status' => 'Pending',
-                'justification' => $validatedData['justification'],
+                'justification' => $justification,
                 'destination_area' => $validatedData['destination_area'] ?? null,
+                'reference' => $validatedData['reference'] ?? null,
                 'requested_at' => Carbon::now(),
             ]);
 
@@ -338,6 +367,74 @@ $start = $request->input('start', 0);
         } catch (\Exception $e) {
             DB::rollback();
             return redirect()->back()->with('error', 'Error al procesar la solicitud.');
+        }
+    }
+
+    public function approve(RequestModel $request)
+    {
+        $this->authorize('solicitudes_aprobar');
+
+        if ($request->status !== 'Pending') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Esta solicitud ya fue procesada o no existe.'
+            ], 422);
+        }
+
+        DB::beginTransaction();
+        try {
+            $service = new \App\Services\InventoryRequestService();
+            $service->approve($request);
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Solicitud APROBADA y stock de productos rebajado correctamente.'
+            ]);
+        } catch (\Exception $e) {
+            DB::rollback();
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al procesar la aprobación: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function reject(HttpRequest $httpRequest, RequestModel $request)
+    {
+        $this->authorize('solicitudes_aprobar');
+
+        if ($request->status !== 'Pending') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Esta solicitud ya fue procesada o no existe.'
+            ], 422);
+        }
+
+        $reason = $httpRequest->input('rejection_reason');
+        if (!$reason || trim($reason) === '') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Debe proporcionar un motivo para el rechazo.'
+            ], 422);
+        }
+
+        DB::beginTransaction();
+        try {
+            $service = new \App\Services\InventoryRequestService();
+            $service->reject($request, $reason);
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Solicitud RECHAZADA correctamente.'
+            ]);
+        } catch (\Exception $e) {
+            DB::rollback();
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al procesar el rechazo: ' . $e->getMessage()
+            ], 500);
         }
     }
 

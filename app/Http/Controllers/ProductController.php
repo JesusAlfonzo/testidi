@@ -264,8 +264,32 @@ class ProductController extends Controller
     }
 
     public function destroy(Product $product) {
+        if ($product->hasTransactionalHistory()) {
+            $product->is_active = false;
+            $product->save();
+            $this->cacheService->invalidateProducts();
+
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'El producto posee historial de movimientos en el almacén; ha sido inactivado de forma segura para preservar la integridad de las auditorías.'
+                ]);
+            }
+
+            return redirect()->route('admin.products.index')
+                ->with('success', 'El producto posee historial de movimientos en el almacén; ha sido inactivado de forma segura para preservar la integridad de las auditorías.');
+        }
+
         $product->delete();
         $this->cacheService->invalidateProducts();
+
+        if (request()->ajax() || request()->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Producto eliminado con éxito.'
+            ]);
+        }
+
         return redirect()->route('admin.products.index')->with('success', 'Producto eliminado con éxito.');
     }
 

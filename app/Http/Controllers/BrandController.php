@@ -64,6 +64,23 @@ class BrandController extends Controller
     {
         $productsCount = \App\Models\Product::where('brand_id', $brand->id)->count();
         
+        if (request()->ajax() || request()->wantsJson()) {
+            if ($productsCount > 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se puede eliminar la marca porque tiene ' . $productsCount . ' producto(s) asociado(s).'
+                ], 422);
+            }
+            
+            $brand->delete();
+            $this->cacheService->invalidateBrands();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Marca eliminada con éxito.'
+            ]);
+        }
+
         if ($productsCount > 0) {
             return redirect()->route('admin.brands.index')
                              ->with('error', 'No se puede eliminar la marca porque tiene ' . $productsCount . ' producto(s) asociado(s).');

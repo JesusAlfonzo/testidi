@@ -84,11 +84,15 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     // Rutas personalizadas PRIMERO (antes del resource)
     Route::get('stock-in/{stockIn}/create-replacement', [StockInController::class, "createReplacement"])->name('stock-in.create-replacement');
     Route::post('stock-in/store-replacement', [StockInController::class, "storeReplacement"])->name('stock-in.store-replacement');
+    Route::get('stock-in/{stockIn}/pdf', [StockInController::class, "downloadPDF"])->name('stock-in.pdf');
+    Route::post('stock-in/{stockIn}/revert-items', [StockInController::class, "revertItems"])->name('stock-in.revert-items');
     // Resource routes DESPUÉS
     Route::resource('stock-in', StockInController::class);
 
     // MOVIMIENTOS - SOLICITUDES DE SALIDA
-    // 1. Ruta especializada para APROBACIÓN/RECHAZO
+    // 1. Ruta especializada para APROBACIÓN/RECHAZO (AJAX y tradicional)
+    Route::post('requests/{request}/approve', [RequestController::class, 'approve'])->name('requests.approve');
+    Route::post('requests/{request}/reject', [RequestController::class, 'reject'])->name('requests.reject');
     Route::post('requests/{request}/process', [RequestController::class, 'process'])->name('requests.process');
 
     // 2. Ruta para PDF individual
@@ -101,10 +105,13 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
             'requests' => 'request'
         ]);
 
-    // 🔑 NUEVA RUTA: AUDITORÍA DEL SISTEMA
+    // 🛡️ AUDITORÍA DEL SISTEMA (Solo Lectura)
     Route::get('audit-logs', [ActivityLogController::class, 'index'])
         ->name('audit.index')
-        ->middleware('can:auditoria_ver'); // Requiere el permiso 'auditoria_ver'
+        ->middleware('can:auditoria_ver');
+    Route::get('audit-logs/{activityLog}', [ActivityLogController::class, 'show'])
+        ->name('audit.show')
+        ->middleware('can:auditoria_ver');
 
     // RUTAS DE REPORTES
     Route::group(['prefix' => 'reports', 'as' => 'reports.'], function () {

@@ -33,19 +33,55 @@ class UserController extends Controller
 
         $query = User::with('roles');
 
+        // Restringir visualización de Superadmin a no-Superadmins
         if (!auth()->user()->hasRole('Superadmin')) {
             $query->whereDoesntHave('roles', function ($query) {
                 $query->where('name', 'Superadmin');
             });
         }
 
-        if ($request->get('view_all') === 'true') {
-            $users = $query->paginate($perPage)->appends($request->except('page'));
-        } else {
-            $users = $query->paginate($perPage);
+        // Filtro por Rol
+        if ($request->filled('role_id')) {
+            $query->whereHas('roles', function($q) use ($request) {
+                $q->where('roles.id', $request->role_id);
+            });
         }
 
-        return view('admin.users.index', compact('users', 'perPage'));
+        // Filtro por Estado
+        if ($request->filled('is_active')) {
+            $query->where('is_active', $request->is_active === 'active' || $request->is_active == 1);
+        }
+
+        $users = $query->paginate($perPage)->appends($request->all());
+
+        // Obtener roles para el selector de filtros
+        if (auth()->user()->hasRole('Superadmin')) {
+            $roles = Role::pluck('name', 'id');
+        } else {
+            $roles = Role::where('name', '!=', 'Superadmin')->pluck('name', 'id');
+        }
+
+        return view('admin.users.index', compact('users', 'perPage', 'roles'));
+    }
+
+    /**
+     * Muestra el perfil o detalle del usuario.
+     */
+    public function show(User $user)
+    {
+        if ($user->hasRole('Superadmin') && !auth()->user()->hasRole('Superadmin')) {
+            abort(403, 'Acción no autorizada.');
+        }
+
+        $user->load('roles');
+        
+        // Cargar solicitudes de inventario asociadas
+        $requests = \App\Models\InventoryRequest::where('requester_id', $user->id)
+            ->latest()
+            ->limit(5)
+            ->get();
+
+        return view('admin.users.show', compact('user', 'requests'));
     }
 
     /**
@@ -55,7 +91,6 @@ class UserController extends Controller
     {
         $roles = Role::where('name', '!=', 'Superadmin')->pluck('name', 'id');
 
-        // La vista es 'admin.users.create'
         return view('admin.users.create', compact('roles'));
     }
 
@@ -70,17 +105,13 @@ class UserController extends Controller
             'name' => $validatedData['name'],
             'email' => $validatedData['email'],
             'password' => Hash::make($validatedData['password']),
+            'is_active' => $validatedData['is_active'] ?? true,
         ]);
 
-        // 🎯 CORRECCIÓN CLAVE: Buscar el objeto Role por ID.
-        // El ID viene del campo 'role_id' del formulario.
         $role = Role::findById($validatedData['role_id']);
 
-        // Asignar el rol seleccionado (pasando el objeto Role)
         if ($role) {
             $user->syncRoles($role);
-        } else {
-             // Opcional: registrar o manejar si el rol no existe (aunque el Request lo impide)
         }
 
         return redirect()->route('admin.users.index')
@@ -92,15 +123,12 @@ class UserController extends Controller
      */
     public function edit(User $user)
     {
-        // Seguridad: Evitar que se edite a sí mismo o a otro Superadmin
         if ($user->hasRole('Superadmin')) {
             return redirect()->route('admin.users.index')
                              ->with('error', '🛑 No puedes editar al Superadmin desde esta interfaz.');
         }
 
         $roles = Role::where('name', '!=', 'Superadmin')->pluck('name', 'id');
-
-        // Obtener el ID del rol actual
         $currentRole = $user->roles->first() ? $user->roles->first()->id : null;
 
         return view('admin.users.edit', compact('user', 'roles', 'currentRole'));
@@ -113,24 +141,20 @@ class UserController extends Controller
     {
         $validatedData = $request->validated();
 
-        // 1. Actualizar datos básicos (sin cambios)
         $user->name = $validatedData['name'];
         $user->email = $validatedData['email'];
+        $user->is_active = $validatedData['is_active'] ?? true;
 
         if (!empty($validatedData['password'])) {
             $user->password = Hash::make($validatedData['password']);
         }
         $user->save();
 
-        // 🎯 CORRECCIÓN CLAVE:
-        // 2. Actualizar rol: Busca el Rol por el ID y se lo pasamos al método.
-        // Usamos first() o find() ya que role_id viene del select (es un ID)
         $role = Role::findById($validatedData['role_id']);
 
         if ($role) {
-            $user->syncRoles($role); // syncRoles acepta el objeto Role o su nombre/ID en un array
+            $user->syncRoles($role);
         }
-        // Nota: Si el rol_id es requerido por el request, siempre existirá.
 
         return redirect()->route('admin.users.index')
                          ->with('success', '✅ Usuario y rol actualizados con éxito.');
@@ -141,8 +165,26 @@ class UserController extends Controller
      */
     public function destroy(User $user)
     {
+        // Seguridad: Prohibir la auto-eliminación
+        if ($user->id === auth()->id()) {
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => '🛑 No puedes eliminarte a ti mismo.'
+                ], 422);
+            }
+            return redirect()->route('admin.users.index')
+                             ->with('error', '🛑 No puedes eliminarte a ti mismo.');
+        }
+
         // Seguridad: Prohibir la eliminación del Superadmin
         if ($user->hasRole('Superadmin')) {
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => '🛑 No puedes eliminar al Superadmin.'
+                ], 422);
+            }
             return redirect()->route('admin.users.index')
                              ->with('error', '🛑 No puedes eliminar al Superadmin.');
         }
@@ -150,12 +192,24 @@ class UserController extends Controller
         // Verificar datos asociados
         $requestsCount = \App\Models\InventoryRequest::where('requester_id', $user->id)->count();
         if ($requestsCount > 0) {
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => '🛑 No se puede eliminar el usuario porque tiene ' . $requestsCount . ' solicitud(es) asociada(s).'
+                ], 422);
+            }
             return redirect()->route('admin.users.index')
                              ->with('error', '🛑 No se puede eliminar el usuario porque tiene ' . $requestsCount . ' solicitud(es) asociada(s).');
         }
 
         $user->delete();
 
+        if (request()->ajax() || request()->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Usuario eliminado con éxito.'
+            ]);
+        }
         return redirect()->route('admin.users.index')
                          ->with('success', '✅ Usuario eliminado con éxito.');
     }

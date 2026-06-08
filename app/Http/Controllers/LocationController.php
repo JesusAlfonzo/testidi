@@ -64,6 +64,23 @@ class LocationController extends Controller
     {
         $productsCount = \App\Models\Product::where('location_id', $location->id)->count();
         
+        if (request()->ajax() || request()->wantsJson()) {
+            if ($productsCount > 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se puede eliminar la ubicación porque tiene ' . $productsCount . ' producto(s) asociado(s).'
+                ], 422);
+            }
+            
+            $location->delete();
+            $this->cacheService->invalidateLocations();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Ubicación eliminada con éxito.'
+            ]);
+        }
+        
         if ($productsCount > 0) {
             return redirect()->route('admin.locations.index')
                              ->with('error', 'No se puede eliminar la ubicación porque tiene ' . $productsCount . ' producto(s) asociado(s).');
@@ -73,6 +90,6 @@ class LocationController extends Controller
         $this->cacheService->invalidateLocations();
         
         return redirect()->route('admin.locations.index')
-                         ->with('success', 'Ubicación eliminada con éxito.');
+                          ->with('success', 'Ubicación eliminada con éxito.');
     }
 }

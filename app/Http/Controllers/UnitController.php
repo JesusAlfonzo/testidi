@@ -64,6 +64,23 @@ class UnitController extends Controller
     {
         $productsCount = \App\Models\Product::where('unit_id', $unit->id)->count();
         
+        if (request()->ajax() || request()->wantsJson()) {
+            if ($productsCount > 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se puede eliminar la unidad de medida porque tiene ' . $productsCount . ' producto(s) asociado(s).'
+                ], 422);
+            }
+            
+            $unit->delete();
+            $this->cacheService->invalidateUnits();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Unidad de medida eliminada con éxito.'
+            ]);
+        }
+        
         if ($productsCount > 0) {
             return redirect()->route('admin.units.index')
                              ->with('error', 'No se puede eliminar la unidad porque tiene ' . $productsCount . ' producto(s) asociado(s).');
@@ -73,6 +90,6 @@ class UnitController extends Controller
         $this->cacheService->invalidateUnits();
         
         return redirect()->route('admin.units.index')
-                         ->with('success', 'Unidad de medida eliminada con éxito.');
+                          ->with('success', 'Unidad de medida eliminada con éxito.');
     }
 }

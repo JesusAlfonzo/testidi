@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Spatie\Activitylog\Models\Activity;
-use App\Models\User; // Para el filtro de usuarios
+use App\Models\Activity;
+use App\Models\User;
 
 class ActivityLogController extends Controller
 {
@@ -15,45 +15,33 @@ class ActivityLogController extends Controller
 
     public function index(Request $request)
     {
-        // 1. Listas para los filtros
         $users = User::orderBy('name')->pluck('name', 'id');
-        
-        // Lista manual de modelos monitoreados para el filtro (nombre amigable)
-        $subjects = [
-            'App\Models\Product' => 'Productos',
-            'App\Models\InventoryRequest' => 'Solicitudes',
-            'App\Models\StockIn' => 'Entradas Stock',
-            'App\Models\User' => 'Usuarios',
-            'App\Models\Kit' => 'Kits',
-            'App\Models\Category' => 'Categorías',
-            'App\Models\Supplier' => 'Proveedores',
-            'App\Models\Unit' => 'Unidades',
-            'App\Models\Location' => 'Ubicaciones',
-            'App\Models\Brand' => 'Marcas',
-        ];
 
-        // 2. Consulta Base
-        $query = Activity::with(['causer', 'subject'])
-            ->orderBy('created_at', 'desc');
+        $subjects = collect(Activity::select('subject_type')
+            ->whereNotNull('subject_type')
+            ->distinct()
+            ->pluck('subject_type'))
+            ->mapWithKeys(fn($class) => [$class => (new Activity)->setAttribute('subject_type', $class)->module_name])
+            ->sort()
+            ->toArray();
 
-        // 3. Aplicar Filtros
-        
-        // Filtro por Usuario Responsable (causer_id)
+        $query = Activity::with([
+            'causer' => fn($q) => $q->select('id', 'name', 'email'),
+            'subject',
+        ])->orderBy('created_at', 'desc');
+
         if ($request->filled('causer_id')) {
             $query->where('causer_id', $request->causer_id);
         }
 
-        // Filtro por Tipo de Acción (description = created, updated, deleted)
         if ($request->filled('action_type')) {
             $query->where('description', $request->action_type);
         }
 
-        // Filtro por Modelo Afectado (subject_type)
         if ($request->filled('subject_type')) {
             $query->where('subject_type', $request->subject_type);
         }
 
-        // Filtro por Fechas
         if ($request->filled('date_from')) {
             $query->whereDate('created_at', '>=', $request->date_from);
         }
@@ -61,24 +49,48 @@ class ActivityLogController extends Controller
             $query->whereDate('created_at', '<=', $request->date_to);
         }
 
-        // 4. Obtener resultados paginados
         $perPage = $request->get('per_page', 15);
         if (!in_array($perPage, [15, 25, 50, 100])) {
             $perPage = 15;
         }
 
-        if ($request->get('view_all') === 'true') {
-            $activities = $query->paginate($perPage)->appends($request->except('page'));
-        } else {
-            $activities = $query->paginate($perPage)->appends($request->except('per_page'));
-        }
+        $activities = $query->paginate($perPage)->appends($request->except('page'));
 
         return view('admin.audit.index', compact('activities', 'users', 'subjects', 'perPage'));
     }
 
-    public function show($id)
+    public function show(Activity $activityLog)
     {
-        $log = Activity::with(['causer', 'subject'])->findOrFail($id);
-        return view('admin.audit.show', compact('log'));
+        $activityLog->load([
+            'causer' => fn($q) => $q->select('id', 'name', 'email'),
+            'subject',
+        ]);
+
+        return view('admin.audit.show', ['log' => $activityLog]);
+    }
+
+    public function create(): never
+    {
+        abort(403, 'El módulo de auditoría es de solo lectura.');
+    }
+
+    public function store(): never
+    {
+        abort(403, 'El módulo de auditoría es de solo lectura.');
+    }
+
+    public function edit(): never
+    {
+        abort(403, 'El módulo de auditoría es de solo lectura.');
+    }
+
+    public function update(): never
+    {
+        abort(403, 'El módulo de auditoría es de solo lectura.');
+    }
+
+    public function destroy(): never
+    {
+        abort(403, 'El módulo de auditoría es de solo lectura.');
     }
 }

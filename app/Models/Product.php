@@ -178,6 +178,40 @@ class Product extends Model
         return [['type' => 'simple', 'quantity' => $quantity]];
     }
 
+    public function rfqItems()
+    {
+        return $this->hasMany(RfqItem::class);
+    }
+
+    public function purchaseOrderItems()
+    {
+        return $this->hasMany(PurchaseOrderItem::class);
+    }
+
+    public function stockInItems()
+    {
+        return $this->hasMany(StockInItem::class);
+    }
+
+    public function stockIns()
+    {
+        return $this->hasMany(StockIn::class);
+    }
+
+    public function requestItems()
+    {
+        return $this->hasMany(RequestItem::class);
+    }
+
+    public function hasTransactionalHistory(): bool
+    {
+        return $this->rfqItems()->exists() ||
+               $this->purchaseOrderItems()->exists() ||
+               $this->stockInItems()->exists() ||
+               $this->stockIns()->exists() ||
+               $this->requestItems()->exists();
+    }
+
     // Configuración del Log de Actividad de Spatie
     public function getActivitylogOptions(): LogOptions
     {

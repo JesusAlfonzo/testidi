@@ -28,6 +28,7 @@ class StoreUpdateUserRequest extends FormRequest
         $rules = [
             'name' => ['required', 'string', 'max:255'],
             'role_id' => ['required', 'exists:roles,id'],
+            'is_active' => ['nullable', 'boolean'],
         ];
 
         // 🎯 CORRECCIÓN CLAVE: Regla de unicidad de email

@@ -6,10 +6,15 @@
 @section('plugins.Sweetalert2', true)
 
 @section('content_header')
-    <div class="d-flex justify-content-between align-items-center">
-        <h1><i class="fas fa-file-medical"></i> Nueva Solicitud de Salida</h1>
-        <a href="{{ route('admin.requests.index') }}" class="btn btn-secondary">
-            <i class="fas fa-arrow-left"></i> Volver
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h1 class="text-dark font-weight-bold" style="font-size: 1.75rem;">
+                <i class="fas fa-file-medical text-primary mr-2"></i> Nueva Solicitud de Salida
+            </h1>
+            <p class="text-muted mb-0">Genere un nuevo despacho o egreso de mercancía del almacén.</p>
+        </div>
+        <a href="{{ route('admin.requests.index') }}" class="btn btn-secondary px-3 py-2" style="border-radius: 8px;">
+            <i class="fas fa-arrow-left mr-1"></i> Volver al Listado
         </a>
     </div>
 @stop
@@ -21,96 +26,60 @@
         @csrf
         
         <div class="row">
-            {{-- Información Principal --}}
-            <div class="col-md-12">
-                <div class="card" style="border-left: 4px solid #17a2b8;">
-                    <div class="card-header" style="background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);">
-                        <h3 class="card-title text-white">
-                            <i class="fas fa-info-circle"></i> Datos de la Solicitud
-                        </h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    <label for="reference">Referencia / Proyecto <span class="text-danger">*</span></label>
-                                    <div class="input-group">
-                                        <div class="input-group-prepend">
-                                            <span class="input-group-text bg-info text-white"><i class="fas fa-tag"></i></span>
-                                        </div>
-                                        <input type="text" name="reference" class="form-control @error('reference') is-invalid @enderror" 
-                                               value="{{ old('reference') }}" placeholder="Ej: Proyecto X, Uso Diario Lab" required>
+            {{-- COLUMNA IZQUIERDA (70%) - DATOS ORIGEN E ÍTEMS --}}
+            <div class="col-lg-8">
+                {{-- Datos de Origen --}}
+                <div class="card card-custom p-3 bg-white mb-3" style="border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                    <h5 class="font-weight-bold text-dark mb-3"><i class="fas fa-info-circle text-info mr-2"></i> Datos de Origen / Destino</h5>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="form-group mb-0">
+                                <label for="destination_area" class="text-xs font-weight-bold text-secondary text-uppercase mb-1 d-block">Departamento Solicitante <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-light" style="border-top-left-radius: 8px; border-bottom-left-radius: 8px;"><i class="fas fa-building text-muted"></i></span>
                                     </div>
-                                    @error('reference')<span class="invalid-feedback">{{ $message }}</span>@enderror
+                                    <input type="text" name="destination_area" id="destination_area" class="form-control @error('destination_area') is-invalid @enderror" 
+                                           value="{{ old('destination_area') }}" placeholder="Ej: Laboratorio, Inmunología" style="border-top-right-radius: 8px; border-bottom-right-radius: 8px;" required>
                                 </div>
-                            </div>
-                            
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    <label for="destination_area">Área de Destino</label>
-                                    <div class="input-group">
-                                        <div class="input-group-prepend">
-                                            <span class="input-group-text bg-info text-white"><i class="fas fa-map-marker-alt"></i></span>
-                                        </div>
-                                        <input type="text" name="destination_area" class="form-control @error('destination_area') is-invalid @enderror" 
-                                               value="{{ old('destination_area') }}" placeholder="Ej: Laboratorio Central">
-                                    </div>
-                                    @error('destination_area')<span class="invalid-feedback">{{ $message }}</span>@enderror
-                                </div>
-                            </div>
-
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    <label for="requested_date">Fecha Requerida</label>
-                                    <div class="input-group">
-                                        <div class="input-group-prepend">
-                                            <span class="input-group-text bg-info text-white"><i class="fas fa-calendar"></i></span>
-                                        </div>
-                                        <input type="date" name="requested_date" class="form-control @error('requested_date') is-invalid @enderror" 
-                                               value="{{ old('requested_date') }}">
-                                    </div>
-                                    @error('requested_date')<span class="invalid-feedback">{{ $message }}</span>@enderror
-                                </div>
+                                @error('destination_area')<span class="text-danger text-xs mt-1 d-block">{{ $message }}</span>@enderror
                             </div>
                         </div>
-
-                        <div class="row">
-                            <div class="col-md-12">
-                                <div class="form-group">
-                                    <label for="justification">Justificación <span class="text-danger">*</span></label>
-                                    <textarea name="justification" class="form-control @error('justification') is-invalid @enderror" 
-                                              rows="2" required placeholder="Explique brevemente el motivo de la solicitud...">{{ old('justification') }}</textarea>
-                                    @error('justification')<span class="invalid-feedback">{{ $message }}</span>@enderror
+                        
+                        <div class="col-md-6 mb-3">
+                            <div class="form-group mb-0">
+                                <label for="reference" class="text-xs font-weight-bold text-secondary text-uppercase mb-1 d-block">Referencia / Proyecto <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-light" style="border-top-left-radius: 8px; border-bottom-left-radius: 8px;"><i class="fas fa-tag text-muted"></i></span>
+                                    </div>
+                                    <input type="text" name="reference" id="reference" class="form-control @error('reference') is-invalid @enderror" 
+                                           value="{{ old('reference') }}" placeholder="Ej: Proyecto Vacunas, Uso Interno" style="border-top-right-radius: 8px; border-bottom-right-radius: 8px;" required>
                                 </div>
+                                @error('reference')<span class="text-danger text-xs mt-1 d-block">{{ $message }}</span>@enderror
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
 
-        {{-- Productos / Kits --}}
-        <div class="row">
-            <div class="col-md-12">
-                <div class="card" style="border-left: 4px solid #dc3545;">
-                    <div class="card-header" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h3 class="card-title text-white">
-                                <i class="fas fa-boxes"></i> Ítems Solicitados
-                            </h3>
-                            <button type="button" class="btn btn-sm btn-light text-danger" id="add-item-btn">
-                                <i class="fas fa-plus"></i> Agregar Ítem
-                            </button>
-                        </div>
+                {{-- Tabla de Ítems Solicitados --}}
+                <div class="card card-custom p-3 bg-white mb-3" style="border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="font-weight-bold text-dark mb-0"><i class="fas fa-boxes text-danger mr-2"></i> Ítems a Despachar</h5>
+                        <button type="button" class="btn btn-sm btn-outline-danger font-weight-bold" id="add-item-btn" style="border-radius: 8px;">
+                            <i class="fas fa-plus mr-1"></i> Agregar Ítem
+                        </button>
                     </div>
-                    <div class="card-body table-responsive p-0">
-                        <table class="table table-bordered table-striped" id="itemsTable">
-                            <thead class="thead-light">
-                                <tr>
-                                    <th width="45%">Producto / Kit</th>
-                                    <th width="15%">Stock Actual</th>
-                                    <th width="15%">Cantidad Solicitada</th>
-                                    <th width="5%"></th>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="itemsTable">
+                            <thead>
+                                <tr class="bg-light text-secondary text-xs font-weight-bold text-uppercase">
+                                    <th style="width: 55%; border: none;">Ítem Solicitado</th>
+                                    <th style="width: 20%; border: none;">Stock Disponible</th>
+                                    <th style="width: 20%; border: none;">Cant. Solicitada</th>
+                                    <th style="width: 5%; border: none;"></th>
                                 </tr>
                             </thead>
                             <tbody id="itemsBody">
@@ -122,71 +91,69 @@
                                     @endforeach
                                 @else
                                     @include('admin.requests.partials.modern_item_row', ['index' => 0, 'item' => []])
+                                    @php $itemIndex = 1; @endphp
                                 @endif
                             </tbody>
                         </table>
                     </div>
                     @error('items')
-                        <div class="card-footer text-danger">
-                            <i class="fas fa-exclamation-circle"></i> {{ $message }}
+                        <div class="text-danger text-sm mt-2">
+                            <i class="fas fa-exclamation-circle mr-1"></i> {{ $message }}
                         </div>
                     @enderror
                 </div>
             </div>
-        </div>
 
-        {{-- Información Adicional --}}
-        <div class="row">
-            <div class="col-md-6">
-                <div class="card card-secondary">
-                    <div class="card-header">
-                        <h3 class="card-title"><i class="fas fa-user"></i> Información del Solicitante</h3>
+            {{-- COLUMNA DERECHA (30%) - TARJETA DE CONTROL Y JUSTIFICACIÓN --}}
+            <div class="col-lg-4">
+                {{-- Panel de Control --}}
+                <div class="card card-custom p-3 bg-white mb-3" style="border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                    <h5 class="font-weight-bold text-dark mb-3"><i class="fas fa-cog text-primary mr-2"></i> Control de Despacho</h5>
+                    
+                    <div class="form-group mb-3">
+                        <label for="priority" class="text-xs font-weight-bold text-secondary text-uppercase mb-1 d-block">Prioridad <span class="text-danger">*</span></label>
+                        <select name="priority" id="priority" class="form-control" style="border-radius: 8px;" required>
+                            <option value="baja" {{ old('priority') == 'baja' ? 'selected' : '' }}>Baja</option>
+                            <option value="media" {{ old('priority', 'media') == 'media' ? 'selected' : '' }}>Media</option>
+                            <option value="alta" {{ old('priority') == 'alta' ? 'selected' : '' }}>Alta</option>
+                        </select>
                     </div>
-                    <div class="card-body">
-                        <table class="table table-sm">
-                            <tr>
-                                <th width="40%"><i class="fas fa-user"></i> Nombre:</th>
-                                <td>{{ auth()->user()->name }}</td>
+
+                    <div class="form-group mb-3">
+                        <label for="justification" class="text-xs font-weight-bold text-secondary text-uppercase mb-1 d-block">Justificación / Razón <span class="text-danger">*</span></label>
+                        <textarea name="justification" id="justification" class="form-control @error('justification') is-invalid @enderror" 
+                                  rows="4" style="border-radius: 8px;" placeholder="Explique brevemente para qué se requieren estos insumos..." required>{{ old('justification') }}</textarea>
+                        @error('justification')<span class="text-danger text-xs mt-1 d-block">{{ $message }}</span>@enderror
+                    </div>
+
+                    {{-- Solicitante info --}}
+                    <div class="bg-light p-3 rounded mb-3" style="border-radius: 8px;">
+                        <span class="text-xs text-secondary font-weight-bold text-uppercase d-block mb-2">Resumen de Solicitante</span>
+                        <table class="table table-sm mb-0 text-sm" style="background: transparent;">
+                            <tr style="border: none;">
+                                <td style="border: none; padding: 2px 0;"><i class="fas fa-user text-muted mr-1"></i> Usuario:</td>
+                                <td class="font-weight-bold text-right" style="border: none; padding: 2px 0;">{{ auth()->user()->name }}</td>
                             </tr>
                             <tr>
-                                <th><i class="fas fa-envelope"></i> Email:</th>
-                                <td>{{ auth()->user()->email }}</td>
-                            </tr>
-                            <tr>
-                                <th><i class="fas fa-calendar"></i> Fecha:</th>
-                                <td>{{ now()->format('d/m/Y') }}</td>
+                                <td style="border: none; padding: 2px 0;"><i class="fas fa-calendar text-muted mr-1"></i> Fecha:</td>
+                                <td class="font-weight-bold text-right" style="border: none; padding: 2px 0;">{{ now()->format('d/m/Y') }}</td>
                             </tr>
                         </table>
                     </div>
-                </div>
-            </div>
 
-            <div class="col-md-6">
-                <div class="card card-info">
-                    <div class="card-header">
-                        <h3 class="card-title"><i class="fas fa-info"></i> Nota</h3>
+                    <div class="alert alert-info py-2 px-3 text-xs mb-3" style="border-radius: 8px;">
+                        <i class="fas fa-info-circle mr-1"></i> Esta solicitud quedará con estado <strong>Pendiente</strong> y requerirá aprobación para descontar el stock físico.
                     </div>
-                    <div class="card-body">
-                        <p class="text-muted mb-0">
-                            <i class="fas fa-exclamation-circle"></i> 
-                            La solicitud quedará en estado <span class="badge badge-warning">Pendiente</span> 
-                            hasta que un administrador la apruebe.
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </div>
 
-        {{-- Botones de Acción --}}
-        <div class="row mt-3">
-            <div class="col-md-12">
-                <div class="d-flex justify-content-end">
-                    <a href="{{ route('admin.requests.index') }}" class="btn btn-secondary mr-2">
-                        <i class="fas fa-times"></i> Cancelar
-                    </a>
-                    <button type="submit" class="btn btn-success">
-                        <i class="fas fa-check"></i> Crear Solicitud
-                    </button>
+                    {{-- Botones de Acción --}}
+                    <div class="d-flex flex-column">
+                        <button type="submit" class="btn btn-primary font-weight-bold py-2 mb-2" style="border-radius: 8px;">
+                            <i class="fas fa-save mr-1"></i> Crear Solicitud
+                        </button>
+                        <a href="{{ route('admin.requests.index') }}" class="btn btn-outline-secondary font-weight-bold py-2" style="border-radius: 8px;">
+                            Cancelar
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -201,25 +168,25 @@
         const tbody = document.getElementById('itemsBody');
         const tr = document.createElement('tr');
         
-        const productOptions = `@foreach($products as $p)<option value="{{ $p->id }}" data-stock="{{ $p->stock }}">{{ $p->name }} ({{ $p->code }}){{ $p->is_kit ? ' [Kit]' : '' }}</option>@endforeach`;
+        const productOptions = `@foreach($products as $p)<option value="{{ $p->id }}" data-stock="{{ $p->stock }}">{{ $p->name }} ({{ $p->code ?? 'N/A' }})</option>@endforeach`;
         
         tr.innerHTML = `
             <input type="hidden" name="items[${itemIndex}][item_type]" value="product">
-            <td>
+            <td style="vertical-align: middle;">
                 <select name="items[${itemIndex}][product_id]" class="form-control form-control-sm select2-product" onchange="updateStock(this)">
                     <option value="">Seleccione...</option>
                     ${productOptions}
                 </select>
             </td>
-            <td>
+            <td style="vertical-align: middle;">
                 <span class="stock-display text-muted">-</span>
                 <input type="hidden" name="items[${itemIndex}][stock_available]" class="stock-input" value="">
             </td>
-            <td>
-                <input type="number" name="items[${itemIndex}][quantity]" class="form-control form-control-sm" value="1" min="1" required>
+            <td style="vertical-align: middle;">
+                <input type="number" name="items[${itemIndex}][quantity]" class="form-control form-control-sm" value="1" min="1" required style="border-radius: 6px;">
             </td>
-            <td>
-                <button type="button" class="btn btn-danger btn-sm" onclick="removeItem(this)">
+            <td style="vertical-align: middle;" class="text-center">
+                <button type="button" class="btn btn-default text-danger btn-sm" onclick="removeItem(this)">
                     <i class="fas fa-trash"></i>
                 </button>
             </td>
@@ -243,10 +210,7 @@
     }
 
     function updateStock(selectElement) {
-        // Encontrar la fila más cercana - Select2 crea un contenedor, entonces primero buscamos ese
         let row = $(selectElement).closest('tr');
-        
-        // Si no encuentra, usar método nativo
         if (!row.length) {
             row = $(selectElement).parent().closest('tr');
         }
@@ -254,12 +218,10 @@
         const stockDisplay = row.find('.stock-display');
         const stockInput = row.find('.stock-input');
         
-        // Obtener el valor seleccionado directamente del select
         const select = $(selectElement);
         const selectedValue = select.val();
         
         if (selectedValue) {
-            // Buscar la opción seleccionada en el DOM del select
             const option = select.find('option[value="' + selectedValue + '"]');
             const stock = option.data('stock');
             
@@ -287,7 +249,11 @@
         if (tbody.rows.length > 1) {
             button.closest('tr').remove();
         } else {
-            alert('Debe mantener al menos un ítem.');
+            Swal.fire({
+                icon: 'warning',
+                title: 'Atención',
+                text: 'Debe mantener al menos un ítem en la solicitud.'
+            });
         }
     }
 
@@ -316,12 +282,11 @@
             }, 10);
         });
 
-        // Evento para select2 - usar select2:select que es el evento específico de select2
+        // Evento para select2
         $(document).on('select2:select', '.select2-product', function(e) {
             updateStock(this);
         });
         
-        // También escuchar el evento change nativo por si acaso
         $(document).on('change', '.select2-product', function(e) {
             updateStock(this);
         });
@@ -334,7 +299,11 @@
             const itemCount = $('#itemsBody tr').length;
             if (itemCount === 0) {
                 e.preventDefault();
-                alert('Debe agregar al menos un ítem.');
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error de Validación',
+                    text: 'Debe agregar al menos un ítem a la solicitud.'
+                });
                 return false;
             }
         });

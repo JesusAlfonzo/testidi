@@ -3,130 +3,80 @@
 @section('title', 'Maestros | Crear Unidad')
 
 @section('content_header')
-    <h1 class="m-0 text-dark">Crear Nueva Unidad de Medida</h1>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h1 class="text-dark font-weight-bold" style="font-size: 1.75rem;">
+                <i class="fas fa-ruler-combined text-primary mr-2"></i> Crear Unidad de Medida
+            </h1>
+            <p class="text-muted mb-0">Registre una nueva unidad de medida o empaque para el control de inventario.</p>
+        </div>
+        <a href="{{ route('admin.units.index') }}" class="btn btn-secondary px-3 py-2" style="border-radius: 8px;">
+            <i class="fas fa-arrow-left mr-1"></i> Volver al Listado
+        </a>
+    </div>
 @stop
 
 @section('content')
     @include('admin.partials.session-messages')
 
     <div class="row">
-        <div class="col-12">
-            <div class="card" style="border-left: 4px solid #06b6d4;">
-                <div class="card-header" style="background: linear-gradient(135deg, #06b6d4 0%, #22d3ee 100%);">
-                    <h3 class="card-title text-white">
-                        <i class="fas fa-ruler"></i> Detalle de la Unidad
-                    </h3>
-                </div>
-
+        <div class="col-lg-7 col-md-9 mx-auto">
+            <div class="card p-4 bg-white" style="border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
                 <form action="{{ route('admin.units.store') }}" method="POST">
                     @csrf
-                    <div class="card-body">
-
-                        {{-- Información Principal --}}
-                        <div class="card" style="border-left: 4px solid #06b6d4;">
-                            <div class="card-header" style="background: linear-gradient(135deg, #06b6d4 0%, #22d3ee 100%);">
-                                <h3 class="card-title text-white">
-                                    <i class="fas fa-info-circle"></i> Información Principal
-                                </h3>
-                            </div>
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-12 col-md-6">
-                                        <div class="form-group">
-                                            <label for="name">Nombre Completo <span class="text-danger">*</span></label>
-                                            <div class="input-group">
-                                                <div class="input-group-prepend">
-                                                    <span class="input-group-text bg-info text-white"><i class="fas fa-weight-hanging"></i></span>
-                                                </div>
-                                                <input type="text" name="name" id="name" class="form-control @error('name') is-invalid @enderror" value="{{ old('name') }}" placeholder="Ej: Kilogramo, Litro, Unidad" required>
-                                            </div>
-                                            @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                                            <small class="form-text text-muted">Nombre completo de la unidad de medida.</small>
-                                        </div>
+                    
+                    <h5 class="font-weight-bold text-dark mb-4">
+                        <i class="fas fa-info-circle text-info mr-2"></i> Detalles de la Unidad
+                    </h5>
+                    
+                    <div class="row">
+                        <div class="col-md-8 mb-3">
+                            <div class="form-group mb-0">
+                                <label for="name" class="text-xs font-weight-bold text-secondary text-uppercase mb-1 d-block">
+                                    Nombre Completo <span class="text-danger">*</span>
+                                </label>
+                                <div class="input-group">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-light" style="border-top-left-radius: 8px; border-bottom-left-radius: 8px;"><i class="fas fa-weight-hanging text-muted"></i></span>
                                     </div>
-                                    <div class="col-12 col-md-4">
-                                        <div class="form-group">
-                                            <label for="abbreviation">Abreviatura <span class="text-danger">*</span></label>
-                                            <div class="input-group">
-                                                <div class="input-group-prepend">
-                                                    <span class="input-group-text bg-info text-white"><i class="fas fa-compress-alt"></i></span>
-                                                </div>
-                                                <input type="text" name="abbreviation" id="abbreviation" class="form-control @error('abbreviation') is-invalid @enderror" value="{{ old('abbreviation') }}" placeholder="Ej: Kg, Lt, U" required>
-                                            </div>
-                                            @error('abbreviation')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                                            <small class="form-text text-muted">Versión corta para mostrar en listados.</small>
-                                        </div>
-                                    </div>
+                                    <input type="text" name="name" id="name" class="form-control @error('name') is-invalid @enderror" 
+                                           value="{{ old('name') }}" placeholder="Ej: Kilogramo, Litro, Unidad" 
+                                           style="border-top-right-radius: 8px; border-bottom-right-radius: 8px;" required>
                                 </div>
+                                @error('name')<span class="text-danger text-xs mt-1 d-block">{{ $message }}</span>@enderror
                             </div>
                         </div>
-
-                        {{-- Vista Previa --}}
-                        <div class="card" style="border-left: 4px solid #8b5cf6;">
-                            <div class="card-header" style="background: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%);">
-                                <h3 class="card-title text-white">
-                                    <i class="fas fa-eye"></i> Vista Previa
-                                </h3>
-                            </div>
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-12">
-                                        <div class="p-3 border rounded bg-light text-center">
-                                            <span id="previewBadge" class="badge badge-info" style="font-size: 1.2rem; padding: 0.5rem 1.2rem;">
-                                                <i class="fas fa-ruler"></i> <span id="previewAbbr">Abreviatura</span>
-                                            </span>
-                                            <small class="d-block text-muted mt-2">Así se verá la abreviatura en los listados del sistema.</small>
-                                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <div class="form-group mb-0">
+                                <label for="abbreviation" class="text-xs font-weight-bold text-secondary text-uppercase mb-1 d-block">
+                                    Abreviatura <span class="text-danger">*</span>
+                                </label>
+                                <div class="input-group">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-light" style="border-top-left-radius: 8px; border-bottom-left-radius: 8px;"><i class="fas fa-compress-alt text-muted"></i></span>
                                     </div>
+                                    <input type="text" name="abbreviation" id="abbreviation" class="form-control @error('abbreviation') is-invalid @enderror" 
+                                           value="{{ old('abbreviation') }}" placeholder="Ej: Kg, Lt, Unid" 
+                                           style="border-top-right-radius: 8px; border-bottom-right-radius: 8px;" required>
                                 </div>
+                                @error('abbreviation')<span class="text-danger text-xs mt-1 d-block">{{ $message }}</span>@enderror
                             </div>
                         </div>
-
-                        {{-- Información del Registro --}}
-                        <div class="card mb-0" style="border-left: 4px solid #6c757d;">
-                            <div class="card-header" style="background: linear-gradient(135deg, #6c757d 0%, #8a939d 100%);">
-                                <h3 class="card-title text-white">
-                                    <i class="fas fa-clipboard-list"></i> Información del Registro
-                                </h3>
-                            </div>
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-12 col-md-4">
-                                        <p class="mb-1"><strong><i class="fas fa-user"></i> Creado por:</strong></p>
-                                        <p class="text-muted">{{ auth()->user()->name }}</p>
-                                    </div>
-                                    <div class="col-12 col-md-4">
-                                        <p class="mb-1"><strong><i class="fas fa-calendar"></i> Fecha:</strong></p>
-                                        <p class="text-muted">{{ now()->format('d/m/Y H:i') }}</p>
-                                    </div>
-                                    <div class="col-12 col-md-4">
-                                        <p class="mb-1"><strong><i class="fas fa-check-circle"></i> Estado:</strong></p>
-                                        <span class="badge badge-success"><i class="fas fa-check"></i> Activo</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
                     </div>
 
-                    <div class="card-footer">
-                        <button type="submit" class="btn btn-info">
-                            <i class="fas fa-save"></i> Guardar Unidad
-                        </button>
-                        <a href="{{ route('admin.units.index') }}" class="btn btn-default">
-                            <i class="fas fa-arrow-left"></i> Volver al Listado
+                    <hr style="border-top: 1px solid #e5e7eb; margin: 1.5rem 0;">
+
+                    <div class="d-flex justify-content-between align-items-center">
+                        <a href="{{ route('admin.units.index') }}" class="btn btn-outline-secondary font-weight-bold px-4 py-2" style="border-radius: 8px;">
+                            Cancelar
                         </a>
+                        <button type="submit" class="btn btn-primary font-weight-bold px-4 py-2" style="border-radius: 8px;">
+                            <i class="fas fa-save mr-1"></i> Guardar Unidad
+                        </button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
-@stop
-
-@section('js')
-<script>
-    document.getElementById('abbreviation').addEventListener('keyup', function() {
-        document.getElementById('previewAbbr').textContent = this.value || 'Abreviatura';
-    });
-</script>
 @stop

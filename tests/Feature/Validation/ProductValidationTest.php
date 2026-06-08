@@ -22,7 +22,7 @@ describe('StoreUpdateProductRequest - Validaciones', function () {
         expect($validator->errors()->has('name'))->toBeTrue();
     });
 
-    test('valida precio mayor o igual a costo', function () {
+    test('acepta precio menor a costo o nulo', function () {
         $request = new StoreUpdateProductRequest();
         
         $validator = Validator::make([
@@ -30,30 +30,14 @@ describe('StoreUpdateProductRequest - Validaciones', function () {
             'price' => 50,
         ], $request->rules());
         
-        expect($validator->fails())->toBeTrue();
-        expect($validator->errors()->has('price'))->toBeTrue();
-    });
+        expect($validator->errors()->has('price'))->toBeFalse();
 
-    test('acepta precio igual a costo', function () {
-        $request = new StoreUpdateProductRequest();
-        
-        $validator = Validator::make([
+        $validator2 = Validator::make([
             'cost' => 100,
-            'price' => 100,
+            'price' => null,
         ], $request->rules());
         
-        expect($validator->errors()->has('price'))->toBeFalse();
-    });
-
-    test('acepta precio mayor a costo', function () {
-        $request = new StoreUpdateProductRequest();
-        
-        $validator = Validator::make([
-            'cost' => 100,
-            'price' => 150,
-        ], $request->rules());
-        
-        expect($validator->errors()->has('price'))->toBeFalse();
+        expect($validator2->errors()->has('price'))->toBeFalse();
     });
 
     test('valida código único', function () {

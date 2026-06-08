@@ -24,6 +24,7 @@ class StoreRequestRequest extends FormRequest
             'reference' => ['required', 'string', 'max:255'],
             'justification' => ['required', 'string', 'min:5', 'max:500'],
             'destination_area' => ['nullable', 'string', 'max:255'],
+            'priority' => ['nullable', 'string', 'in:alta,media,baja'],
 
             // 2. Validación del Array de Ítems
             'items' => ['required', 'array', 'min:1'],

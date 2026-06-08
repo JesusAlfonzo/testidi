@@ -21,7 +21,8 @@ class RoleController extends Controller
 
     public function index()
     {
-        $roles = Role::with(['permissions', 'users'])->orderBy('name')->get();
+        // 🎯 Carga optimizada con withCount para evitar consulta N+1 al contar permisos
+        $roles = Role::withCount('permissions')->orderBy('name')->get();
         return view('admin.roles.index', compact('roles'));
     }
 
@@ -39,12 +40,11 @@ class RoleController extends Controller
     {
         $role = Role::create(['name' => $request->name]);
 
-        if ($request->has('permissions')) {
-            $role->syncPermissions($request->permissions);
-        }
+        // Sincronizar permisos si fueron seleccionados
+        $role->syncPermissions($request->get('permissions', []));
 
         return redirect()->route('admin.roles.index')
-            ->with('success', 'Rol creado correctamente.');
+            ->with('success', '✅ Rol creado correctamente.');
     }
 
     public function show(Role $role)
@@ -57,6 +57,12 @@ class RoleController extends Controller
 
     public function edit(Role $role)
     {
+        // Seguridad: El rol Superadmin no debe ser editado desde la interfaz general
+        if ($role->name === 'Superadmin' || $role->id === 1) {
+            return redirect()->route('admin.roles.index')
+                ->with('error', '🛑 El rol Superadmin no puede ser modificado.');
+        }
+
         $role->load('permissions');
         $permissions = Permission::orderBy('name')->get()->groupBy(function ($permission) {
             $parts = explode('_', $permission->name);
@@ -70,36 +76,56 @@ class RoleController extends Controller
 
     public function update(StoreUpdateRoleRequest $request, Role $role)
     {
-        if ($role->name === 'Superadmin') {
-            return redirect()->back()->with('error', 'No se puede modificar el rol Superadmin.');
+        // Seguridad: Prohibir modificaciones al rol Superadmin
+        if ($role->name === 'Superadmin' || $role->id === 1) {
+            return redirect()->route('admin.roles.index')
+                ->with('error', '🛑 No se puede modificar el rol Superadmin.');
         }
 
         $role->update(['name' => $request->name]);
-
-        if ($request->has('permissions')) {
-            $role->syncPermissions($request->permissions);
-        } else {
-            $role->syncPermissions([]);
-        }
+        $role->syncPermissions($request->get('permissions', []));
 
         return redirect()->route('admin.roles.index')
-            ->with('success', 'Rol actualizado correctamente.');
+            ->with('success', '✅ Rol actualizado correctamente.');
     }
 
     public function destroy(Role $role)
     {
-        if ($role->name === 'Superadmin') {
-            return redirect()->back()->with('error', 'No se puede eliminar el rol Superadmin.');
+        // Seguridad: Impedir la eliminación del rol Superadmin
+        if ($role->name === 'Superadmin' || $role->id === 1) {
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => '🛑 No se puede eliminar el rol Superadmin.'
+                ], 422);
+            }
+            return redirect()->route('admin.roles.index')
+                ->with('error', '🛑 No se puede eliminar el rol Superadmin.');
         }
 
+        // Seguridad: Impedir eliminación si hay usuarios con este rol asignado
         $usersWithRole = User::role($role->name)->count();
         if ($usersWithRole > 0) {
-            return redirect()->back()->with('error', "No se puede eliminar el rol. Tiene {$usersWithRole} usuario(s) asignado(s).");
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "🛑 No se puede eliminar el rol porque tiene {$usersWithRole} usuario(s) asignado(s)."
+                ], 422);
+            }
+            return redirect()->route('admin.roles.index')
+                ->with('error', "🛑 No se puede eliminar el rol porque tiene {$usersWithRole} usuario(s) asignado(s).");
         }
 
         $role->delete();
 
+        if (request()->ajax() || request()->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => '✅ Rol eliminado con éxito.'
+            ]);
+        }
+
         return redirect()->route('admin.roles.index')
-            ->with('success', 'Rol eliminado correctamente.');
+            ->with('success', '✅ Rol eliminado correctamente.');
     }
 }

@@ -12,6 +12,7 @@ class StoreUpdateProductRequest extends FormRequest
         $this->merge([
             'type' => $this->input('type') ?: 'individual',
             'requires_serial' => $this->has('requires_serial') ? $this->boolean('requires_serial') : false,
+            'price' => $this->filled('price') ? $this->input('price') : 0.00,
         ]);
     }
 
@@ -46,7 +47,7 @@ class StoreUpdateProductRequest extends FormRequest
 
             // Gestión y Stock
             'cost' => ['required', 'numeric', 'min:0'],
-            'price' => ['required', 'numeric', 'min:0', 'gte:cost'], // El precio debe ser >= al costo
+            'price' => ['nullable', 'numeric', 'min:0'], // El precio es opcional
             'stock' => ['required', 'integer', 'min:0'],
             'min_stock' => ['required', 'integer', 'min:0'],
             'is_active' => ['required', 'boolean'],
@@ -65,7 +66,6 @@ class StoreUpdateProductRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'price.gte' => 'El precio de venta debe ser mayor o igual que el precio de costo.',
             'category_id.required' => 'La categoría es obligatoria para productos estrictos.',
             'location_id.required' => 'La ubicación es obligatoria para productos estrictos.',
         ];

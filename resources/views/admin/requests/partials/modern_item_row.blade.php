@@ -10,7 +10,7 @@
             <option value="">Seleccione...</option>
             @foreach($products as $p)
                 <option value="{{ $p->id }}" data-stock="{{ $p->stock }}" {{ $prodId == $p->id ? 'selected' : '' }}>
-                    {{ $p->name }} ({{ $p->code }}){{ $p->is_kit ? ' [Kit]' : '' }}
+                    {{ $p->name }} ({{ $p->code ?? 'N/A' }})
                 </option>
             @endforeach
         </select>

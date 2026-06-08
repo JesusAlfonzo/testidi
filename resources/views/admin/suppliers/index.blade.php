@@ -2,91 +2,158 @@
 
 @section('title', 'Maestros | Proveedores')
 
-{{-- Plugins necesarios --}}
 @section('plugins.Datatables', true) 
 @section('plugins.DatatablesPlugins', true) 
 @section('plugins.Responsive', true) 
+@section('plugins.Select2', true)
+@section('plugins.Sweetalert2', true)
+
+@section('css')
+    <style>
+        .card-custom {
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border: none;
+            margin-bottom: 2rem;
+        }
+
+        .filter-section {
+            background: #ffffff;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        #suppliersTable {
+            border-collapse: separate !important;
+            border-spacing: 0 8px !important;
+            width: 100% !important;
+        }
+
+        #suppliersTable thead th {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 700;
+            color: #4b5563;
+            background-color: #f9fafb;
+            border: none;
+            padding: 12px 16px;
+        }
+
+        #suppliersTable tbody tr {
+            background-color: #ffffff !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+            transition: all 0.2s ease;
+        }
+
+        #suppliersTable tbody tr:hover {
+            background-color: #f9fafb !important;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+
+        #suppliersTable tbody td {
+            padding: 14px 16px;
+            border: none !important;
+            vertical-align: middle;
+            font-size: 0.875rem;
+            color: #1f2937;
+        }
+
+        #suppliersTable tbody tr td:first-child {
+            border-top-left-radius: 8px;
+            border-bottom-left-radius: 8px;
+        }
+
+        #suppliersTable tbody tr td:last-child {
+            border-top-right-radius: 8px;
+            border-bottom-right-radius: 8px;
+        }
+
+        .badge {
+            padding: 0.5em 0.85em;
+            font-weight: 600;
+            font-size: 0.75rem;
+            border-radius: 6px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            display: inline-block;
+        }
+
+        .badge-success {
+            background-color: #dcfce7 !important;
+            color: #15803d !important;
+            border: 1px solid #bbf7d0 !important;
+        }
+
+        .badge-secondary {
+            background-color: #f3f4f6 !important;
+            color: #4b5563 !important;
+            border: 1px solid #e5e7eb !important;
+        }
+    </style>
+@stop
 
 @section('content_header')
-    <div class="d-flex justify-content-between">
-        <h1 class="m-0 text-dark"><i class="fas fa-truck"></i> Proveedores</h1>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h1 class="text-dark font-weight-bold" style="font-size: 1.75rem;">
+                <i class="fas fa-truck text-primary mr-2"></i> Gestión de Proveedores
+            </h1>
+            <p class="text-muted mb-0">Administre el directorio de proveedores externos de la institución.</p>
+        </div>
         @can('proveedores_crear')
-            <a href="{{ route('admin.suppliers.create') }}" class="btn btn-primary">
-                <i class="fas fa-plus-circle"></i> Nuevo Proveedor
+            <a href="{{ route('admin.suppliers.create') }}" class="btn btn-primary px-4 py-2 shadow-sm font-weight-bold" style="border-radius: 8px;">
+                <i class="fas fa-plus-circle mr-1"></i> Crear Proveedor
             </a>
         @endcan
     </div>
 @stop
 
-{{-- Estilos para corregir visualización --}}
-@section('css')
-    <style>
-        table.dataTable.dtr-inline.collapsed > tbody > tr > td:first-child:before, 
-        table.dataTable.dtr-inline.collapsed > tbody > tr > th:first-child:before { 
-            left: 4px; 
-            top: 50%;
-            transform: translateY(-50%);
-        }
-        .table.dataTable.dtr-inline.collapsed > tbody > tr > td:first-child { 
-            padding-left: 10px !important; 
-        }
-    </style>
-@stop
-
 @section('content')
-    
-    {{-- FILTROS --}}
-    <div class="card card-outline card-primary collapsed-card">
-        <div class="card-header">
-            <h3 class="card-title"><i class="fas fa-filter"></i> Filtros</h3>
-            <div class="card-tools">
-                <button type="button" class="btn btn-tool" data-card-widget="collapse"><i class="fas fa-plus"></i></button>
-            </div>
-        </div>
-        <div class="card-body">
-            <form id="filterForm" method="GET" action="{{ route('admin.suppliers.index') }}">
-                <div class="row">
-                    <div class="col-md-4">
-                        <div class="form-group">
-                            <label>Estado</label>
-                            <select name="status" class="form-control">
-                                <option value="">Todos</option>
-                                <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>Activos</option>
-                                <option value="inactive" {{ request('status') == 'inactive' ? 'selected' : '' }}>Inactivos</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-md-2 d-flex align-items-end">
-                        <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-search"></i> Filtrar</button>
-                    </div>
-                </div>
-            </form>
-        </div>
-    </div>
-
     <div class="row">
         <div class="col-12">
             @include('admin.partials.session-messages')
 
-            <div class="card card-outline card-info">
-                <div class="card-body p-4">
-                    <div class="table-responsive">
-                        <table id="suppliersTable" class="table table-striped table-bordered display nowrap" style="width:100%">
-                            <thead>
-                                <tr>
-                                    <th style="width: 5%">ID</th>
-                                    <th style="width: 25%">Nombre</th>
-                                    <th style="width: 15%">Estado</th>
-                                    <th style="width: 15%">Contacto / Teléfono</th>
-                                    <th style="width: 15%">ID Fiscal</th>
-                                    <th style="width: 15%">Email</th>
-                                    <th style="width: 10%">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                            </tbody>
-                        </table>
+            {{-- 1. BARRA DE FILTROS MINIMALISTA --}}
+            <div class="card filter-section p-3 mb-3">
+                <form id="filterForm" class="row align-items-end">
+                    <div class="col-md-10 mb-2 mb-md-0">
+                        <label class="text-xs font-weight-bold text-secondary text-uppercase mb-1 d-block">
+                            <i class="fas fa-filter mr-1"></i> Estado
+                        </label>
+                        <select name="status" class="form-control select2" style="border-radius: 8px; width: 100%">
+                            <option value="">Todos</option>
+                            <option value="active">Activos</option>
+                            <option value="inactive">Inactivos</option>
+                        </select>
                     </div>
+                    <div class="col-md-2">
+                        <button type="button" class="btn btn-outline-secondary font-weight-bold w-100" id="clearFilters" style="border-radius: 8px;">
+                            <i class="fas fa-undo mr-1"></i> Resetear
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            {{-- 2. TABLA PRINCIPAL --}}
+            <div class="card card-custom p-3 bg-white">
+                <div class="table-responsive">
+                    <table id="suppliersTable" class="table table-hover" style="width:100%">
+                        <thead>
+                            <tr>
+                                <th style="width: 5%">ID</th>
+                                <th style="width: 25%">Nombre</th>
+                                <th style="width: 15%">Estado</th>
+                                <th style="width: 20%">Contacto / Teléfono</th>
+                                <th style="width: 15%">ID Fiscal</th>
+                                <th style="width: 15%">Email</th>
+                                <th style="width: 10%" class="text-right">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -96,7 +163,15 @@
 @section('js')
     <script>
         $(document).ready(function() {
-            var table = $('#suppliersTable').DataTable({
+            $.ajaxSetup({
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                }
+            });
+
+            $('.select2').select2({ theme: 'bootstrap4' });
+
+            const table = $('#suppliersTable').DataTable({
                 responsive: true, 
                 processing: true,
                 serverSide: true,
@@ -107,6 +182,8 @@
                 info: true, 
                 autoWidth: false,
                 order: [[1, 'asc']],
+                pageLength: 15,
+                lengthMenu: [[15, 25, 50, 100], [15, 25, 50, 100]],
 
                 ajax: {
                     url: "{{ route('admin.suppliers.index') }}",
@@ -146,23 +223,90 @@
                 },
 
                 columnDefs: [
-                    { orderable: false, targets: [3, 6] },
-                    { responsivePriority: 1, targets: 1 },
-                    { responsivePriority: 2, targets: 6 },
-                    { responsivePriority: 3, targets: 0 },
-                    { responsivePriority: 100, targets: [2, 3, 4, 5] }
+                    { "orderable": false, "targets": [3, 6] },
+                    {
+                        "targets": 1, // Nombre
+                        "render": function(data, type, row) {
+                            return '<span class="font-weight-bold text-dark">' + data + '</span>';
+                        }
+                    },
+                    { 
+                        "targets": 2, // Estado
+                        "render": function(data, type, row) {
+                            if (data == 1 || data === true) {
+                                return '<span class="badge badge-success">Activo</span>';
+                            } else {
+                                return '<span class="badge badge-secondary">Inactivo</span>';
+                            }
+                        }
+                    },
+                    { "responsivePriority": 1, "targets": 1 }, // Nombre
+                    { "responsivePriority": 2, "targets": 6 }, // Acciones
+                    { "responsivePriority": 3, "targets": 0 }, // ID
+                    { "responsivePriority": 100, "targets": [2, 3, 4, 5] }
                 ]
             });
 
-            $('#filterForm').on('submit', function(e) {
-                e.preventDefault();
+            // Ajuste reactivo al cambiar filtros
+            $('#filterForm select').on('change', function() {
                 table.draw();
             });
 
-            addClearFiltersButton('suppliersTable', 'filterForm');
+            // Botón Resetear Filtros
+            $('#clearFilters').on('click', function() {
+                $('#filterForm')[0].reset();
+                $('.select2').val('').trigger('change');
+                table.draw();
+            });
+
+            // 🔑 ELIMINACIÓN DELEGADA POR AJAX (RELOAD SERVER-SIDE)
+            $('#suppliersTable').on('click', '.btn-delete-master', function(e) {
+                e.preventDefault();
+                const btn = $(this);
+                const deleteUrl = btn.data('url');
+                const itemName = btn.data('name') || 'este proveedor';
+
+                Swal.fire({
+                    title: '¿Está seguro de eliminar?',
+                    text: `Se eliminará "${itemName}" del sistema de forma definitiva.`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc3545',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Sí, eliminar',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.value === true || result.isConfirmed) {
+                        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
+
+                        $.ajax({
+                            url: deleteUrl,
+                            type: 'DELETE',
+                            success: function(response) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: '¡Eliminado!',
+                                    text: response.message || 'Proveedor eliminado con éxito.',
+                                    timer: 2000,
+                                    showConfirmButton: false
+                                });
+                                // Recarga Server-Side sin perder paginación
+                                table.ajax.reload(null, false);
+                            },
+                            error: function(xhr) {
+                                btn.prop('disabled', false).html('<i class="fas fa-trash"></i>');
+                                let msg = 'No se pudo eliminar el proveedor. Verifique que no posea productos u órdenes asociadas.';
+                                if (xhr.responseJSON && xhr.responseJSON.message) {
+                                    msg = xhr.responseJSON.message;
+                                }
+                                Swal.fire('Error', msg, 'error');
+                            }
+                        });
+                    }
+                });
+            });
             
             setTimeout(function() { table.columns.adjust().responsive.recalc(); }, 500);
         });
     </script>
-    @include('admin.partials.delete-confirm')
-@endsection
+@stop

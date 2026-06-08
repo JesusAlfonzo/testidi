@@ -16,6 +16,7 @@ use App\Services\CacheService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class StockInController extends Controller
 {
@@ -608,6 +609,167 @@ class StockInController extends Controller
         }
     }
 
+    public function revertItems(Request $request, StockIn $stockIn)
+    {
+        $this->authorize('entradas_eliminar');
+
+        $validated = $request->validate([
+            'items' => 'required|array|min:1',
+            'items.*.id' => 'required|exists:stock_in_items,id',
+            'items.*.quantity' => 'required|integer|min:1',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $stockIn->load('items.product');
+            $affectedProducts = [];
+            $allFullyReverted = true;
+
+            foreach ($validated['items'] as $revertData) {
+                $stockInItem = $stockIn->items->firstWhere('id', $revertData['id']);
+                if (!$stockInItem) {
+                    DB::rollback();
+                    return response()->json(['message' => 'Item no pertenece a esta entrada de stock.'], 422);
+                }
+
+                if ($stockInItem->status !== 'received') {
+                    continue;
+                }
+
+                $quantity = (int) $revertData['quantity'];
+
+                if ($quantity > $stockInItem->quantity) {
+                    DB::rollback();
+                    return response()->json([
+                        'message' => "La cantidad a revertir ({$quantity}) excede la cantidad recibida ({$stockInItem->quantity}) para el producto."
+                    ], 422);
+                }
+
+                $product = Product::lockForUpdate()->find($stockInItem->product_id);
+                if (!$product) {
+                    DB::rollback();
+                    return response()->json(['message' => 'Producto no encontrado.'], 422);
+                }
+
+                $newStock = $product->stock - $quantity;
+                if ($newStock < 0) {
+                    DB::rollback();
+                    return response()->json([
+                        'message' => "No es posible revertir {$product->name}. Stock actual ({$product->stock}) insuficiente para revertir {$quantity}."
+                    ], 422);
+                }
+
+                // Reversar stock del producto
+                $product->stock = $newStock;
+                $product->save();
+
+                // Reversar lotes/seriales
+                $requiresSerial = $product->requires_serial;
+                if ($requiresSerial || !empty($stockInItem->serial_number)) {
+                    $serials = array_filter(array_map('trim', explode(',', $stockInItem->serial_number ?? '')));
+                    foreach ($serials as $serial) {
+                        $batch = ProductBatch::where('product_id', $stockInItem->product_id)
+                            ->where('serial_number', $serial)
+                            ->first();
+                        if ($batch) {
+                            $batch->delete();
+                        }
+                    }
+                } elseif (!empty($stockInItem->batch_number)) {
+                    $batch = ProductBatch::where('product_id', $stockInItem->product_id)
+                        ->where('batch_number', $stockInItem->batch_number)
+                        ->whereNull('serial_number')
+                        ->first();
+                    if ($batch) {
+                        $batch->quantity -= $quantity;
+                        if ($batch->quantity <= 0) {
+                            $batch->delete();
+                        } else {
+                            $batch->save();
+                        }
+                    }
+                }
+
+                // Reversar cantidades recibidas en PO
+                if ($stockInItem->purchase_order_item_id) {
+                    $orderItem = PurchaseOrderItem::find($stockInItem->purchase_order_item_id);
+                    if ($orderItem) {
+                        $orderItem->quantity_received -= $quantity;
+                        if ($orderItem->quantity_received < 0) {
+                            $orderItem->quantity_received = 0;
+                        }
+                        $orderItem->save();
+                    }
+                }
+
+                // Reducir cantidad en el StockInItem
+                $stockInItem->quantity -= $quantity;
+                $stockInItem->save();
+
+                if ($stockInItem->quantity > 0) {
+                    $allFullyReverted = false;
+                }
+
+                $affectedProducts[$product->id] = $product;
+            }
+
+            // Recalcular cantidades de kits si aplica
+            foreach ($validated['items'] as $revertData) {
+                $stockInItem = $stockIn->items->firstWhere('id', $revertData['id']);
+                if ($stockInItem && $stockInItem->purchase_order_item_id) {
+                    $orderItem = PurchaseOrderItem::find($stockInItem->purchase_order_item_id);
+                    if ($orderItem && $orderItem->item_type === 'kit') {
+                        $orderItem->recalculateKitQuantities();
+                    }
+                }
+            }
+
+            // Reabrir PO si estaba completed y ya no está totalmente recibida
+            if ($stockIn->purchase_order_id) {
+                $purchaseOrder = PurchaseOrder::with('items')->find($stockIn->purchase_order_id);
+                if ($purchaseOrder && $purchaseOrder->status === 'completed' && !$purchaseOrder->isFullyReceived()) {
+                    $purchaseOrder->update(['status' => 'issued']);
+                }
+            }
+
+            // Disparar eventos
+            foreach ($affectedProducts as $product) {
+                event(new StockUpdated(
+                    product: $product,
+                    quantity: $product->stock,
+                    type: 'out',
+                    referenceId: $stockIn->id,
+                    referenceType: StockIn::class,
+                    notes: 'Revertido selectivo de entrada de stock'
+                ));
+                $this->cacheService->invalidateProductStock($product->id);
+            }
+
+            // Si todos los items están en 0, eliminar el registro completo
+            $stockInDeleted = false;
+            if ($allFullyReverted) {
+                $remainingTotal = $stockIn->items()->sum('quantity');
+                if ($remainingTotal <= 0) {
+                    $stockIn->delete();
+                    $stockInDeleted = true;
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => $stockInDeleted
+                    ? 'Todos los items fueron revertidos. La entrada de stock ha sido eliminada.'
+                    : 'Stock revertido correctamente.',
+                'stockInDeleted' => $stockInDeleted
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            return response()->json(['message' => 'Error al revertir: ' . $e->getMessage()], 500);
+        }
+    }
+
     public function show(StockIn $stockIn)
     {
         $this->authorize('entradas_ver');
@@ -615,6 +777,19 @@ class StockInController extends Controller
         $stockIn->load(['items.product', 'supplier', 'user', 'purchaseOrder', 'replacements.items']);
         
         return view('admin.stock-in.show', compact('stockIn'));
+    }
+
+    public function downloadPDF(StockIn $stockIn)
+    {
+        try {
+            $this->authorize('entradas_ver');
+            $stockIn->load(['items.product', 'supplier', 'user', 'purchaseOrder']);
+            $pdf = Pdf::loadView('admin.stock-in.pdf', compact('stockIn'));
+            return $pdf->stream('ENT-' . str_pad($stockIn->id, 4, '0', STR_PAD_LEFT) . '.pdf');
+        } catch (\Exception $e) {
+            \Log::error('Error al generar PDF de entrada de stock: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error al generar el PDF. Por favor, contacte al administrador.');
+        }
     }
 
     public function createReplacement(StockIn $stockIn)

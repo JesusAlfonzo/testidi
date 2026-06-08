@@ -136,6 +136,23 @@ class SupplierController extends Controller
     {
         $productsCount = \App\Models\Product::where('supplier_id', $supplier->id)->count();
         
+        if (request()->ajax() || request()->wantsJson()) {
+            if ($productsCount > 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se puede eliminar el proveedor porque tiene ' . $productsCount . ' producto(s) asociado(s).'
+                ], 422);
+            }
+            
+            $supplier->delete();
+            $this->cacheService->invalidateSuppliers();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Proveedor eliminado con éxito.'
+            ]);
+        }
+
         if ($productsCount > 0) {
             return redirect()->route('admin.suppliers.index')
                              ->with('error', 'No se puede eliminar el proveedor porque tiene ' . $productsCount . ' producto(s) asociado(s).');
