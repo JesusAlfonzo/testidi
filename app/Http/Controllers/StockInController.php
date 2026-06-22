@@ -838,6 +838,18 @@ class StockInController extends Controller
             'items.*.replaced_item_id' => ['required', 'exists:stock_in_items,id'],
         ]);
 
+        // Validar fecha de vencimiento obligatoria para productos perecederos
+        foreach ($request->input('items', []) as $index => $item) {
+            $productId = $item['product_id'] ?? null;
+            $expirationDate = $item['expiration_date'] ?? null;
+            if ($productId) {
+                $product = Product::find($productId);
+                if ($product && $product->is_perishable && empty($expirationDate)) {
+                    return back()->withErrors(["items.$index.expiration_date" => "La fecha de vencimiento es obligatoria para productos perecederos."])->withInput();
+                }
+            }
+        }
+
         DB::beginTransaction();
         try {
             $originalStockIn = StockIn::findOrFail($validatedData['original_stock_in_id']);

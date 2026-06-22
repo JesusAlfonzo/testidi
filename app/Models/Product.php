@@ -26,6 +26,7 @@ class Product extends Model
         'min_stock',
         'expiry_warning_days',
         'track_expiry',
+        'is_perishable',
         'is_active',
         'is_kit',
         'is_generic',
@@ -41,6 +42,7 @@ class Product extends Model
         'is_generic' => 'boolean',
         'created_on_the_fly' => 'boolean',
         'requires_serial' => 'boolean',
+        'is_perishable' => 'boolean',
     ];
 
     // Relaciones con los módulos maestros
@@ -122,9 +124,26 @@ class Product extends Model
         return $minKits ?? 0;
     }
 
+    protected static function booted()
+    {
+        static::saving(function ($product) {
+            if ($product->isDirty('is_perishable')) {
+                $product->track_expiry = (bool) $product->is_perishable;
+            } elseif ($product->isDirty('track_expiry')) {
+                $product->is_perishable = (bool) $product->track_expiry;
+            } else {
+                if (isset($product->is_perishable) && (!isset($product->track_expiry) || $product->track_expiry !== $product->is_perishable)) {
+                    $product->track_expiry = (bool) $product->is_perishable;
+                } elseif (isset($product->track_expiry) && (!isset($product->is_perishable) || $product->is_perishable !== $product->track_expiry)) {
+                    $product->is_perishable = (bool) $product->track_expiry;
+                }
+            }
+        });
+    }
+
     public static function getExpiringProducts(int $days = 30)
     {
-        return self::where('track_expiry', true)
+        return self::where('is_perishable', true)
             ->whereHas('batches', function ($query) use ($days) {
                 $query->where('quantity', '>', 0)
                     ->whereDate('expiration_date', '<=', now()->addDays($days))
@@ -141,7 +160,7 @@ class Product extends Model
 
     public static function getExpiredProducts()
     {
-        return self::where('track_expiry', true)
+        return self::where('is_perishable', true)
             ->whereHas('batches', function ($query) {
                 $query->where('quantity', '>', 0)
                     ->whereDate('expiration_date', '<', now());
@@ -154,6 +173,11 @@ class Product extends Model
             ->get();
     }
 
+    public static function getExpiringProductsCount(int $days = 30): int
+    {
+        return self::getExpiringProducts($days)->count();
+    }
+
     public function hasActiveBatches(): bool
     {
         return $this->batches()->where('quantity', '>', 0)->exists();
@@ -161,7 +185,7 @@ class Product extends Model
 
     public function shouldUseFifo(): bool
     {
-        return $this->track_expiry && $this->hasActiveBatches();
+        return $this->is_perishable && $this->hasActiveBatches();
     }
 
     public function consumeStock(int $quantity, ?string $reason = null): array
@@ -210,6 +234,30 @@ class Product extends Model
                $this->stockInItems()->exists() ||
                $this->stockIns()->exists() ||
                $this->requestItems()->exists();
+    }
+
+    /**
+     * Relación de fraccionamiento: este producto es el padre (caja/empaque mayor).
+     */
+    public function childFraction()
+    {
+        return $this->hasOne(ProductFraction::class, 'parent_product_id');
+    }
+
+    /**
+     * Relación de fraccionamiento: este producto es el hijo (unidad individual).
+     */
+    public function parentFraction()
+    {
+        return $this->hasOne(ProductFraction::class, 'child_product_id');
+    }
+
+    /**
+     * Determina si el producto se puede desempacar (es un producto padre).
+     */
+    public function isFractionParent(): bool
+    {
+        return $this->childFraction()->exists();
     }
 
     // Configuración del Log de Actividad de Spatie

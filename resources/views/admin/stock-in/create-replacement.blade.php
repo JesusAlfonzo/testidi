@@ -150,7 +150,7 @@
                                 </thead>
                                 <tbody>
                                     @foreach($rejectedItems as $index => $rejectedItem)
-                                        <tr>
+                                        <tr data-is-perishable="{{ ($rejectedItem->product?->is_perishable ?? false) ? 'true' : 'false' }}">
                                             <td>
                                                 <input type="hidden" name="items[{{ $index }}][product_id]" value="{{ $rejectedItem->product_id }}">
                                                 <input type="hidden" name="items[{{ $index }}][replaced_item_id]" value="{{ $rejectedItem->id }}">
@@ -214,7 +214,24 @@
 
 @section('js')
 <script>
+    function initializeExpirationFields() {
+        $('#replacementForm tbody tr').each(function() {
+            const tr = $(this);
+            const isPerishable = tr.attr('data-is-perishable') === 'true';
+            const expDateInput = tr.find('input[name$="[expiration_date]"]');
+            if (expDateInput.length > 0) {
+                if (isPerishable) {
+                    expDateInput.prop('disabled', false).prop('required', true).removeClass('bg-light');
+                } else {
+                    expDateInput.prop('disabled', true).prop('required', false).val('').addClass('bg-light');
+                }
+            }
+        });
+    }
+
     $(document).ready(function() {
+        initializeExpirationFields();
+
         $('#replacementForm').on('submit', function(e) {
             const itemCount = $('input[name^="items"]').length;
             if (itemCount === 0) {

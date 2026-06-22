@@ -1,10 +1,11 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use App\Models\InventoryRequest as SolicitudModel;
 use App\Models\Product;
 use App\Models\StockIn;
+use App\Models\StockInItem;
+use App\Models\RequestItem;
 use App\Models\Category;
 use App\Models\Location;
 use App\Models\Brand;
@@ -14,6 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Spatie\Activitylog\Models\Activity;
 
 class ReportController extends Controller
 {
@@ -25,6 +27,7 @@ class ReportController extends Controller
         $this->middleware('can:reportes_stock')->only(['stockReport', 'exportStockExcel', 'exportStockPdf']);
         $this->middleware('can:reportes_movimientos')->only(['requestsReport', 'exportRequestsExcel', 'exportRequestsPdf']);
         $this->middleware('can:reportes_kardex')->only(['kardexReport', 'exportKardexExcel', 'exportKardexPdf']);
+        $this->middleware('can:reportes_ver')->only(['index', 'generatePdf']);
     }
 
     // =========================================================================
@@ -328,5 +331,282 @@ class ReportController extends Controller
         $kardex = $this->kardexService->generateKardex($product);
         $pdf = Pdf::loadView('admin.reports.pdf.kardex', compact('product', 'kardex'));
         return $pdf->stream('kardex_' . Str::slug($product->name) . '.pdf');
+    }
+
+    // =========================================================================
+    // 4. GENERADOR DE REPORTES DINÁMICO (NUEVO)
+    // =========================================================================
+
+    public function index(Request $request)
+    {
+        $products = Product::where('is_active', true)->orderBy('name')->get(['id', 'name', 'code']);
+        $users = User::orderBy('name')->get(['id', 'name']);
+        $categories = Category::orderBy('name')->get(['id', 'name']);
+        $locations = Location::orderBy('name')->get(['id', 'name']);
+        $brands = Brand::orderBy('name')->get(['id', 'name']);
+        
+        $data = null;
+        $totals = null;
+        $filters = $request->all();
+
+        if ($request->filled('report_type')) {
+            $request->validate([
+                'report_type' => 'required|string|in:inventario,entradas,salidas,fraccionamientos',
+                'fecha_inicio' => 'nullable|date',
+                'fecha_fin' => 'nullable|date|after_or_equal:fecha_inicio',
+                'product_id' => 'nullable|integer|exists:products,id',
+                'batch_number' => 'nullable|string|max:255',
+                'user_id' => 'nullable|integer|exists:users,id',
+                
+                // Nuevos filtros
+                'stock_operator' => 'nullable|string|in:>,<,=,>=,<=',
+                'stock_value' => 'nullable|integer|min:0',
+                'expiry_from' => 'nullable|date',
+                'expiry_to' => 'nullable|date|after_or_equal:expiry_from',
+                'location_id' => 'nullable|integer|exists:locations,id',
+                'is_active' => 'nullable|string|in:all,active,inactive',
+                'origin' => 'nullable|string|in:all,standard,on_the_fly',
+            ]);
+
+            $query = $this->buildReportQuery($filters['report_type'], $filters);
+            $data = $query->get();
+            $totals = $this->calculateTotals($filters['report_type'], $data);
+        }
+
+        return view('admin.reports.index', compact('products', 'users', 'categories', 'locations', 'brands', 'data', 'filters', 'totals'));
+    }
+
+    public function generatePdf(Request $request)
+    {
+        $validated = $request->validate([
+            'report_type' => 'required|string|in:inventario,entradas,salidas,fraccionamientos',
+            'fecha_inicio' => 'nullable|date',
+            'fecha_fin' => 'nullable|date|after_or_equal:fecha_inicio',
+            'product_id' => 'nullable|integer|exists:products,id',
+            'batch_number' => 'nullable|string|max:255',
+            'user_id' => 'nullable|integer|exists:users,id',
+            
+            // Nuevos filtros
+            'stock_operator' => 'nullable|string|in:>,<,=,>=,<=',
+            'stock_value' => 'nullable|integer|min:0',
+            'expiry_from' => 'nullable|date',
+            'expiry_to' => 'nullable|date|after_or_equal:expiry_from',
+            'location_id' => 'nullable|integer|exists:locations,id',
+            'is_active' => 'nullable|string|in:all,active,inactive',
+            'origin' => 'nullable|string|in:all,standard,on_the_fly',
+        ]);
+
+        $query = $this->buildReportQuery($validated['report_type'], $validated);
+        $data = $query->get();
+        $totals = $this->calculateTotals($validated['report_type'], $data);
+
+        $reportTitle = match ($validated['report_type']) {
+            'inventario' => 'Inventario Actual de Insumos',
+            'entradas' => 'Historial de Entradas de Almacén',
+            'salidas' => 'Historial de Salidas / Despachos',
+            'fraccionamientos' => 'Registro de Movimientos por Fraccionamiento',
+            default => 'Reporte de Almacén',
+        };
+
+        $pdf = Pdf::loadView('admin.reports.pdf-template', [
+            'data' => $data,
+            'report_type' => $validated['report_type'],
+            'report_title' => $reportTitle,
+            'filters' => $validated,
+            'totals' => $totals,
+            'generated_at' => now()->format('d/m/Y H:i:s'),
+        ]);
+
+        $pdf->setPaper('a4', 'landscape');
+        
+        return $pdf->stream('reporte_' . $validated['report_type'] . '_' . date('Ymd_His') . '.pdf');
+    }
+
+    protected function calculateTotals(string $type, $data): array
+    {
+        $totals = [
+            'count' => $data->count(),
+            'sum_quantity' => 0,
+            'sum_amount' => 0,
+        ];
+
+        if ($type === 'inventario') {
+            $totals['sum_quantity'] = $data->sum('stock');
+            $totals['sum_amount'] = $data->sum(function ($prod) {
+                return $prod->stock * $prod->cost;
+            });
+        } elseif ($type === 'entradas') {
+            $totals['sum_quantity'] = $data->sum('quantity');
+            $totals['sum_amount'] = $data->sum(function ($item) {
+                return $item->quantity * $item->unit_cost;
+            });
+        } elseif ($type === 'salidas') {
+            $totals['sum_quantity'] = $data->sum('quantity_requested');
+            $totals['sum_amount'] = $data->sum(function ($item) {
+                return $item->quantity_requested * ($item->unit_price_at_request ?? 0);
+            });
+        } elseif ($type === 'fraccionamientos') {
+            $totals['sum_quantity'] = $data->sum(function ($activity) {
+                return $activity->properties['quantity'] ?? 0;
+            });
+        }
+
+        return $totals;
+    }
+
+    protected function buildReportQuery(string $type, array $filters)
+    {
+        switch ($type) {
+            case 'inventario':
+                $query = Product::with(['unit', 'category', 'location', 'brand']);
+
+                // Filtro: estado (is_active)
+                $query->when(isset($filters['is_active']) && $filters['is_active'] !== 'all', function ($q) use ($filters) {
+                    return $q->where('is_active', $filters['is_active'] === 'active');
+                }, function ($q) use ($filters) {
+                    return $q->when(empty($filters['is_active']), function ($subQ) {
+                        return $subQ->where('is_active', true);
+                    });
+                });
+
+                // Filtro: product_id
+                $query->when(!empty($filters['product_id']), function ($q) use ($filters) {
+                    return $q->where('id', $filters['product_id']);
+                });
+
+                // Filtro: user_id
+                $query->when(!empty($filters['user_id']), function ($q) use ($filters) {
+                    return $q->where('user_id', $filters['user_id']);
+                });
+
+                // Filtro: location_id
+                $query->when(!empty($filters['location_id']), function ($q) use ($filters) {
+                    return $q->where('location_id', $filters['location_id']);
+                });
+
+                // Filtro: batch_number
+                $query->when(!empty($filters['batch_number']), function ($q) use ($filters) {
+                    return $q->whereHas('batches', function ($subQ) use ($filters) {
+                        $subQ->where('batch_number', 'like', '%' . $filters['batch_number'] . '%');
+                    });
+                });
+
+                // Filtro: fecha_inicio
+                $query->when(!empty($filters['fecha_inicio']), function ($q) use ($filters) {
+                    return $q->whereDate('created_at', '>=', $filters['fecha_inicio']);
+                });
+
+                // Filtro: fecha_fin
+                $query->when(!empty($filters['fecha_fin']), function ($q) use ($filters) {
+                    return $q->whereDate('created_at', '<=', $filters['fecha_fin']);
+                });
+
+                // Filtro: stock_operator y stock_value
+                $query->when(!empty($filters['stock_operator']) && isset($filters['stock_value']) && $filters['stock_value'] !== '', function ($q) use ($filters) {
+                    return $q->where('stock', $filters['stock_operator'], $filters['stock_value']);
+                });
+
+                // Filtro: rango de vencimiento (expiry_from y expiry_to)
+                $query->when(!empty($filters['expiry_from']), function ($q) use ($filters) {
+                    return $q->whereHas('batches', function ($subQ) use ($filters) {
+                        $subQ->whereDate('expiration_date', '>=', $filters['expiry_from']);
+                    });
+                });
+                $query->when(!empty($filters['expiry_to']), function ($q) use ($filters) {
+                    return $q->whereHas('batches', function ($subQ) use ($filters) {
+                        $subQ->whereDate('expiration_date', '<=', $filters['expiry_to']);
+                    });
+                });
+
+                // Filtro: origen (created_on_the_fly)
+                $query->when(!empty($filters['origin']) && $filters['origin'] !== 'all', function ($q) use ($filters) {
+                    return $q->where('created_on_the_fly', $filters['origin'] === 'on_the_fly');
+                });
+
+                return $query->orderBy('name', 'asc');
+
+            case 'entradas':
+                $query = StockInItem::with(['stockIn.supplier', 'stockIn.user', 'product.unit', 'product.category'])
+                    ->whereHas('stockIn', function ($q) use ($filters) {
+                        if (!empty($filters['fecha_inicio'])) {
+                            $q->whereDate('entry_date', '>=', $filters['fecha_inicio']);
+                        }
+                        if (!empty($filters['fecha_fin'])) {
+                            $q->whereDate('entry_date', '<=', $filters['fecha_fin']);
+                        }
+                        if (!empty($filters['user_id'])) {
+                            $q->where('user_id', $filters['user_id']);
+                        }
+                    });
+
+                if (!empty($filters['product_id'])) {
+                    $query->where('product_id', $filters['product_id']);
+                }
+                if (!empty($filters['batch_number'])) {
+                    $query->where('batch_number', 'like', '%' . $filters['batch_number'] . '%');
+                }
+                
+                return $query->orderBy('created_at', 'desc');
+
+            case 'salidas':
+                $query = RequestItem::with(['request.requester', 'request.approver', 'product.unit', 'kit'])
+                    ->whereHas('request', function ($q) use ($filters) {
+                        $q->where('status', 'Approved');
+                        if (!empty($filters['fecha_inicio'])) {
+                            $q->whereDate('processed_at', '>=', $filters['fecha_inicio']);
+                        }
+                        if (!empty($filters['fecha_fin'])) {
+                            $q->whereDate('processed_at', '<=', $filters['fecha_fin']);
+                        }
+                        if (!empty($filters['user_id'])) {
+                            $q->where('requester_id', $filters['user_id']);
+                        }
+                    });
+
+                if (!empty($filters['product_id'])) {
+                    $query->where(function ($q) use ($filters) {
+                        $q->where('product_id', $filters['product_id'])
+                          ->orWhereHas('kit.components', function ($qk) use ($filters) {
+                              $qk->where('product_id', $filters['product_id']);
+                          });
+                    });
+                }
+                if (!empty($filters['batch_number'])) {
+                    $query->whereHas('product.batches', function ($q) use ($filters) {
+                        $q->where('batch_number', 'like', '%' . $filters['batch_number'] . '%');
+                    });
+                }
+                
+                return $query->orderBy('created_at', 'desc');
+
+            case 'fraccionamientos':
+                $query = Activity::where(function ($q) {
+                        $q->where('description', 'like', '%Fraccionamiento%')
+                          ->orWhere('description', 'like', '%fraccionamiento%');
+                    })
+                    ->with(['causer', 'subject']);
+
+                if (!empty($filters['fecha_inicio'])) {
+                    $query->whereDate('created_at', '>=', $filters['fecha_inicio']);
+                }
+                if (!empty($filters['fecha_fin'])) {
+                    $query->whereDate('created_at', '<=', $filters['fecha_fin']);
+                }
+                if (!empty($filters['product_id'])) {
+                    $query->where('subject_type', Product::class)
+                          ->where('subject_id', $filters['product_id']);
+                }
+                if (!empty($filters['user_id'])) {
+                    $query->where('causer_id', $filters['user_id']);
+                }
+                if (!empty($filters['batch_number'])) {
+                    $query->where('description', 'like', '%' . $filters['batch_number'] . '%');
+                }
+                
+                return $query->orderBy('created_at', 'desc');
+
+            default:
+                throw new \InvalidArgumentException("Tipo de reporte no soportado.");
+        }
     }
 }

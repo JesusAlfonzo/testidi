@@ -227,4 +227,36 @@ describe('StockIn - Entradas de Inventario', function () {
         expect($product->fresh()->stock)->toBe(8);
         expect($order->fresh()->status)->toBe('completed');
     });
+
+    test('exige fecha de vencimiento si el producto es perecedero', function () {
+        $product = Product::factory()->create(['is_perishable' => true]);
+        $supplier = Supplier::factory()->create();
+
+        $itemData = stockInItemData($product, 10, 10);
+        unset($itemData['expiration_date']); // Remover fecha de vencimiento
+
+        $response = $this->post(route('admin.stock-in.store'), baseStockInPayload([
+            'supplier_id' => $supplier->id,
+            'items' => [$itemData],
+        ]));
+
+        $response->assertSessionHasErrors('items.0.expiration_date');
+    });
+
+    test('no exige fecha de vencimiento si el producto no es perecedero', function () {
+        $product = Product::factory()->create(['is_perishable' => false, 'stock' => 0]);
+        $supplier = Supplier::factory()->create();
+
+        $itemData = stockInItemData($product, 10, 10);
+        $itemData['expiration_date'] = null; // Fecha de vencimiento nula
+
+        $response = $this->post(route('admin.stock-in.store'), baseStockInPayload([
+            'supplier_id' => $supplier->id,
+            'items' => [$itemData],
+        ]));
+
+        $response->assertSessionHasNoErrors();
+        $response->assertRedirect();
+        expect($product->fresh()->stock)->toBe(10);
+    });
 });

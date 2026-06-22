@@ -100,13 +100,14 @@
                                                 @php 
                                                     $prodModel = \App\Models\Product::find($item['product_id'] ?? null);
                                                     $requiresSerial = $prodModel ? $prodModel->requires_serial : false;
+                                                    $isPerishable = $prodModel ? $prodModel->is_perishable : false;
                                                 @endphp
-                                                <tr data-index="{{ $index }}" data-requires-serial="{{ $requiresSerial ? 'true' : 'false' }}">
+                                                <tr data-index="{{ $index }}" data-requires-serial="{{ $requiresSerial ? 'true' : 'false' }}" data-is-perishable="{{ $isPerishable ? 'true' : 'false' }}">
                                                     <td>
                                                         <select name="items[{{ $index }}][product_id]" class="form-control form-control-sm select2-product @error("items.$index.product_id") is-invalid @enderror" required onchange="onProductChange(this)">
                                                             <option value="">Seleccione...</option>
                                                             @foreach($products as $prod)
-                                                                <option value="{{ $prod->id }}" data-requires-serial="{{ $prod->requires_serial ? 'true' : 'false' }}" {{ ($item['product_id'] ?? '') == $prod->id ? 'selected' : '' }}>{{ $prod->name }}</option>
+                                                                <option value="{{ $prod->id }}" data-requires-serial="{{ $prod->requires_serial ? 'true' : 'false' }}" data-is-perishable="{{ $prod->is_perishable ? 'true' : 'false' }}" {{ ($item['product_id'] ?? '') == $prod->id ? 'selected' : '' }}>{{ $prod->name }}</option>
                                                             @endforeach
                                                         </select>
                                                         @error("items.$index.product_id")<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
@@ -156,7 +157,7 @@
                                         @elseif($order)
                                             @if($orderItem)
                                                 @php $index = 0; $pending = max(0, $orderItem->quantity - $orderItem->quantity_received); @endphp
-                                                <tr data-index="{{ $index }}" data-requires-serial="{{ ($orderItem->product?->requires_serial ?? false) ? 'true' : 'false' }}" >
+                                                <tr data-index="{{ $index }}" data-requires-serial="{{ ($orderItem->product?->requires_serial ?? false) ? 'true' : 'false' }}" data-is-perishable="{{ ($orderItem->product?->is_perishable ?? false) ? 'true' : 'false' }}">
                                                     <td>
                                                         <input type="hidden" name="items[{{ $index }}][product_id]" value="{{ $orderItem->product_id }}">
                                                         <input type="hidden" name="items[{{ $index }}][purchase_order_item_id]" value="{{ $orderItem->id }}">
@@ -289,7 +290,7 @@
                                                     <select name="items[0][product_id]" class="form-control form-control-sm select2-product" required onchange="onProductChange(this)">
                                                         <option value="">Seleccione...</option>
                                                         @foreach($products as $prod)
-                                                            <option value="{{ $prod->id }}" data-requires-serial="{{ $prod->requires_serial ? 'true' : 'false' }}">{{ $prod->name }}</option>
+                                                            <option value="{{ $prod->id }}" data-requires-serial="{{ $prod->requires_serial ? 'true' : 'false' }}" data-is-perishable="{{ $prod->is_perishable ? 'true' : 'false' }}">{{ $prod->name }}</option>
                                                         @endforeach
                                                     </select>
                                                 </td>
@@ -445,7 +446,7 @@
 
         let productOptions = '<option value="">Seleccione...</option>';
         @foreach($products as $prod)
-            productOptions += '<option value="{{ $prod->id }}" data-requires-serial="{{ $prod->requires_serial ? 'true' : 'false' }}">{{ $prod->name }}</option>';
+            productOptions += '<option value="{{ $prod->id }}" data-requires-serial="{{ $prod->requires_serial ? 'true' : 'false' }}" data-is-perishable="{{ $prod->is_perishable ? 'true' : 'false' }}">{{ $prod->name }}</option>';
         @endforeach
 
         let locationOptions = '<option value="">Seleccione...</option>';
@@ -498,6 +499,9 @@
             placeholder: 'Seleccione un producto'
         });
         
+        // Deshabilitar fecha de vencimiento inicialmente hasta seleccionar producto
+        $(row).find('input[type="date"]').prop('disabled', true).prop('required', false).addClass('bg-light');
+        
         itemIndex++;
         updateSerialPanel();
     }
@@ -528,10 +532,22 @@
     function onProductChange(select) {
         const row = $(select).closest('tr');
         const selectedOption = $(select).find('option:selected');
-        const requiresSerial = selectedOption.data('requires-serial') === 'true' || selectedOption.data('requires-serial') === true;
         
+        // 1. Control de seriales
+        const requiresSerial = selectedOption.data('requires-serial') === 'true' || selectedOption.data('requires-serial') === true;
         row.attr('data-requires-serial', requiresSerial ? 'true' : 'false');
         updateSerialPanel();
+
+        // 2. Control de vencimiento (Perecedero)
+        const isPerishable = selectedOption.data('is-perishable') === 'true' || selectedOption.data('is-perishable') === true;
+        const expDateInput = row.find('input[type="date"]');
+        if (expDateInput.length > 0) {
+            if (isPerishable) {
+                expDateInput.prop('disabled', false).prop('required', true).removeClass('bg-light');
+            } else {
+                expDateInput.prop('disabled', true).prop('required', false).val('').addClass('bg-light');
+            }
+        }
     }
 
     function onQtyChange(input) {
@@ -643,6 +659,28 @@
         return allValid;
     }
 
+    function initializeExpirationFields() {
+        $('#itemsBody tr').each(function() {
+            const tr = $(this);
+            const select = tr.find('.select2-product');
+            let isPerishable = false;
+            if (select.length > 0) {
+                const selectedOption = select.find('option:selected');
+                isPerishable = selectedOption.data('is-perishable') === 'true' || selectedOption.data('is-perishable') === true;
+            } else {
+                isPerishable = tr.attr('data-is-perishable') === 'true';
+            }
+            const expDateInput = tr.find('input[type="date"]');
+            if (expDateInput.length > 0) {
+                if (isPerishable) {
+                    expDateInput.prop('disabled', false).prop('required', true).removeClass('bg-light');
+                } else {
+                    expDateInput.prop('disabled', true).prop('required', false).val('').addClass('bg-light');
+                }
+            }
+        });
+    }
+
     $(document).ready(function() {
         // Inicializar Select2 en los productos y proveedores existentes
         $('.select2').select2({
@@ -661,6 +699,9 @@
 
         // Ejecutar panel inicial por si hay productos serializados precargados
         updateSerialPanel();
+
+        // Inicializar campos de vencimiento según perecederos
+        initializeExpirationFields();
 
         // Validar el formulario al enviar
         $('#stockInForm').on('submit', function(e) {

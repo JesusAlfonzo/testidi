@@ -2,10 +2,17 @@
 
 @section('title', 'Producto: ' . $product->name)
 
+@section('plugins.Sweetalert2', true)
+
 @section('content_header')
     <div class="d-flex justify-content-between align-items-center">
         <h1><i class="fas fa-box"></i> Producto: <strong>{{ $product->name }}</strong></h1>
         <div>
+            @if($product->childFraction)
+                <button type="button" class="btn btn-warning" data-toggle="modal" data-target="#unpackModal">
+                    <i class="fas fa-box-open"></i> Desempacar
+                </button>
+            @endif
             <a href="{{ route('admin.products.edit', $product) }}" class="btn btn-primary">
                 <i class="fas fa-edit"></i> Editar
             </a>
@@ -73,6 +80,28 @@
                                 @endif
                             </td>
                         </tr>
+                        @if($product->childFraction)
+                            <tr>
+                                <th>Fraccionamiento (Hijo):</th>
+                                <td>
+                                    <a href="{{ route('admin.products.show', $product->childFraction->childProduct) }}">
+                                        {{ $product->childFraction->childProduct->name }}
+                                    </a>
+                                    <span class="badge badge-info">(1 caja = {{ $product->childFraction->conversion_factor }} unidades)</span>
+                                </td>
+                            </tr>
+                        @endif
+                        @if($product->parentFraction)
+                            <tr>
+                                <th>Fraccionamiento (Padre):</th>
+                                <td>
+                                    <a href="{{ route('admin.products.show', $product->parentFraction->parentProduct) }}">
+                                        {{ $product->parentFraction->parentProduct->name }}
+                                    </a>
+                                    <span class="badge badge-info">(1 caja = {{ $product->parentFraction->conversion_factor }} unidades)</span>
+                                </td>
+                            </tr>
+                        @endif
                     </table>
                 </div>
             </div>
@@ -231,4 +260,111 @@
             </div>
         </div>
     </div>
+
+    {{-- Modal de Desempaque --}}
+    @if($product->childFraction)
+    <div class="modal fade" id="unpackModal" tabindex="-1" role="dialog" aria-labelledby="unpackModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content" style="border-radius: 12px;">
+                <div class="modal-header bg-warning text-dark" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                    <h5 class="modal-title font-weight-bold" id="unpackModalLabel">
+                        <i class="fas fa-box-open"></i> Desempacar Producto
+                    </h5>
+                    <button type="button" class="close text-dark" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form id="unpackForm" action="{{ route('admin.products.unpack', $product) }}" method="POST">
+                    @csrf
+                    <div class="modal-body py-4">
+                        <div class="alert alert-info" style="border-radius: 8px;">
+                            <i class="fas fa-info-circle mr-1"></i> 
+                            Este producto se desempaca en: 
+                            <strong>{{ $product->childFraction->childProduct->name }}</strong>
+                            con un factor de conversión de <strong>{{ $product->childFraction->conversion_factor }}</strong> unidades por empaque.
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="unpack_quantity" class="font-weight-bold">Cantidad de empaques a abrir/desempacar <span class="text-danger">*</span></label>
+                            <input type="number" name="quantity" id="unpack_quantity" class="form-control" value="1" min="1" max="{{ $product->stock }}" required>
+                            <small class="form-text text-muted">Stock actual disponible: <strong>{{ $product->stock }}</strong> empaques.</small>
+                        </div>
+
+                        <div class="p-3 bg-light rounded mt-3 text-center border">
+                            <span class="text-muted d-block text-uppercase font-weight-bold" style="font-size: 0.75rem; letter-spacing: 0.5px;">Resumen de Operación</span>
+                            <div class="mt-2" style="font-size: 1.1rem;">
+                                <span class="font-weight-bold text-danger">-<span id="display_parent_qty">1</span></span> Caja(s)
+                                <i class="fas fa-arrow-right mx-2 text-muted"></i>
+                                <span class="font-weight-bold text-success">+<span id="display_child_qty">{{ $product->childFraction->conversion_factor }}</span></span> Unidades sueltas
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer justify-content-between">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal" style="border-radius: 8px;">
+                            Cancelar
+                        </button>
+                        <button type="submit" class="btn btn-warning font-weight-bold" id="btnSubmitUnpack" style="border-radius: 8px;">
+                            <i class="fas fa-check-circle"></i> Confirmar Desempaque
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    @endif
+@stop
+
+@section('js')
+    @if($product->childFraction)
+    <script>
+        $(document).ready(function() {
+            const factor = {{ $product->childFraction->conversion_factor }};
+            
+            $('#unpack_quantity').on('input change', function() {
+                const qty = parseInt($(this).val()) || 0;
+                $('#display_parent_qty').text(qty);
+                $('#display_child_qty').text(qty * factor);
+            });
+
+            $('#unpackForm').on('submit', function(e) {
+                e.preventDefault();
+                const form = $(this);
+                const submitBtn = $('#btnSubmitUnpack');
+                const originalHtml = submitBtn.html();
+
+                submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Procesando...');
+
+                $.ajax({
+                    url: form.attr('action'),
+                    type: 'POST',
+                    data: form.serialize(),
+                    success: function(response) {
+                        $('#unpackModal').modal('hide');
+                        Swal.fire({
+                            icon: 'success',
+                            title: '¡Operación Exitosa!',
+                            text: response.message || 'El producto se desempacó correctamente.',
+                            timer: 2000,
+                            showConfirmButton: false
+                        }).then(() => {
+                            window.location.reload();
+                        });
+                    },
+                    error: function(xhr) {
+                        submitBtn.prop('disabled', false).html(originalHtml);
+                        let errorMsg = 'No se pudo realizar la operación de desempaque.';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errorMsg = xhr.responseJSON.message;
+                        }
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: errorMsg
+                        });
+                    }
+                });
+            });
+        });
+    </script>
+    @endif
 @stop

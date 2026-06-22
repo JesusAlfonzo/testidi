@@ -55,6 +55,7 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::post('products/quick-store', [ProductController::class, 'quickStore'])->name('products.quick-store');
     Route::post('products/quick-store-kit', [ProductController::class, 'quickStoreKit'])->name('products.quick-store-kit');
     Route::post('products/{product}/decompose', [ProductController::class, 'decompose'])->name('products.decompose');
+    Route::post('products/{product}/unpack', [ProductController::class, 'unpack'])->name('products.unpack');
     Route::get('products/search', [ProductController::class, 'search'])->name('products.search');
 
     // MÓDULO KITS
@@ -115,6 +116,14 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
 
     // RUTAS DE REPORTES
     Route::group(['prefix' => 'reports', 'as' => 'reports.'], function () {
+
+        // Generador de Reportes Dinámico
+        Route::get('/', [ReportController::class, 'index'])
+            ->name('index')
+            ->middleware('can:reportes_ver');
+        Route::post('export', [ReportController::class, 'generatePdf'])
+            ->name('export')
+            ->middleware('can:reportes_ver');
 
         // Reporte de Stock
         Route::get('stock', [ReportController::class, 'stockReport'])

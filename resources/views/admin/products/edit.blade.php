@@ -294,11 +294,11 @@
                                 </div>
 
                                 <div class="row">
-                                    {{-- FIFO switch --}}
+                                    {{-- Switch Producto Perecedero --}}
                                     <div class="col-md-6 d-flex align-items-center form-group mb-0">
                                         <div class="custom-control custom-switch">
-                                            <input type="checkbox" class="custom-control-input" id="track_expiry" name="track_expiry" value="1" {{ old('track_expiry', $product->track_expiry) ? 'checked' : '' }}>
-                                            <label class="custom-control-label small font-weight-bold text-muted text-uppercase" for="track_expiry">Rastrear Vencimiento (FIFO)</label>
+                                            <input type="checkbox" class="custom-control-input" id="is_perishable" name="is_perishable" value="1" {{ old('is_perishable', $product->is_perishable) ? 'checked' : '' }}>
+                                            <label class="custom-control-label small font-weight-bold text-muted text-uppercase" for="is_perishable">Controlar fecha de vencimiento (Producto Perecedero)</label>
                                         </div>
                                     </div>
                                     {{-- Días Alerta --}}
@@ -365,13 +365,53 @@
                                 </div>
 
                                 {{-- Switch Active --}}
-                                <div class="form-group mb-0">
+                                <div class="form-group">
                                     <div class="custom-control custom-switch">
                                         <input type="hidden" name="is_active" value="0">
                                         <input type="checkbox" class="custom-control-input" id="is_active" name="is_active" value="1" {{ old('is_active', $product->is_active) ? 'checked' : '' }}>
-                                        <label class="custom-control-label small font-weight-bold text-muted text-uppercase" for="is_active">Estado Activo</label>
+                                        <label class="custom-control-label small font-weight-bold text-muted text-uppercase cursor-pointer" for="is_active">Estado Activo</label>
                                     </div>
                                     <small class="form-text text-muted small mt-1">Permite usar el producto en cotizaciones o salidas.</small>
+                                </div>
+
+                                <hr class="my-3">
+
+                                {{-- Switch Fraction Parent --}}
+                                <div class="form-group mb-0">
+                                    <div class="custom-control custom-switch">
+                                        <input type="hidden" name="is_fraction_parent" value="0">
+                                        <input type="checkbox" class="custom-control-input" id="is_fraction_parent" name="is_fraction_parent" value="1" {{ old('is_fraction_parent', $product->childFraction ? '1' : '0') == '1' ? 'checked' : '' }}>
+                                        <label class="custom-control-label small font-weight-bold text-muted text-uppercase cursor-pointer" for="is_fraction_parent">Este producto es un Empaque/Caja</label>
+                                    </div>
+                                    <small class="form-text text-muted small mt-1">Permite desempacar este producto en unidades individuales más pequeñas.</small>
+                                </div>
+
+                                {{-- Contenedor Condicional Fraccionamiento --}}
+                                <div id="fraction-fields-container" style="display: none;" class="mt-3">
+                                    <div class="form-group">
+                                        <label for="child_product_id" class="small font-weight-bold text-muted text-uppercase mb-1">Unidad Individual (*)</label>
+                                        <select name="child_product_id" id="child_product_id" class="form-control form-control-sm select2 @error('child_product_id') is-invalid @enderror" style="width: 100%;">
+                                            <option value="">Seleccione el producto hijo...</option>
+                                            @foreach($products as $prod)
+                                                <option value="{{ $prod->id }}" {{ old('child_product_id', $product->childFraction ? $product->childFraction->child_product_id : '') == $prod->id ? 'selected' : '' }}>
+                                                    {{ $prod->name }} ({{ $prod->code ?? 'N/A' }})
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        @error('child_product_id')<span class="invalid-feedback d-block small">{{ $message }}</span>@enderror
+                                    </div>
+
+                                    <div class="form-group mb-0">
+                                        <label for="conversion_factor" class="small font-weight-bold text-muted text-uppercase mb-1">Factor de Conversión (*)</label>
+                                        <div class="input-group input-group-sm">
+                                            <div class="input-group-prepend">
+                                                <span class="input-group-text bg-light"><i class="fas fa-calculator"></i></span>
+                                            </div>
+                                            <input type="number" name="conversion_factor" id="conversion_factor" class="form-control @error('conversion_factor') is-invalid @enderror" value="{{ old('conversion_factor', $product->childFraction ? $product->childFraction->conversion_factor : '1') }}" min="1">
+                                        </div>
+                                        @error('conversion_factor')<span class="invalid-feedback d-block small">{{ $message }}</span>@enderror
+                                        <small class="form-text text-muted small mt-1">Cantidad de unidades individuales contenidas en este empaque (ej: 30, 100).</small>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -479,6 +519,23 @@
 
             toggleGenericFields();
             $('#is_generic').on('change', toggleGenericFields);
+
+            // CONTROL DE CAMPOS PARA DESEMPAQUE/FRACCIONAMIENTO
+            function toggleFractionFields() {
+                const isFractionParent = $('#is_fraction_parent').is(':checked');
+                if (isFractionParent) {
+                    $('#fraction-fields-container').slideDown(250);
+                    $('#child_product_id').prop('required', true);
+                    $('#conversion_factor').prop('required', true);
+                } else {
+                    $('#fraction-fields-container').slideUp(250);
+                    $('#child_product_id').prop('required', false);
+                    $('#conversion_factor').prop('required', false);
+                }
+            }
+
+            toggleFractionFields();
+            $('#is_fraction_parent').on('change', toggleFractionFields);
 
             // CONTROL DEDICADO A TIPO DE REGISTRO (INDIVIDUAL VS KIT COMPUESTO)
             function toggleTypeSections() {

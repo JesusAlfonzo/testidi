@@ -425,6 +425,12 @@ return [
                     'icon' => 'fas fa-history',
                     'can'  => 'reportes_movimientos',
                 ],
+                [
+                    'text' => 'Generador Dinámico',
+                    'url'  => 'admin/reports',
+                    'icon' => 'fas fa-file-pdf',
+                    'can'  => 'reportes_ver',
+                ],
             ],
         ],
 

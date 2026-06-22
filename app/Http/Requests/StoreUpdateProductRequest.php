@@ -13,6 +13,8 @@ class StoreUpdateProductRequest extends FormRequest
             'type' => $this->input('type') ?: 'individual',
             'requires_serial' => $this->has('requires_serial') ? $this->boolean('requires_serial') : false,
             'price' => $this->filled('price') ? $this->input('price') : 0.00,
+            'is_fraction_parent' => $this->has('is_fraction_parent') ? $this->boolean('is_fraction_parent') : false,
+            'is_perishable' => $this->has('is_perishable') ? $this->boolean('is_perishable') : false,
         ]);
     }
 
@@ -31,8 +33,28 @@ class StoreUpdateProductRequest extends FormRequest
 
         return [
             'is_generic' => ['nullable', 'boolean'],
+            'is_perishable' => ['nullable', 'boolean'],
             'type' => ['nullable', 'string', 'in:individual,composite_kit'],
             'requires_serial' => ['nullable', 'boolean'],
+            
+            // Fraccionamiento
+            'is_fraction_parent' => ['nullable', 'boolean'],
+            'child_product_id' => [
+                Rule::requiredIf($this->boolean('is_fraction_parent')),
+                'nullable',
+                'exists:products,id',
+                function ($attribute, $value, $fail) use ($productId) {
+                    if ($productId && $value == $productId) {
+                        $fail('El producto hijo no puede ser el mismo producto padre.');
+                    }
+                }
+            ],
+            'conversion_factor' => [
+                Rule::requiredIf($this->boolean('is_fraction_parent')),
+                'nullable',
+                'integer',
+                'min:1'
+            ],
 
             // Maestros — Condicionales según is_generic
             'category_id' => [Rule::requiredIf(!$isGeneric), 'nullable', 'exists:categories,id'],
@@ -68,6 +90,8 @@ class StoreUpdateProductRequest extends FormRequest
         return [
             'category_id.required' => 'La categoría es obligatoria para productos estrictos.',
             'location_id.required' => 'La ubicación es obligatoria para productos estrictos.',
+            'child_product_id.required_if' => 'El producto unidad individual es obligatorio cuando es un empaque.',
+            'conversion_factor.required_if' => 'El factor de conversión es obligatorio cuando es un empaque.',
         ];
     }
 }

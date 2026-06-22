@@ -28,7 +28,7 @@ class StoreStockInRequest extends FormRequest
             'items.*.quantity' => ['required', 'integer', 'min:1'],
             'items.*.unit_cost' => ['required', 'numeric', 'min:0.01'],
             'items.*.batch_number' => ['required', 'string', 'max:50'],
-            'items.*.expiration_date' => ['required', 'date'],
+            'items.*.expiration_date' => ['nullable', 'date'],
             'items.*.serial_number' => ['nullable', 'string', 'max:100'],
             'items.*.warehouse_location' => ['required', 'string', 'max:100'],
             'items.*.notes' => ['nullable', 'string', 'max:255'],
@@ -40,6 +40,24 @@ class StoreStockInRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator) {
+            // Validar fecha de vencimiento para productos perecederos
+            foreach ($this->input('items', []) as $index => $item) {
+                $productId = $item['product_id'] ?? null;
+                $expirationDate = $item['expiration_date'] ?? null;
+
+                if ($productId) {
+                    $product = \App\Models\Product::find($productId);
+                    if ($product && $product->is_perishable) {
+                        if (empty($expirationDate)) {
+                            $validator->errors()->add(
+                                "items.$index.expiration_date",
+                                "La fecha de vencimiento es obligatoria para productos perecederos."
+                            );
+                        }
+                    }
+                }
+            }
+
             if (!$this->filled('purchase_order_id')) {
                 return;
             }

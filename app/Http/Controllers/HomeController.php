@@ -71,6 +71,9 @@ class HomeController extends Controller
         $expiringProducts = ProductBatch::where('quantity', '>', 0)
             ->whereNotNull('expiration_date')
             ->whereDate('expiration_date', '<=', Carbon::now()->addDays(60))
+            ->whereHas('product', function ($q) {
+                $q->where('is_perishable', true);
+            })
             ->with('product')
             ->orderBy('expiration_date', 'asc')
             ->get();
@@ -133,6 +136,9 @@ class HomeController extends Controller
         // Alertas de vencimiento prioritario (FEFO) ordenadas ascendentemente por expiration_date
         $expiringProducts = ProductBatch::where('quantity', '>', 0)
             ->whereNotNull('expiration_date')
+            ->whereHas('product', function ($q) {
+                $q->where('is_perishable', true);
+            })
             ->with('product')
             ->orderBy('expiration_date', 'asc')
             ->limit(10)

@@ -173,7 +173,6 @@ class ProductController extends Controller
         $defaultExpiryDays = 30;
         return view('admin.products.create', compact('categories', 'units', 'locations', 'brands', 'products', 'defaultExpiryDays'));
     }
-
     public function store(StoreUpdateProductRequest $request) {
         $validatedData = $request->validated();
         $validatedData['is_generic'] = $request->boolean('is_generic');
@@ -182,7 +181,8 @@ class ProductController extends Controller
         if (empty($validatedData['category_id'])) $validatedData['category_id'] = null;
         if (empty($validatedData['location_id'])) $validatedData['location_id'] = null;
         
-        $validatedData['track_expiry'] = $request->has('track_expiry');
+        $validatedData['is_perishable'] = $request->boolean('is_perishable');
+        $validatedData['track_expiry'] = $validatedData['is_perishable'];
         $validatedData['type'] = $validatedData['type'] ?? 'individual';
         if ($validatedData['type'] === 'composite_kit') {
             $validatedData['is_kit'] = true;
@@ -201,6 +201,14 @@ class ProductController extends Controller
                     }
                 }
             }
+
+            if ($request->boolean('is_fraction_parent')) {
+                $product->childFraction()->create([
+                    'child_product_id' => $request->input('child_product_id'),
+                    'conversion_factor' => $request->input('conversion_factor'),
+                ]);
+            }
+
             DB::commit();
         } catch (\Exception $e) {
             DB::rollBack();
@@ -216,7 +224,7 @@ class ProductController extends Controller
         $units = $this->cacheService->units();
         $locations = $this->cacheService->locations();
         $brands = $this->cacheService->brands();
-        $product->load('components');
+        $product->load(['components', 'childFraction']);
         $products = Product::where('is_active', true)->where('id', '!=', $product->id)->orderBy('name')->get(['id', 'name', 'code']);
         $defaultExpiryDays = 30;
         return view('admin.products.edit', compact('product', 'categories', 'units', 'locations', 'brands', 'products', 'defaultExpiryDays'));
@@ -230,7 +238,8 @@ class ProductController extends Controller
         if (empty($validatedData['category_id'])) $validatedData['category_id'] = null;
         if (empty($validatedData['location_id'])) $validatedData['location_id'] = null;
         
-        $validatedData['track_expiry'] = $request->has('track_expiry');
+        $validatedData['is_perishable'] = $request->boolean('is_perishable');
+        $validatedData['track_expiry'] = $validatedData['is_perishable'];
         $validatedData['type'] = $validatedData['type'] ?? 'individual';
         if ($validatedData['type'] === 'composite_kit') {
             $validatedData['is_kit'] = true;
@@ -253,6 +262,19 @@ class ProductController extends Controller
             } else {
                 $product->components()->detach();
             }
+
+            if ($request->boolean('is_fraction_parent')) {
+                $product->childFraction()->updateOrCreate(
+                    ['parent_product_id' => $product->id],
+                    [
+                        'child_product_id' => $request->input('child_product_id'),
+                        'conversion_factor' => $request->input('conversion_factor'),
+                    ]
+                );
+            } else {
+                $product->childFraction()->delete();
+            }
+
             DB::commit();
         } catch (\Exception $e) {
             DB::rollBack();
@@ -262,7 +284,6 @@ class ProductController extends Controller
         $this->cacheService->invalidateProducts();
         return redirect()->route('admin.products.index')->with('success', 'Producto actualizado con éxito.');
     }
-
     public function destroy(Product $product) {
         if ($product->hasTransactionalHistory()) {
             $product->is_active = false;
@@ -587,6 +608,34 @@ class ProductController extends Controller
                 'success' => false,
                 'message' => 'Error al procesar la descomposición: ' . $e->getMessage()
             ], 500);
+        }
+    }
+
+    /**
+     * Desempaca/fracciona un empaque mayor a unidades individuales.
+     */
+    public function unpack(Request $request, Product $product, \App\Services\ProductFractionService $fractionService)
+    {
+        $request->validate([
+            'quantity' => 'required|integer|min:1',
+        ]);
+
+        $quantityToUnpack = (int) $request->input('quantity');
+
+        try {
+            $result = $fractionService->unpack($product, $quantityToUnpack);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Se desempacaron {$quantityToUnpack} empaque(s) de '{$product->name}' con éxito.",
+                'parent_stock' => $result['parent_stock'],
+                'child_stock' => $result['child_stock'],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al desempacar: ' . $e->getMessage()
+            ], 422);
         }
     }
 
