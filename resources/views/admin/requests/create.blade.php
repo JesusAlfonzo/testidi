@@ -20,6 +20,10 @@
 @stop
 
 @section('content')
+    @php
+        $showStock = auth()->user()->hasAnyRole(['Superadmin', 'Administrador', 'Supervisor', 'Logistica', 'Encargado Inventario']);
+    @endphp
+
     @include('admin.partials.session-messages')
 
     <form action="{{ route('admin.requests.store') }}" method="POST" id="requestForm">
@@ -40,8 +44,16 @@
                                     <div class="input-group-prepend">
                                         <span class="input-group-text bg-light" style="border-top-left-radius: 8px; border-bottom-left-radius: 8px;"><i class="fas fa-building text-muted"></i></span>
                                     </div>
-                                    <input type="text" name="destination_area" id="destination_area" class="form-control @error('destination_area') is-invalid @enderror" 
-                                           value="{{ old('destination_area') }}" placeholder="Ej: Laboratorio, Inmunología" style="border-top-right-radius: 8px; border-bottom-right-radius: 8px;" required>
+                                    @php
+                                        $areas = ['Administración', 'Citometria', 'Compras', 'Coordinacion de Laboratorio', 'Dirección', 'Informatica', 'Inmunodiagnostico', 'Inmunogenetica', 'Investigación', 'Lavado', 'Mantenimiento', 'Mensajeria', 'Recepción', 'Retrovirus', 'Seguridad', 'Toma de Muestra'];
+                                        sort($areas);
+                                    @endphp
+                                    <select name="destination_area" id="destination_area" class="form-control @error('destination_area') is-invalid @enderror" style="border-top-right-radius: 8px; border-bottom-right-radius: 8px;" required>
+                                        <option value="">Seleccione Departamento...</option>
+                                        @foreach($areas as $area)
+                                            <option value="{{ $area }}" {{ old('destination_area') == $area ? 'selected' : '' }}>{{ $area }}</option>
+                                        @endforeach
+                                    </select>
                                 </div>
                                 @error('destination_area')<span class="text-danger text-xs mt-1 d-block">{{ $message }}</span>@enderror
                             </div>
@@ -63,6 +75,9 @@
                     </div>
                 </div>
 
+                {{-- Filtro de Categorías --}}
+                @include('admin.partials.category-filter')
+
                 {{-- Tabla de Ítems Solicitados --}}
                 <div class="card card-custom p-3 bg-white mb-3" style="border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
                     <div class="d-flex justify-content-between align-items-center mb-3">
@@ -76,8 +91,12 @@
                         <table class="table table-hover" id="itemsTable">
                             <thead>
                                 <tr class="bg-light text-secondary text-xs font-weight-bold text-uppercase">
-                                    <th style="width: 55%; border: none;">Ítem Solicitado</th>
-                                    <th style="width: 20%; border: none;">Stock Disponible</th>
+                                    @if($showStock)
+                                        <th style="width: 55%; border: none;">Ítem Solicitado</th>
+                                        <th style="width: 20%; border: none;">Stock Disponible</th>
+                                    @else
+                                        <th style="width: 75%; border: none;">Ítem Solicitado</th>
+                                    @endif
                                     <th style="width: 20%; border: none;">Cant. Solicitada</th>
                                     <th style="width: 5%; border: none;"></th>
                                 </tr>
@@ -164,24 +183,110 @@
 <script>
     let itemIndex = {{ $itemIndex }};
 
+    // ─── ESTADO DEL FILTRO DE CATEGORÍAS ────────────────────────────────────────
+    // allProducts: fuente de verdad inmutable con todos los productos
+    const allProducts = [
+        @foreach($products as $p)
+        {
+            id: {{ $p->id }},
+            text: '{{ addslashes($p->name) }} ({{ $p->code ?? 'N/A' }})',
+            stock: {{ $p->stock ?? 0 }},
+            categoryId: {{ $p->category_id ?? 'null' }}
+        },
+        @endforeach
+    ];
+
+    // selectedCategoryId: categoría actualmente seleccionada en el filtro
+    let selectedCategoryId = null;
+
+    // filteredProducts(): devuelve el array filtrado según la categoría activa
+    function filteredProducts() {
+        if (!selectedCategoryId) return [];
+        return allProducts.filter(p => p.categoryId == selectedCategoryId);
+    }
+
+    // buildProductOptionsHtml(): genera el HTML de las <option> filtradas
+    function buildProductOptionsHtml() {
+        const products = filteredProducts();
+        if (products.length === 0) {
+            return '<option value="">— Sin productos en esta categoría —</option>';
+        }
+        let html = '<option value="">Seleccione un producto...</option>';
+        products.forEach(p => {
+            html += `<option value="${p.id}" data-stock="${p.stock}">${p.text}</option>`;
+        });
+        return html;
+    }
+
+    // applyFilterToExistingDropdowns(): actualiza los <select> visibles SIN tocar las filas ya guardadas
+    function applyFilterToExistingDropdowns() {
+        const enabled = !!selectedCategoryId;
+        const hint = document.getElementById('categoryFilterHint');
+
+        $('#itemsBody tr').each(function() {
+            const select = $(this).find('.select2-product');
+            if (select.length === 0) return;
+
+            const currentVal = select.val(); // preservar selección si ya eligió
+            const newOptions = buildProductOptionsHtml();
+
+            // Destruir select2, reemplazar opciones, reinicializar
+            if (select.data('select2')) select.select2('destroy');
+            select.html(newOptions);
+
+            // Si el producto actualmente seleccionado no está en el nuevo filtro,
+            // NO lo forzamos a blank — lo mantenemos como opción huérfana visible
+            if (currentVal && !filteredProducts().find(p => p.id == currentVal)) {
+                const orphan = allProducts.find(p => p.id == currentVal);
+                if (orphan) {
+                    select.prepend(`<option value="${orphan.id}" data-stock="${orphan.stock}" selected>[${orphan.text}]</option>`);
+                    select.val(orphan.id);
+                }
+            } else {
+                select.val(currentVal || '');
+            }
+
+            select.prop('disabled', !enabled).select2({
+                theme: 'bootstrap4',
+                width: '100%',
+                placeholder: enabled ? 'Seleccione un producto...' : 'Seleccione una categoría primero'
+            });
+        });
+
+        if (hint) {
+            hint.innerHTML = enabled
+                ? `<i class="fas fa-check-circle text-success"></i> Mostrando productos de la categoría seleccionada.`
+                : `<i class="fas fa-info-circle"></i> Seleccione una categoría para habilitar el selector de productos.`;
+        }
+    }
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    const showStock = {{ $showStock ? 'true' : 'false' }};
+
     function addItemRow() {
         const tbody = document.getElementById('itemsBody');
         const tr = document.createElement('tr');
+        const enabled = !!selectedCategoryId;
+        const options = buildProductOptionsHtml();
         
-        const productOptions = `@foreach($products as $p)<option value="{{ $p->id }}" data-stock="{{ $p->stock }}">{{ $p->name }} ({{ $p->code ?? 'N/A' }})</option>@endforeach`;
-        
+        let stockCellHtml = '';
+        if (showStock) {
+            stockCellHtml = `
+                <td style="vertical-align: middle;">
+                    <span class="stock-display text-muted">-</span>
+                    <input type="hidden" name="items[${itemIndex}][stock_available]" class="stock-input" value="">
+                </td>
+            `;
+        }
+
         tr.innerHTML = `
             <input type="hidden" name="items[${itemIndex}][item_type]" value="product">
             <td style="vertical-align: middle;">
-                <select name="items[${itemIndex}][product_id]" class="form-control form-control-sm select2-product" onchange="updateStock(this)">
-                    <option value="">Seleccione...</option>
-                    ${productOptions}
+                <select name="items[${itemIndex}][product_id]" class="form-control form-control-sm select2-product" onchange="updateStock(this)" ${enabled ? '' : 'disabled'}>
+                    ${options}
                 </select>
             </td>
-            <td style="vertical-align: middle;">
-                <span class="stock-display text-muted">-</span>
-                <input type="hidden" name="items[${itemIndex}][stock_available]" class="stock-input" value="">
-            </td>
+            ${stockCellHtml}
             <td style="vertical-align: middle;">
                 <input type="number" name="items[${itemIndex}][quantity]" class="form-control form-control-sm" value="1" min="1" required style="border-radius: 6px;">
             </td>
@@ -194,22 +299,20 @@
         
         tbody.appendChild(tr);
         
-        if (typeof $ !== 'undefined' && $.fn.select2) {
-            $(tr).find('.select2-product').select2({
-                theme: 'bootstrap4',
-                width: '100%'
-            });
-        }
-        
-        // Agregar eventos para actualizar stock
-        $(tr).find('.select2-product').on('select2:select change', function(e) {
-            updateStock(this);
+        const $select = $(tr).find('.select2-product');
+        $select.select2({
+            theme: 'bootstrap4',
+            width: '100%',
+            placeholder: enabled ? 'Seleccione un producto...' : 'Seleccione una categoría primero'
         });
+        $select.on('select2:select change', function() { updateStock(this); });
         
         itemIndex++;
     }
 
     function updateStock(selectElement) {
+        if (!showStock) return;
+        
         let row = $(selectElement).closest('tr');
         if (!row.length) {
             row = $(selectElement).parent().closest('tr');
@@ -258,40 +361,28 @@
     }
 
     $(document).ready(function() {
-        function initSelect2() {
-            $('.select2-product').select2({
-                theme: 'bootstrap4',
-                width: '100%'
-            });
-        }
+        // Inicializar selector de categorías — estado inicial: deshabilitado
+        applyFilterToExistingDropdowns();
 
-        initSelect2();
-        
-        $(document).on('select2:open', function() {
-            setTimeout(function() {
-                var dropdown = document.querySelector('.select2-dropdown');
-                if (dropdown) {
-                    dropdown.style.maxHeight = '350px';
-                    dropdown.style.overflow = 'hidden';
-                    var results = dropdown.querySelector('.select2-results');
-                    if (results) {
-                        results.style.maxHeight = '350px';
-                        results.style.overflowY = 'auto';
-                    }
-                }
-            }, 10);
+        // Al cambiar la categoría: solo actualiza el dropdown, nunca toca las filas ya guardadas
+        $('#categoryFilter').on('change', function() {
+            selectedCategoryId = $(this).val() || null;
+            applyFilterToExistingDropdowns();
         });
 
-        // Evento para select2
-        $(document).on('select2:select', '.select2-product', function(e) {
-            updateStock(this);
-        });
-        
-        $(document).on('change', '.select2-product', function(e) {
+        $(document).on('select2:select change', '.select2-product', function() {
             updateStock(this);
         });
 
         $('#add-item-btn').click(function() {
+            if (!selectedCategoryId) {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Seleccione una categoría',
+                    text: 'Elija primero una categoría en el filtro para poder agregar productos.'
+                });
+                return;
+            }
             addItemRow();
         });
 

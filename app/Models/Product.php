@@ -227,13 +227,19 @@ class Product extends Model
         return $this->hasMany(RequestItem::class);
     }
 
+    public function dispatchItems()
+    {
+        return $this->hasMany(DispatchItem::class, 'product_id');
+    }
+
     public function hasTransactionalHistory(): bool
     {
         return $this->rfqItems()->exists() ||
                $this->purchaseOrderItems()->exists() ||
                $this->stockInItems()->exists() ||
                $this->stockIns()->exists() ||
-               $this->requestItems()->exists();
+               $this->requestItems()->exists() ||
+               $this->dispatchItems()->exists();
     }
 
     /**

@@ -187,11 +187,13 @@ class RequestForQuotationController extends Controller
         $kits = \App\Models\Kit::where('is_active', true)
             ->orderBy('name')
             ->get();
+        $categories = \App\Models\Category::orderBy('name')->get(['id', 'name']);
 
         $code = RequestForQuotation::generateCode();
 
-        return view('admin.rfq.create', compact('products', 'kits', 'code'));
+        return view('admin.rfq.create', compact('products', 'kits', 'code', 'categories'));
     }
+
 
     public function store(Request $request)
     {

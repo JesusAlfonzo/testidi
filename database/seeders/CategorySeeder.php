@@ -2,30 +2,46 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use App\Models\Category;
-use App\Models\User;
+use Illuminate\Support\Facades\DB;
 
 class CategorySeeder extends Seeder
 {
-    public function run(): void
+    /**
+     * Run the database seeds.
+     *
+     * @return void
+     */
+    public function run()
     {
-        $userId = User::first()->id;
-        
         $categories = [
-            ['name' => 'Reactivos de Laboratorio', 'description' => 'Reactivos químicos y soluciones', 'user_id' => $userId],
-            ['name' => 'Material de Vidrio', 'description' => 'Material de vidrio de laboratorio', 'user_id' => $userId],
-            ['name' => 'Material Plástico', 'description' => 'Material plástico descartable', 'user_id' => $userId],
-            ['name' => 'Equipos de Laboratorio', 'description' => 'Equipos y aparatología', 'user_id' => $userId],
-            ['name' => 'Kits de Diagnóstico', 'description' => 'Kits para diagnóstico clínico', 'user_id' => $userId],
-            ['name' => 'Consumibles Generales', 'description' => 'Consumibles de uso general', 'user_id' => $userId],
-            ['name' => 'Medios de Cultivo', 'description' => 'Medios de cultivo microbiológico', 'user_id' => $userId],
-            ['name' => 'Instrumental', 'description' => 'Instrumental médico y de laboratorio', 'user_id' => $userId],
+            [
+                'user_id' => 1,
+                'name' => 'Artículos de Oficina',
+                'description' => 'Suministros, equipos menores y materiales de uso diario para el correcto funcionamiento de las actividades administrativas y de escritorio.',
+            ],
+            [
+                'user_id' => 1,
+                'name' => 'Papelería',
+                'description' => 'Materiales basados en papel, sobres, carpetas e insumos de impresión destinados al registro, archivo y gestión de documentos.',
+            ],
+            [
+                'user_id' => 1,
+                'name' => 'Artículos de Limpieza',
+                'description' => 'Productos químicos, desinfectantes e implementos destinados a la higiene, esterilización y mantenimiento de los espacios institucionales.',
+            ],
+            [
+                'user_id' => 1,
+                'name' => 'Ferretería',
+                'description' => 'Herramientas, repuestos, componentes eléctricos y materiales necesarios para el mantenimiento preventivo y correctivo de las instalaciones.',
+            ],
+            [
+                'user_id' => 1,
+                'name' => 'Laboratorio',
+                'description' => 'Reactivos, insumos médicos, material de vidrio y equipos especializados para uso clínico, pruebas de inmunología e investigaciones científicas.',
+            ],
         ];
 
-        foreach ($categories as $category) {
-            Category::create($category);
-        }
+        DB::table('categories')->insert($categories);
     }
 }

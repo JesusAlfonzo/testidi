@@ -181,11 +181,11 @@
                         </div>
                         <div class="col-4">
                             <span class="text-muted d-block text-uppercase font-weight-bold" style="font-size: 0.65rem; letter-spacing: 0.5px;">Fecha creación:</span>
-                            <span class="text-dark">{{ $supplier->created_at->format('d/m/Y H:i') }}</span>
+                            <span class="text-dark">{{ $supplier->created_at?->format('d/m/Y H:i') ?? 'N/A' }}</span>
                         </div>
                         <div class="col-4">
                             <span class="text-muted d-block text-uppercase font-weight-bold" style="font-size: 0.65rem; letter-spacing: 0.5px;">Última act.:</span>
-                            <span class="text-dark">{{ $supplier->updated_at->format('d/m/Y H:i') }}</span>
+                            <span class="text-dark">{{ $supplier->updated_at?->format('d/m/Y H:i') ?? 'N/A' }}</span>
                         </div>
                     </div>
 

@@ -11,11 +11,16 @@ class DatabaseSeeder extends Seeder
     use WithoutModelEvents;
 
     public function run(): void
-    {
-        // Permisos y roles (debe ejecutarse primero)
-        $this->call(RolesAndPermissionsSeeder::class);
-
-        // Datos base y módulo de compras
-        $this->call(ComprasSeeder::class);
-    }
+{
+    // Solo llama a los seeders, no crees usuarios aquí
+    $this->call([
+        RolesAndPermissionsSeeder::class, // Primero los roles y el usuario admin
+        CategorySeeder::class,
+        UnitSeeder::class,
+        SupplierSeeder::class,
+        LocationSeeder::class,
+        ProductSeeder::class,
+        ComprasSeeder::class,
+    ]);
+}
 }

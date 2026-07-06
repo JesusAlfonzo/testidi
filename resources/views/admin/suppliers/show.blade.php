@@ -188,7 +188,7 @@
                                             <tr>
                                                 <td class="py-2"><a href="{{ route('admin.stock-in.show', $entry) }}" class="font-weight-bold text-purple">#{{ $entry->id }}</a></td>
                                                 <td class="py-2">{{ $entry->invoice_number ?? 'N/A' }}</td>
-                                                <td class="py-2 text-right text-muted">{{ $entry->entry_date->format('d/m/Y') }}</td>
+                                                <td class="py-2 text-right text-muted">{{ $entry->entry_date?->format('d/m/Y') ?? 'N/A' }}</td>
                                             </tr>
                                         @endforeach
                                     </tbody>
@@ -205,10 +205,10 @@
                 {{-- Audit footer --}}
                 <div class="row mt-5 pt-3 border-top" style="font-size: 0.75rem; color: #9ca3af;">
                     <div class="col-6">
-                        <span>Creado por: <strong>{{ $supplier->user->name ?? 'N/A' }}</strong> el {{ $supplier->created_at->format('d/m/Y H:i:s') }}</span>
+                        <span>Creado por: <strong>{{ $supplier->user->name ?? 'N/A' }}</strong> el {{ $supplier->created_at?->format('d/m/Y H:i:s') ?? 'N/A' }}</span>
                     </div>
                     <div class="col-6 text-right">
-                        <span>Última actualización: {{ $supplier->updated_at->format('d/m/Y H:i:s') }}</span>
+                        <span>Última actualización: {{ $supplier->updated_at?->format('d/m/Y H:i:s') ?? 'N/A' }}</span>
                     </div>
                 </div>
 

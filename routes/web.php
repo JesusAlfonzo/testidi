@@ -98,6 +98,7 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
 
     // 2. Ruta para PDF individual
     Route::get('requests/{request}/pdf', [RequestController::class, 'pdf'])->name('requests.pdf');
+    Route::get('dispatches/{dispatch}/pdf', [RequestController::class, 'dispatchPdf'])->name('dispatches.pdf');
 
     // 3. Recurso principal
     Route::resource('requests', RequestController::class)

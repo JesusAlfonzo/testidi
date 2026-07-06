@@ -9,12 +9,14 @@
         <select name="items[{{ $index }}][product_id]" class="form-control form-control-sm select2-product">
             <option value="">Seleccione...</option>
             @foreach($products as $p)
-                <option value="{{ $p->id }}" data-stock="{{ $p->stock }}" {{ $prodId == $p->id ? 'selected' : '' }}>
+                <option value="{{ $p->id }}" data-stock="{{ $p->stock }}" data-category-id="{{ $p->category_id }}" {{ $prodId == $p->id ? 'selected' : '' }}>
                     {{ $p->name }} ({{ $p->code ?? 'N/A' }})
                 </option>
             @endforeach
         </select>
+
     </td>
+    @if($showStock)
     <td>
         @php
             $stockDisplay = '-';
@@ -30,6 +32,7 @@
         </span>
         <input type="hidden" name="items[{{ $index }}][stock_available]" class="stock-input" value="{{ $stockDisplay != '-' ? $stockDisplay : '' }}">
     </td>
+    @endif
     <td>
         <input type="number" name="items[{{ $index }}][quantity]" class="form-control form-control-sm" value="{{ $qty }}" min="1" required>
     </td>

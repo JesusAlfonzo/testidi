@@ -247,10 +247,12 @@ class PurchaseOrdersController extends Controller
         $suppliers = Supplier::orderBy('name')->get();
         $products = Product::with(['category', 'unit'])->get();
         $kits = \App\Models\Kit::where('is_active', true)->orderBy('name')->get();
+        $categories = \App\Models\Category::orderBy('name')->get(['id', 'name']);
         $code = PurchaseOrder::generateCode();
 
-        return view('admin.purchaseOrders.create', compact('suppliers', 'products', 'kits', 'code'));
+        return view('admin.purchaseOrders.create', compact('suppliers', 'products', 'kits', 'code', 'categories'));
     }
+
 
     public function store(Request $request)
     {

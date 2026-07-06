@@ -93,21 +93,42 @@
                 @endif
             </div>
 
+            {{-- Despachos Realizados (Si existen) --}}
+            @if(isset($request->dispatches) && $request->dispatches->count() > 0)
+                <div class="card card-custom p-3 bg-white mb-3" style="border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                    <h5 class="font-weight-bold text-dark mb-3"><i class="fas fa-shipping-fast text-indigo mr-2"></i> Despachos Realizados</h5>
+                    <div class="list-group">
+                        @foreach($request->dispatches as $disp)
+                            <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center p-3 mb-2 border rounded bg-light" style="border-radius: 8px;">
+                                <div>
+                                    <strong class="text-primary">{{ $disp->dispatch_number }}</strong>
+                                    <small class="d-block text-muted">Despachado por: {{ $disp->dispatcher->name ?? 'N/A' }}</small>
+                                    <small class="d-block text-muted">Fecha: {{ $disp->created_at->format('d/m/Y h:i A') }}</small>
+                                </div>
+                                <a href="{{ route('admin.dispatches.pdf', $disp->id) }}" target="_blank" class="btn btn-sm btn-outline-danger" style="border-radius: 6px;">
+                                    <i class="fas fa-file-pdf"></i> PDF
+                                </a>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+
             {{-- Panel de Acciones (Solo si está Pendiente) --}}
             @if ($request->status === 'Pending')
                 @can('solicitudes_aprobar')
                     <div class="card card-custom p-3 bg-white mb-3" style="border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
                         <h5 class="font-weight-bold text-dark mb-3"><i class="fas fa-cog text-primary mr-2"></i> Acciones del Operador</h5>
-                        <p class="text-xs text-muted mb-3">La aprobación rebajará automáticamente las existencias de productos individuales y kits en el inventario.</p>
+                        <p class="text-xs text-muted mb-3">La aprobación rebajará automáticamente las existencias de los productos en base a las cantidades especificadas en la tabla.</p>
                         
+                        <div class="form-group mb-3">
+                            <label for="dispatch_notes" class="font-weight-bold text-xs text-secondary text-uppercase">Notas del Despacho</label>
+                            <textarea name="notes" id="dispatch_notes" form="dispatch-form" class="form-control form-control-sm" rows="3" placeholder="Observaciones adicionales para el despacho..."></textarea>
+                        </div>
+
                         <button type="button" class="btn btn-success btn-block font-weight-bold py-2 mb-2 btn-approve-request-show" style="border-radius: 8px;">
-                            <i class="fas fa-check-circle mr-1"></i> Aprobar Despacho
+                            <i class="fas fa-check-circle mr-1"></i> Procesar Despacho
                         </button>
-                        
-                        <form id="approve-form" action="{{ route('admin.requests.process', $request->id) }}" method="POST" style="display: none;">
-                            @csrf
-                            <input type="hidden" name="action" value="approve">
-                        </form>
                         
                         <button type="button" class="btn btn-danger btn-block font-weight-bold py-2 btn-reject-request-show" data-toggle="modal" data-target="#rejectModalShow" style="border-radius: 8px;">
                             <i class="fas fa-times-circle mr-1"></i> Rechazar Solicitud
@@ -126,14 +147,24 @@
             <div class="card card-custom p-3 bg-white" style="border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
                 <h5 class="font-weight-bold text-dark mb-3"><i class="fas fa-boxes text-danger mr-2"></i> Ítems Solicitados</h5>
                 
+                @if($request->status === 'Pending' && Gate::allows('solicitudes_aprobar'))
+                    <form id="dispatch-form" action="{{ route('admin.requests.process', $request->id) }}" method="POST">
+                        @csrf
+                        <input type="hidden" name="action" value="approve">
+                @endif
+
                 <div class="table-responsive">
                     <table class="table table-hover mb-0">
                         <thead>
                             <tr class="bg-light text-secondary text-xs font-weight-bold text-uppercase">
                                 <th style="border: none;">Producto / Kit</th>
-                                <th style="width: 20%; border: none;" class="text-center">Solicitado</th>
-                                <th style="width: 25%; border: none;">Stock Actual</th>
-                                <th style="width: 20%; border: none;" class="text-right">Costo Unit.</th>
+                                <th style="width: 15%; border: none;" class="text-center">Solicitado</th>
+                                <th style="width: 20%; border: none;">Stock Actual</th>
+                                @if($request->status === 'Pending' && Gate::allows('solicitudes_aprobar'))
+                                    <th style="width: 20%; border: none;" class="text-center">Acción</th>
+                                    <th style="width: 20%; border: none;" class="text-center">Cant. Despachar</th>
+                                @endif
+                                <th style="width: 15%; border: none;" class="text-right">Costo Unit.</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -195,6 +226,24 @@
                                             @endif
                                         @endif
                                     </td>
+
+                                    @if($request->status === 'Pending' && Gate::allows('solicitudes_aprobar'))
+                                        <td class="text-center" style="vertical-align: middle;">
+                                            <select name="items[{{ $loop->index }}][status]" class="form-control form-control-sm item-status-select" onchange="onItemStatusChange(this, {{ $item->quantity_requested }}, {{ $product->stock ?? 0 }})" style="border-radius: 6px;">
+                                                <option value="approved" {{ $stockOk ? 'selected' : '' }}>Aprobar</option>
+                                                <option value="rejected" {{ !$stockOk ? 'selected' : '' }}>Negar</option>
+                                            </select>
+                                        </td>
+                                        <td class="text-center" style="vertical-align: middle;">
+                                            <input type="number" name="items[{{ $loop->index }}][quantity_dispatched]" class="form-control form-control-sm text-center item-qty-input" 
+                                                   value="{{ min($item->quantity_requested, $product->stock ?? 0) }}" 
+                                                   min="0" max="{{ $item->quantity_requested }}" 
+                                                   {{ !$stockOk ? 'readonly' : '' }} required style="border-radius: 6px;">
+                                            <input type="hidden" name="items[{{ $loop->index }}][product_id]" value="{{ $item->product_id }}">
+                                            <input type="hidden" name="items[{{ $loop->index }}][quantity_requested]" value="{{ $item->quantity_requested }}">
+                                        </td>
+                                    @endif
+
                                     <td class="text-right font-weight-bold text-secondary" style="vertical-align: middle;">
                                         ${{ number_format($item->unit_price_at_request, 2) }}
                                     </td>
@@ -203,7 +252,7 @@
                                 {{-- COMPONENTES DE KITS --}}
                                 @if($isKit && $product && $product->components->count())
                                     <tr>
-                                        <td colspan="4" class="p-0" style="border: none;">
+                                        <td colspan="{{ $request->status === 'Pending' && Gate::allows('solicitudes_aprobar') ? 6 : 4 }}" class="p-0" style="border: none;">
                                             <div class="px-4 py-3 bg-light rounded border-left" style="border-left: 4px solid #17a2b8 !important; margin: 4px 16px 12px 16px;">
                                                 <strong class="text-xs text-secondary text-uppercase mb-2 d-block"><i class="fas fa-cubes text-info mr-1"></i> Desglose de Componentes del Kit:</strong>
                                                 <table class="table table-sm table-bordered mt-2 mb-0 bg-white text-xs">
@@ -245,6 +294,9 @@
                         </tbody>
                     </table>
                 </div>
+                @if($request->status === 'Pending' && Gate::allows('solicitudes_aprobar'))
+                    </form>
+                @endif
             </div>
         </div>
     </div>
@@ -504,12 +556,12 @@
             let quantity = parseInt($('#decompose_quantity').val()) || 0;
 
             if (!batchId) {
-                Swal.fire({ icon: 'error', title: 'Error', text: 'Debe seleccionar un lote del kit a descomponer.' });
+                Swal.fire({ type: 'error', title: 'Error', text: 'Debe seleccionar un lote del kit a descomponer.' });
                 return;
             }
 
             if (quantity < 1) {
-                Swal.fire({ icon: 'error', title: 'Error', text: 'La cantidad a descomponer debe ser al menos 1.' });
+                Swal.fire({ type: 'error', title: 'Error', text: 'La cantidad a descomponer debe ser al menos 1.' });
                 return;
             }
 
@@ -546,21 +598,21 @@
             });
 
             if (hasError) {
-                Swal.fire({ icon: 'error', title: 'Error de Validación', text: errorMessage });
+                Swal.fire({ type: 'error', title: 'Error de Validación', text: errorMessage });
                 return;
             }
 
             Swal.fire({
                 title: '¿Confirmar Descomposición?',
                 text: 'Se descompondrán ' + quantity + ' unidades del kit "' + kitItem.kit.name + '" para suplir stock.',
-                icon: 'warning',
+                type: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#3085d6',
                 cancelButtonColor: '#d33',
                 confirmButtonText: 'Sí, descomponer',
                 cancelButtonText: 'Cancelar'
             }).then((result) => {
-                if (result.isConfirmed) {
+                if (result.value) {
                     $('#btn-confirm-decompose').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Procesando...');
 
                     $.ajax({
@@ -574,7 +626,7 @@
                         success: function(response) {
                             if (response.success) {
                                 Swal.fire({
-                                    icon: 'success',
+                                    type: 'success',
                                     title: '¡Éxito!',
                                     text: response.message,
                                     timer: 2000,
@@ -583,7 +635,7 @@
                                     location.reload();
                                 });
                             } else {
-                                Swal.fire({ icon: 'error', title: 'Error', text: response.message });
+                                Swal.fire({ type: 'error', title: 'Error', text: response.message });
                                 $('#btn-confirm-decompose').prop('disabled', false).html('<i class="fas fa-tools"></i> Confirmar Descomposición');
                             }
                         },
@@ -592,7 +644,7 @@
                             if (xhr.responseJSON && xhr.responseJSON.message) {
                                 msg = xhr.responseJSON.message;
                             }
-                            Swal.fire({ icon: 'error', title: 'Error', text: msg });
+                            Swal.fire({ type: 'error', title: 'Error', text: msg });
                             $('#btn-confirm-decompose').prop('disabled', false).html('<i class="fas fa-tools"></i> Confirmar Descomposición');
                         }
                     });
@@ -603,28 +655,44 @@
         // 🌟 BOTÓN DE APROBACIÓN POR FORM SUBMIT
         $('.btn-approve-request-show').on('click', function() {
             Swal.fire({
-                title: '¿Aprobar Despacho de Almacén?',
-                text: 'Esta acción actualizará el stock de todos los ítems solicitados de forma inmediata.',
-                icon: 'warning',
+                title: '¿Procesar Despacho de Almacén?',
+                text: 'Esta acción actualizará el stock de los ítems despachados de forma inmediata.',
+                type: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#28a745',
                 cancelButtonColor: '#6c757d',
-                confirmButtonText: 'Sí, aprobar despacho',
+                confirmButtonText: 'Sí, procesar despacho',
                 cancelButtonText: 'Cancelar'
             }).then((result) => {
-                if (result.isConfirmed) {
+                if (result.value) {
                     Swal.fire({
                         title: 'Procesando...',
                         html: 'Por favor espere mientras se reduce el stock del inventario.',
                         allowOutsideClick: false,
-                        didOpen: () => {
+                        onOpen: () => {
                             Swal.showLoading();
                         }
                     });
-                    document.getElementById('approve-form').submit();
+                    document.getElementById('dispatch-form').submit();
                 }
             });
         });
+
+        // 🌟 MANEJADOR DE CAMBIO DE ESTADO POR ÍTEM
+        window.onItemStatusChange = function(select, reqQty, stock) {
+            const row = select.closest('tr');
+            const qtyInput = row.querySelector('.item-qty-input');
+            
+            if (select.value === 'rejected') {
+                qtyInput.value = 0;
+                qtyInput.setAttribute('readonly', true);
+                row.classList.add('table-secondary');
+            } else {
+                qtyInput.removeAttribute('readonly');
+                qtyInput.value = Math.min(reqQty, stock);
+                row.classList.remove('table-secondary');
+            }
+        };
 
         // 🌟 BOTÓN DE CONFIRMACIÓN DE RECHAZO POR AJAX
         $('#btn-confirm-reject-show').on('click', function() {
@@ -649,7 +717,7 @@
                     btn.prop('disabled', false).text('Confirmar Rechazo');
                     
                     Swal.fire({
-                        icon: 'warning',
+                        type: 'warning',
                         title: 'Rechazada',
                         text: response.message,
                         timer: 2000,

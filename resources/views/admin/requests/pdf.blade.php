@@ -194,7 +194,7 @@
             <tr>
                 <td class="header-cell header-cell-left">
                     <div class="logo-section">
-                        <img src="{{ public_path('images/logo-iac.png') }}" alt="Logo IAC">
+                        <img src="{{ public_path('images/logo-idi.png') }}" alt="Logo IDI">
                     </div>
                     <div class="supplier-header">
                         <div class="supplier-header-title">Datos del Solicitante</div>

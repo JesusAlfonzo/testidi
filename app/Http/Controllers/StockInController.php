@@ -216,9 +216,11 @@ class StockInController extends Controller
     {
         $this->authorize('entradas_crear');
         
-        $products = Product::where('is_active', true)->orderBy('name')->get(['id', 'name', 'requires_serial']);
+        $products = Product::where('is_active', true)->orderBy('name')->get(['id', 'name', 'requires_serial', 'is_perishable', 'category_id']);
         $suppliers = Supplier::orderBy('name')->pluck('name', 'id');
         $locations = Location::orderBy('name')->pluck('name', 'id');
+        $categories = \App\Models\Category::orderBy('name')->get(['id', 'name']);
+
 
         $order = null;
         $orderItem = null;
@@ -245,7 +247,8 @@ class StockInController extends Controller
             }
         }
 
-        return view('admin.stock-in.create', compact('products', 'suppliers', 'locations', 'order', 'orderItem', 'selectedItemIds'));
+        return view('admin.stock-in.create', compact('products', 'suppliers', 'locations', 'order', 'orderItem', 'selectedItemIds', 'categories'));
+
     }
 
     public function store(StoreStockInRequest $request)

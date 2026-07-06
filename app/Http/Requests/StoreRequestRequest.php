@@ -23,7 +23,11 @@ class StoreRequestRequest extends FormRequest
             // 1. Campos de la Cabecera
             'reference' => ['required', 'string', 'max:255'],
             'justification' => ['required', 'string', 'min:5', 'max:500'],
-            'destination_area' => ['nullable', 'string', 'max:255'],
+            'destination_area' => [
+                'required',
+                'string',
+                'in:Administración,Citometria,Compras,Coordinacion de Laboratorio,Dirección,Informatica,Inmunodiagnostico,Inmunogenetica,Investigación,Lavado,Mantenimiento,Mensajeria,Recepción,Retrovirus,Seguridad,Toma de Muestra'
+            ],
             'priority' => ['nullable', 'string', 'in:alta,media,baja'],
 
             // 2. Validación del Array de Ítems
@@ -56,8 +60,6 @@ class StoreRequestRequest extends FormRequest
                         $validator->errors()->add("items.{$index}.product_id", 'El producto no existe.');
                     } elseif (!$product->is_active) {
                         $validator->errors()->add("items.{$index}.product_id", 'El producto está inactivo.');
-                    } elseif (($item['quantity'] ?? 0) > $product->stock) {
-                        $validator->errors()->add("items.{$index}.quantity", "Stock insuficiente. Stock actual: {$product->stock}");
                     }
                 }
             }

@@ -213,6 +213,9 @@
                     </div>
                 </div>
 
+                {{-- Filtro de Categorías --}}
+                @include('admin.partials.category-filter')
+
                 <!-- Tarjeta: Items de la Orden -->
                 <div class="card card-custom">
                     <div class="card-header d-flex justify-content-between align-items-center">
@@ -243,10 +246,10 @@
                                             </select>
                                         </td>
                                         <td>
-                                            <select name="items[0][product_id]" class="form-control select2-product" required>
-                                                <option value="">Seleccione producto...</option>
+                                            <select name="items[0][product_id]" class="form-control select2-product" required disabled>
+                                                <option value="">Seleccione una categoría primero...</option>
                                                 @foreach($products as $product)
-                                                    <option value="{{ $product->id }}">{{ $product->name }} ({{ $product->code ?? 'S/C' }})</option>
+                                                    <option value="{{ $product->id }}" data-category-id="{{ $product->category_id ?? 0 }}">{{ $product->name }} ({{ $product->code ?? 'S/C' }})</option>
                                                 @endforeach
                                             </select>
                                             <select name="items[0][kit_id]" class="form-control select2-kit" style="display:none;">
@@ -455,6 +458,74 @@
     <script>
         let itemIndex = 1;
 
+        // ─── ESTADO DEL FILTRO DE CATEGORÍAS (Orden de Compra) ────────────────────
+        const allPoProducts = [
+            @foreach($products as $product)
+            {
+                id: {{ $product->id }},
+                name: '{{ addslashes($product->name) }} ({{ $product->code ?? 'S/C' }})',
+                categoryId: {{ $product->category_id ?? 'null' }}
+            },
+            @endforeach
+        ];
+
+        let poSelectedCategoryId = null;
+
+        function poFilteredProducts() {
+            if (!poSelectedCategoryId) return [];
+            return allPoProducts.filter(p => p.categoryId == poSelectedCategoryId);
+        }
+
+        function buildPoProductOptionsHtml() {
+            const products = poFilteredProducts();
+            if (products.length === 0) {
+                return '<option value="">— Sin productos en esta categoría —</option>';
+            }
+            let html = '<option value="">Seleccione producto...</option>';
+            products.forEach(p => {
+                html += `<option value="${p.id}" data-category-id="${p.categoryId}">${p.name}</option>`;
+            });
+            return html;
+        }
+
+        function applyPoFilter() {
+            const enabled = !!poSelectedCategoryId;
+            const hint = document.getElementById('categoryFilterHint');
+
+            $('#itemsBody tr').each(function() {
+                const select = $(this).find('.select2-product:visible');
+                if (select.length === 0) return;
+
+                const currentVal = select.val();
+                if (select.data('select2')) select.select2('destroy');
+                select.html(buildPoProductOptionsHtml());
+
+                // Preservar selección aunque no esté en la categoría nueva
+                if (currentVal && !poFilteredProducts().find(p => p.id == currentVal)) {
+                    const orphan = allPoProducts.find(p => p.id == currentVal);
+                    if (orphan) {
+                        select.prepend(`<option value="${orphan.id}" data-category-id="${orphan.categoryId}" selected>[${orphan.name}]</option>`);
+                        select.val(orphan.id);
+                    }
+                } else {
+                    select.val(currentVal || '');
+                }
+
+                select.prop('disabled', !enabled).select2({
+                    theme: 'bootstrap4',
+                    width: '100%',
+                    allowClear: true
+                });
+            });
+
+            if (hint) {
+                hint.innerHTML = enabled
+                    ? `<i class="fas fa-check-circle text-success"></i> Mostrando productos de la categoría seleccionada.`
+                    : `<i class="fas fa-info-circle"></i> Seleccione una categoría para habilitar el selector de productos.`;
+            }
+        }
+        // ─────────────────────────────────────────────────────────────────────────────
+
         function getCurrencySymbol(currency) {
             switch(currency) {
                 case 'USD': return '$ ';
@@ -643,7 +714,16 @@
         }
 
         $('#addItem').click(function() {
-            const productOptions = `@foreach($products as $product)<option value="{{ $product->id }}">{{ $product->name }} ({{ $product->code ?? 'S/C' }})</option>@endforeach`;
+            if (!poSelectedCategoryId) {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Seleccione una categoría',
+                    text: 'Elija primero una categoría en el filtro para poder agregar productos.'
+                });
+                return;
+            }
+
+            const productOptions = buildPoProductOptionsHtml();
             const kitOptions = `@foreach($kits as $kit)<option value="{{ $kit->id }}">{{ $kit->name }}</option>@endforeach`;
             const row = `
                 <tr>
@@ -655,7 +735,6 @@
                     </td>
                     <td>
                         <select name="items[${itemIndex}][product_id]" class="form-control select2-product" required>
-                            <option value="">Seleccione producto...</option>
                             ${productOptions}
                         </select>
                         <select name="items[${itemIndex}][kit_id]" class="form-control select2-kit" style="display:none;">
@@ -771,6 +850,13 @@
         });
 
         $(document).ready(function() {
+            // Filtro de categorías: estado inicial deshabilitado
+            applyPoFilter();
+            $('#categoryFilter').on('change', function() {
+                poSelectedCategoryId = $(this).val() || null;
+                applyPoFilter();
+            });
+
             initSelect2();
             updateRemoveButtons();
             calculateTotals();

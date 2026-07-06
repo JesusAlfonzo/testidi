@@ -98,6 +98,9 @@
                         </div>
                     </div>
 
+                    {{-- Filtro de Categorías --}}
+                    @include('admin.partials.category-filter')
+
                     <!-- Card de Ítems de la Solicitud (Repetidor Dinámico) -->
                     <div class="card shadow-sm border-0 mb-4" style="border-radius: 12px;">
                         <div class="card-header bg-gradient-white border-bottom py-3 d-flex justify-content-between align-items-center">
@@ -132,12 +135,12 @@
                                                 <input type="hidden" name="items[0][product_id]" class="row-product-id" value="">
                                                 <input type="hidden" name="items[0][kit_id]" class="row-kit-id" value="">
                                                 
-                                                <select class="form-control form-control-sm select2-item-selector item-selector" required style="width: 100%;">
-                                                    <option value="">Seleccione un ítem...</option>
+                                                <select class="form-control form-control-sm select2-item-selector item-selector" required style="width: 100%;" disabled>
+                                                    <option value="">Seleccione una categoría primero...</option>
                                                     <optgroup label="Productos Individuales">
                                                         @foreach($products as $product)
                                                             @if(!$product->is_kit)
-                                                                <option value="{{ $product->id }}" data-is-kit="0" data-unit="{{ $product->unit->abbreviation ?? 'und' }}">
+                                                                <option value="{{ $product->id }}" data-is-kit="0" data-unit="{{ $product->unit->abbreviation ?? 'und' }}" data-category-id="{{ $product->category_id }}">
                                                                     {{ $product->name }} ({{ $product->code ?? 'S/C' }})
                                                                 </option>
                                                             @endif
@@ -146,13 +149,13 @@
                                                     <optgroup label="Kits / Compuestos">
                                                         @foreach($products as $product)
                                                             @if($product->is_kit)
-                                                                <option value="{{ $product->id }}" data-is-kit="1" data-unit="{{ $product->unit->abbreviation ?? 'und' }}">
+                                                                <option value="{{ $product->id }}" data-is-kit="1" data-unit="{{ $product->unit->abbreviation ?? 'und' }}" data-category-id="0">
                                                                     {{ $product->name }} ({{ $product->code ?? 'S/C' }}) [Kit]
                                                                 </option>
                                                             @endif
                                                         @endforeach
                                                         @foreach($kits as $kit)
-                                                            <option value="{{ $kit->id }}" data-is-kit="1" data-unit="und">
+                                                            <option value="{{ $kit->id }}" data-is-kit="1" data-unit="und" data-category-id="0">
                                                                 {{ $kit->name }} [Kit Legacy]
                                                             </option>
                                                         @endforeach
@@ -500,6 +503,121 @@
         let itemIndex = 1;
         let activeRowForModal = null;
 
+        // ─── ESTADO DEL FILTRO DE CATEGORÍAS (RFQ) ─────────────────────────────────────
+        // Fuente de verdad: todos los productos (solo individuales, no kits)
+        const allRfqProducts = [
+            @foreach($products as $product)
+            @if(!$product->is_kit)
+            {
+                id: {{ $product->id }},
+                name: '{{ addslashes($product->name) }} ({{ $product->code ?? 'S/C' }})',
+                unit: '{{ $product->unit->abbreviation ?? 'und' }}',
+                categoryId: {{ $product->category_id ?? 'null' }},
+                isKit: 0
+            },
+            @endif
+            @endforeach
+        ];
+        // Los kits siempre se muestran (sin filtro de categoría)
+        const allRfqKits = [
+            @foreach($products as $product)
+            @if($product->is_kit)
+            { id: {{ $product->id }}, name: '{{ addslashes($product->name) }} ({{ $product->code ?? 'S/C' }}) [Kit]', unit: '{{ $product->unit->abbreviation ?? 'und' }}', isKit: 1 },
+            @endif
+            @endforeach
+            @foreach($kits as $kit)
+            { id: {{ $kit->id }}, name: '{{ addslashes($kit->name) }} [Kit Legacy]', unit: 'und', isKit: 1 },
+            @endforeach
+        ];
+
+        let rfqSelectedCategoryId = null;
+
+        function rfqFilteredProducts() {
+            if (!rfqSelectedCategoryId) return [];
+            return allRfqProducts.filter(p => p.categoryId == rfqSelectedCategoryId);
+        }
+
+        function buildRfqOptionsHtml() {
+            const filteredP = rfqFilteredProducts();
+            let html = '<option value="">Seleccione un ítem...</option>';
+            html += '<optgroup label="Productos Individuales">';
+            if (filteredP.length === 0) {
+                html += '<option value="" disabled>— Sin productos en esta categoría —</option>';
+            } else {
+                filteredP.forEach(p => {
+                    html += `<option value="${p.id}" data-is-kit="0" data-unit="${p.unit}" data-category-id="${p.categoryId}">${p.name}</option>`;
+                });
+            }
+            html += '</optgroup>';
+            html += '<optgroup label="Kits / Compuestos">';
+            allRfqKits.forEach(k => {
+                html += `<option value="${k.id}" data-is-kit="1" data-unit="${k.unit}" data-category-id="0">${k.name}</option>`;
+            });
+            html += '</optgroup>';
+            return html;
+        }
+
+        function applyRfqFilter() {
+            const enabled = !!rfqSelectedCategoryId;
+            const hint = document.getElementById('categoryFilterHint');
+
+            $('#itemsBody tr').each(function() {
+                const select = $(this).find('.item-selector');
+                if (select.length === 0) return;
+
+                const currentVal = select.val();
+                if (select.data('select2')) select.select2('destroy');
+                select.html(buildRfqOptionsHtml());
+
+                // Preservar selección aunque no esté en la categoría nueva
+                if (currentVal && !rfqFilteredProducts().find(p => p.id == currentVal) && !allRfqKits.find(k => k.id == currentVal)) {
+                    const orphan = allRfqProducts.find(p => p.id == currentVal);
+                    if (orphan) {
+                        $(select).find('optgroup[label="Productos Individuales"]').prepend(
+                            `<option value="${orphan.id}" data-is-kit="0" data-unit="${orphan.unit}" selected>[${orphan.name}]</option>`
+                        );
+                        select.val(orphan.id);
+                    } else {
+                        select.val(currentVal);
+                    }
+                } else {
+                    select.val(currentVal || '');
+                }
+
+                select.prop('disabled', !enabled).select2({
+                    theme: 'bootstrap4',
+                    width: '100%',
+                    allowClear: true,
+                    placeholder: enabled ? 'Seleccione un producto o kit...' : 'Seleccione una categoría primero'
+                }).on('change', function() {
+                    // Re-adjuntar el listener de cambio (product/kit routing)
+                    const row = $(this).closest('tr');
+                    const selectedOpt = $(this).find('option:selected');
+                    const isKit = selectedOpt.data('is-kit') == 1;
+                    const itemId = $(this).val();
+                    const unit = selectedOpt.data('unit') || 'und';
+                    row.find('.row-unit-badge').text(unit);
+                    const index = row.data('index');
+                    const typeInput = row.find('.row-item-type');
+                    const productInput = row.find('.row-product-id');
+                    const kitInput = row.find('.row-kit-id');
+                    if (!itemId) { productInput.val(''); kitInput.val(''); return; }
+                    if (isKit) {
+                        typeInput.val('kit'); kitInput.val(itemId).attr('name', `items[${index}][kit_id]`); productInput.val('').removeAttr('name');
+                    } else {
+                        typeInput.val('product'); productInput.val(itemId).attr('name', `items[${index}][product_id]`); kitInput.val('').removeAttr('name');
+                    }
+                });
+            });
+
+            if (hint) {
+                hint.innerHTML = enabled
+                    ? `<i class="fas fa-check-circle text-success"></i> Mostrando productos de la categoría seleccionada.`
+                    : `<i class="fas fa-info-circle"></i> Seleccione una categoría para habilitar el selector de productos.`;
+            }
+        }
+        // ─────────────────────────────────────────────────────────────────────────────
+
         // Inicializar select2 en toda la página
         function initSelect2(container = document) {
             $(container).find('.select2').each(function() {
@@ -555,9 +673,17 @@
             });
         }
 
-        // Agregar fila al repetidor de ítems
+        // Agregar fila al repetidor de ítems (usa opciones filtradas)
         function addItemRow() {
-            const productOptions = $('#itemsBody tr:first-child select.item-selector').html();
+            if (!rfqSelectedCategoryId) {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Seleccione una categoría',
+                    text: 'Elija primero una categoría en el filtro para poder agregar filas de productos.'
+                });
+                return;
+            }
+
             const row = `
                 <tr class="item-row" data-index="${itemIndex}">
                     <td>
@@ -566,7 +692,7 @@
                         <input type="hidden" name="items[${itemIndex}][kit_id]" class="row-kit-id" value="">
                         
                         <select class="form-control form-control-sm select2-item-selector item-selector" required style="width: 100%;">
-                            ${productOptions}
+                            ${buildRfqOptionsHtml()}
                         </select>
                     </td>
                     <td>
@@ -784,8 +910,14 @@
         });
 
         $(document).ready(function() {
-            initSelect2();
-            updateRemoveButtons();
+            // Aplicar filtro inicial (selector deshabilitado por defecto)
+            applyRfqFilter();
+
+            // Reaccionar a cambio de categoría
+            $('#categoryFilter').on('change', function() {
+                rfqSelectedCategoryId = $(this).val() || null;
+                applyRfqFilter();
+            });
 
             $('#addItemRowBtn').on('click', addItemRow);
 

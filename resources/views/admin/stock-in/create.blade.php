@@ -59,6 +59,11 @@
                     @endif
 
                     {{-- Card de Ítems / Productos --}}
+                    {{-- Filtro de categorías (solo en modo sin OC precargada) --}}
+                    @unless($order)
+                        @include('admin.partials.category-filter')
+                    @endunless
+
                     <div class="card card-outline card-success shadow-sm mb-4">
                         <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
                             <h3 class="card-title text-success font-weight-bold mb-0">
@@ -287,12 +292,12 @@
                                         @else
                                             <tr data-index="0" data-requires-serial="false">
                                                 <td>
-                                                    <select name="items[0][product_id]" class="form-control form-control-sm select2-product" required onchange="onProductChange(this)">
-                                                        <option value="">Seleccione...</option>
-                                                        @foreach($products as $prod)
-                                                            <option value="{{ $prod->id }}" data-requires-serial="{{ $prod->requires_serial ? 'true' : 'false' }}" data-is-perishable="{{ $prod->is_perishable ? 'true' : 'false' }}">{{ $prod->name }}</option>
-                                                        @endforeach
-                                                    </select>
+                                                     <select name="items[0][product_id]" class="form-control form-control-sm select2-product @error('items.0.product_id') is-invalid @enderror" required onchange="onProductChange(this)">
+                                                            <option value="">Seleccione...</option>
+                                                            @foreach($products as $prod)
+                                                                <option value="{{ $prod->id }}" data-requires-serial="{{ $prod->requires_serial ? 'true' : 'false' }}" data-is-perishable="{{ $prod->is_perishable ? 'true' : 'false' }}" data-category-id="{{ $prod->category_id }}">{{ $prod->name }}</option>
+                                                            @endforeach
+                                                        </select>
                                                 </td>
                                                 <td>
                                                     <input type="number" name="items[0][quantity]" class="form-control form-control-sm item-qty" value="1" min="1" required onchange="onQtyChange(this)" onkeyup="onQtyChange(this)">
@@ -438,16 +443,99 @@
 <script>
     let itemIndex = {{ $itemIndex ?? 0 }};
 
+    // ─── ESTADO DEL FILTRO DE CATEGORÍAS (solo aplica en modo sin OC) ──────────
+    const allProducts = [
+        @foreach($products as $prod)
+        {
+            id: {{ $prod->id }},
+            text: '{{ addslashes($prod->name) }}',
+            requiresSerial: {{ $prod->requires_serial ? 'true' : 'false' }},
+            isPerishable: {{ $prod->is_perishable ? 'true' : 'false' }},
+            categoryId: {{ $prod->category_id ?? 'null' }}
+        },
+        @endforeach
+    ];
+
+    let selectedCategoryId = null;
+
+    function filteredProducts() {
+        if (!selectedCategoryId) return [];
+        return allProducts.filter(p => p.categoryId == selectedCategoryId);
+    }
+
+    function buildStockInOptions() {
+        const products = filteredProducts();
+        if (products.length === 0) {
+            return '<option value="">— Sin productos en esta categoría —</option>';
+        }
+        let html = '<option value="">Seleccione...</option>';
+        products.forEach(p => {
+            html += `<option value="${p.id}" data-requires-serial="${p.requiresSerial}" data-is-perishable="${p.isPerishable}" data-category-id="${p.categoryId}">${p.text}</option>`;
+        });
+        return html;
+    }
+
+    function applyStockInFilter() {
+        const enabled = !!selectedCategoryId;
+        const hint = document.getElementById('categoryFilterHint');
+
+        $('#itemsBody tr').each(function() {
+            const select = $(this).find('.select2-product');
+            if (select.length === 0) return; // fila de OC precargada (texto fijo)
+
+            const currentVal = select.val();
+            if (select.data('select2')) select.select2('destroy');
+            select.html(buildStockInOptions());
+
+            // Preservar selección aunque no esté en la categoría nueva
+            if (currentVal && !filteredProducts().find(p => p.id == currentVal)) {
+                const orphan = allProducts.find(p => p.id == currentVal);
+                if (orphan) {
+                    select.prepend(`<option value="${orphan.id}" data-requires-serial="${orphan.requiresSerial}" data-is-perishable="${orphan.isPerishable}" selected>[${orphan.text}]</option>`);
+                    select.val(orphan.id);
+                }
+            } else {
+                select.val(currentVal || '');
+            }
+
+            select.prop('disabled', !enabled).select2({
+                theme: 'bootstrap4',
+                placeholder: enabled ? 'Seleccione un producto' : 'Seleccione una categoría primero'
+            });
+        });
+
+        if (hint) {
+            hint.innerHTML = enabled
+                ? `<i class="fas fa-check-circle text-success"></i> Mostrando productos de la categoría seleccionada.`
+                : `<i class="fas fa-info-circle"></i> Seleccione una categoría para habilitar el selector de productos.`;
+        }
+    }
+    // ─────────────────────────────────────────────────────────────────────────────
+
     function addItem() {
+        // En modo sin OC, requerir categoría seleccionada
+        @unless($order)
+        if (!selectedCategoryId) {
+            alert('Seleccione primero una categoría en el filtro para agregar productos.');
+            return;
+        }
+        @endunless
+
         const tbody = document.getElementById('itemsBody');
         const row = document.createElement('tr');
         row.setAttribute('data-index', itemIndex);
         row.setAttribute('data-requires-serial', 'false');
 
+        // Opciones de producto respetan el filtro activo (o todos si hay OC)
+        @if($order)
         let productOptions = '<option value="">Seleccione...</option>';
         @foreach($products as $prod)
-            productOptions += '<option value="{{ $prod->id }}" data-requires-serial="{{ $prod->requires_serial ? 'true' : 'false' }}" data-is-perishable="{{ $prod->is_perishable ? 'true' : 'false' }}">{{ $prod->name }}</option>';
+            productOptions += '<option value="{{ $prod->id }}" data-requires-serial="{{ $prod->requires_serial ? 'true' : 'false' }}" data-is-perishable="{{ $prod->is_perishable ? 'true' : 'false' }}" data-category-id="{{ $prod->category_id }}">{{ $prod->name }}</option>';
         @endforeach
+        @else
+        const productOptions = buildStockInOptions();
+        @endif
+
 
         let locationOptions = '<option value="">Seleccione...</option>';
         @foreach($locations as $id => $name)
@@ -493,14 +581,14 @@
         row.innerHTML = cols;
         tbody.appendChild(row);
         
-        // Inicializar select2 en el nuevo row
+        // Inicializar select2 en el nuevo row (respetando el estado del filtro)
         $(row).find('.select2-product').select2({
             theme: 'bootstrap4',
-            placeholder: 'Seleccione un producto'
+            placeholder: selectedCategoryId ? 'Seleccione un producto' : 'Seleccione una categoría primero'
         });
         
-        // Deshabilitar fecha de vencimiento inicialmente hasta seleccionar producto
-        $(row).find('input[type="date"]').prop('disabled', true).prop('required', false).addClass('bg-light');
+        // La fecha de vencimiento inicia habilitada y opcional
+        $(row).find('input[type="date"]').prop('disabled', false).prop('required', false);
         
         itemIndex++;
         updateSerialPanel();
@@ -542,10 +630,11 @@
         const isPerishable = selectedOption.data('is-perishable') === 'true' || selectedOption.data('is-perishable') === true;
         const expDateInput = row.find('input[type="date"]');
         if (expDateInput.length > 0) {
+            expDateInput.prop('disabled', false); // Siempre habilitado para permitir edición
             if (isPerishable) {
-                expDateInput.prop('disabled', false).prop('required', true).removeClass('bg-light');
+                expDateInput.prop('required', true).removeClass('bg-light');
             } else {
-                expDateInput.prop('disabled', true).prop('required', false).val('').addClass('bg-light');
+                expDateInput.prop('required', false).removeClass('bg-light');
             }
         }
     }
@@ -672,10 +761,11 @@
             }
             const expDateInput = tr.find('input[type="date"]');
             if (expDateInput.length > 0) {
+                expDateInput.prop('disabled', false); // Siempre habilitado para permitir edición
                 if (isPerishable) {
-                    expDateInput.prop('disabled', false).prop('required', true).removeClass('bg-light');
+                    expDateInput.prop('required', true).removeClass('bg-light');
                 } else {
-                    expDateInput.prop('disabled', true).prop('required', false).val('').addClass('bg-light');
+                    expDateInput.prop('required', false).removeClass('bg-light');
                 }
             }
         });
@@ -691,6 +781,15 @@
             theme: 'bootstrap4',
             placeholder: 'Seleccione un producto'
         });
+
+        // Filtro de categorías (solo en modo sin OC)
+        @unless($order)
+        applyStockInFilter(); // estado inicial: selector deshabilitado
+        $('#categoryFilter').on('change', function() {
+            selectedCategoryId = $(this).val() || null;
+            applyStockInFilter();
+        });
+        @endunless
 
         // Escuchar cambios en las series ingresadas
         $(document).on('keyup change', '.serial-textarea', function() {

@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\Kit;
 use App\Models\RequestItem;
 use App\Models\User;
+use App\Models\Dispatch;
 use App\Http\Requests\StoreRequestRequest;
 use App\Services\CacheService;
 use App\Services\InventoryRequestService;
@@ -217,10 +218,12 @@ class RequestController extends Controller
     public function create()
     {
         // Cargar todos los productos y kits activos
-        $products = Product::where('is_active', true)->orderBy('name')->get(['id', 'name', 'code', 'stock', 'type', 'is_kit']);
+        $products = Product::where('is_active', true)->orderBy('name')->get(['id', 'name', 'code', 'stock', 'type', 'is_kit', 'category_id']);
+        $categories = \App\Models\Category::orderBy('name')->get(['id', 'name']);
         
-        return view('admin.requests.create', compact('products'));
+        return view('admin.requests.create', compact('products', 'categories'));
     }
+
 
     // Lógica: Guardar la solicitud y sus items
     public function store(StoreRequestRequest $request)
@@ -294,6 +297,7 @@ class RequestController extends Controller
             'approver',
             'items.product.unit',
             'items.product.components.unit',
+            'dispatches.dispatcher',
         ]);
 
         $decomposableKits = [];
@@ -349,9 +353,58 @@ class RequestController extends Controller
         DB::beginTransaction();
         try {
             if ($action === 'approve') {
-                $service->approve($request);
+                $items = $httpRequest->input('items');
+                if (!$items || !is_array($items)) {
+                    return redirect()->back()->with('error', 'Los ítems del despacho no son válidos.');
+                }
+
+                $errors = [];
+                foreach ($items as $index => $itemData) {
+                    $productId = $itemData['product_id'] ?? null;
+                    $qtyRequested = (int) ($itemData['quantity_requested'] ?? 0);
+                    $qtyDispatched = (int) ($itemData['quantity_dispatched'] ?? 0);
+                    $status = $itemData['status'] ?? 'approved';
+
+                    if (!$productId) {
+                        $errors[] = "Falta el ID del producto en la línea " . ($index + 1);
+                        continue;
+                    }
+
+                    $product = Product::find($productId);
+                    if (!$product) {
+                        $errors[] = "El producto con ID {$productId} no existe.";
+                        continue;
+                    }
+
+                    if ($qtyDispatched < 0) {
+                        $errors[] = "La cantidad despachada para {$product->name} no puede ser negativa.";
+                    }
+
+                    if ($qtyDispatched > $qtyRequested) {
+                        $errors[] = "La cantidad despachada para {$product->name} ({$qtyDispatched}) no puede superar la cantidad solicitada ({$qtyRequested}).";
+                    }
+
+                    if ($status === 'rejected' && $qtyDispatched !== 0) {
+                        $errors[] = "La cantidad despachada para {$product->name} debe ser 0 si el ítem es negado.";
+                    }
+
+                    if ($qtyDispatched > 0 && $product->stock < $qtyDispatched) {
+                        $errors[] = "Stock insuficiente para {$product->name}. Stock actual: {$product->stock}, solicitado para despacho: {$qtyDispatched}.";
+                    }
+                }
+
+                if (!empty($errors)) {
+                    return redirect()->back()->withInput()->with('error', implode('<br>', $errors));
+                }
+
+                // Ejecutar el despacho
+                $dispatch = $service->dispatch($request, [
+                    'items' => $items,
+                    'notes' => $httpRequest->input('notes')
+                ]);
+
                 DB::commit();
-                return redirect()->route('admin.requests.index')->with('success', 'Solicitud APROBADA y stock actualizado correctamente.');
+                return redirect()->route('admin.requests.index')->with('success', 'Despacho ' . $dispatch->dispatch_number . ' procesado con éxito.');
 
             } elseif ($action === 'reject') {
                 if (!$reason || trim($reason) === '') {
@@ -366,7 +419,7 @@ class RequestController extends Controller
             
         } catch (\Exception $e) {
             DB::rollback();
-            return redirect()->back()->with('error', 'Error al procesar la solicitud.');
+            return redirect()->back()->with('error', 'Error al procesar la solicitud: ' . $e->getMessage());
         }
     }
 
@@ -447,6 +500,18 @@ class RequestController extends Controller
         } catch (\Exception $e) {
             \Log::error('Error al generar PDF de solicitud: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Error al generar el PDF. Por favor, contacte al administrador.');
+        }
+    }
+
+    public function dispatchPdf(\App\Models\Dispatch $dispatch)
+    {
+        try {
+            $dispatch->load(['request.requester', 'dispatcher', 'items.product.unit', 'items.batch']);
+            
+            return \PDF::loadView('admin.dispatches.pdf', compact('dispatch'))->stream('despacho-' . $dispatch->dispatch_number . '.pdf');
+        } catch (\Exception $e) {
+            \Log::error('Error al generar PDF de despacho: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error al generar el PDF de despacho. Por favor, contacte al administrador.');
         }
     }
 

@@ -82,6 +82,14 @@ class InventoryRequest extends Model
         return $this->hasMany(RequestItem::class, 'request_id', 'id');
     }
 
+    /**
+     * Relación con los despachos de la solicitud.
+     */
+    public function dispatches(): HasMany
+    {
+        return $this->hasMany(Dispatch::class, 'inventory_request_id');
+    }
+
     public function getRouteKeyName()
     {
         return 'id';

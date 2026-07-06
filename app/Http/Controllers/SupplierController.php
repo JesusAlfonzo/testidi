@@ -134,13 +134,13 @@ class SupplierController extends Controller
 
     public function destroy(Supplier $supplier)
     {
-        $productsCount = \App\Models\Product::where('supplier_id', $supplier->id)->count();
+        $productsCount = \App\Models\PurchaseOrder::where('supplier_id', $supplier->id)->count();
         
         if (request()->ajax() || request()->wantsJson()) {
             if ($productsCount > 0) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'No se puede eliminar el proveedor porque tiene ' . $productsCount . ' producto(s) asociado(s).'
+                    'message' => 'No se puede eliminar el proveedor porque tiene ' . $productsCount . ' orden(es) de compra asociada(s).'
                 ], 422);
             }
             
@@ -155,7 +155,7 @@ class SupplierController extends Controller
 
         if ($productsCount > 0) {
             return redirect()->route('admin.suppliers.index')
-                             ->with('error', 'No se puede eliminar el proveedor porque tiene ' . $productsCount . ' producto(s) asociado(s).');
+                             ->with('error', 'No se puede eliminar el proveedor porque tiene ' . $productsCount . ' orden(es) de compra asociada(s).');
         }
         
         $supplier->delete();

@@ -209,31 +209,6 @@
 
     {{-- MODALES DE ACCION RAPIDA --}}
     @can('solicitudes_aprobar')
-        <!-- MODAL APROBAR -->
-        <div class="modal fade" id="approveRequestModal" tabindex="-1" role="dialog" aria-hidden="true">
-            <div class="modal-dialog" role="document">
-                <div class="modal-content" style="border-radius: 12px;">
-                    <div class="modal-header bg-success text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
-                        <h5 class="modal-title font-weight-bold"><i class="fas fa-check-circle mr-1"></i> Aprobar Solicitud</h5>
-                        <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    </div>
-                    <div class="modal-body text-center py-4">
-                        <h4 class="text-success font-weight-bold mb-3">¿Confirmar Aprobación?</h4>
-                        <p class="text-muted">Se procederá a aprobar la solicitud <strong id="approve-req-label"></strong> y se rebajará automáticamente el stock disponible en el almacén.</p>
-                        <div class="alert alert-warning text-left mb-0">
-                            <i class="fas fa-exclamation-triangle mr-1"></i> Esta acción no se puede revertir una vez procesada.
-                        </div>
-                    </div>
-                    <div class="modal-footer justify-content-between">
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal" style="border-radius: 8px;">Cancelar</button>
-                        <button type="button" id="btn-submit-approve" class="btn btn-success font-weight-bold" style="border-radius: 8px;">Aprobar Despacho</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <!-- MODAL RECHAZAR -->
         <div class="modal fade" id="rejectRequestModal" tabindex="-1" role="dialog" aria-hidden="true">
             <div class="modal-dialog" role="document">
@@ -366,53 +341,8 @@
                 table.draw();
             });
 
-            // Variables para urls activas de modals de aprobación/rechazo
-            var activeApproveUrl = '';
+            // Variables para urls activas de modals de rechazo
             var activeRejectUrl = '';
-
-            // Delegación de eventos para botón Aprobar
-            $('#requestsTable').on('click', '.btn-approve-request', function(e) {
-                e.preventDefault();
-                var reqId = $(this).data('id');
-                activeApproveUrl = $(this).data('url');
-                
-                $('#approve-req-label').text('#REQ-' + reqId);
-                $('#approveRequestModal').modal('show');
-            });
-
-            // Confirmar Aprobación
-            $('#btn-submit-approve').on('click', function() {
-                var btn = $(this);
-                btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Procesando...');
-                
-                $.ajax({
-                    url: activeApproveUrl,
-                    type: 'POST',
-                    success: function(response) {
-                        $('#approveRequestModal').modal('hide');
-                        btn.prop('disabled', false).text('Aprobar Despacho');
-                        
-                        Swal.fire({
-                            icon: 'success',
-                            title: '¡Aprobado!',
-                            text: response.message,
-                            timer: 2500,
-                            showConfirmButton: false
-                        });
-                        table.ajax.reload(null, false);
-                    },
-                    error: function(xhr) {
-                        $('#approveRequestModal').modal('hide');
-                        btn.prop('disabled', false).text('Aprobar Despacho');
-                        
-                        var msg = 'No se pudo aprobar la solicitud.';
-                        if (xhr.responseJSON && xhr.responseJSON.message) {
-                            msg = xhr.responseJSON.message;
-                        }
-                        Swal.fire('Error', msg, 'error');
-                    }
-                });
-            });
 
             // Delegación de eventos para botón Rechazar
             $('#requestsTable').on('click', '.btn-reject-request', function(e) {
@@ -468,7 +398,9 @@
             });
             
             setTimeout(function() { 
-                table.columns.adjust().responsive.recalc(); 
+                if (typeof table.columns.adjust().responsive !== 'undefined') {
+                    table.columns.adjust().responsive.recalc(); 
+                }
             }, 500);
         });
     </script>
