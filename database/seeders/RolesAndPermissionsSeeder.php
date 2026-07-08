@@ -172,7 +172,7 @@ class RolesAndPermissionsSeeder extends Seeder
             ['email' => 'admin@inmuno.local'],
             [
                 'name' => 'Super Admin',
-                'password' => bcrypt(env('ADMIN_PASSWORD', 'SuperAdmin@2024')),
+                'password' => bcrypt(env('ADMIN_PASSWORD', 'password')),
             ]
         );
         $superAdmin->assignRole($superAdminRole);

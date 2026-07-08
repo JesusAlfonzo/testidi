@@ -20,7 +20,7 @@ class InventoryRequestService
         return DB::transaction(function () use ($request, $dispatchData) {
             $lockedRequest = InventoryRequest::lockForUpdate()->find($request->id);
             
-            if ($lockedRequest->status !== 'Pending') {
+            if ($lockedRequest->status !== InventoryRequest::STATUS_PENDING) {
                 throw new \Exception('La solicitud ya fue procesada o no existe.');
             }
 
@@ -132,11 +132,11 @@ class InventoryRequestService
 
             // 4. Determinar el nuevo estado de la solicitud
             if ($totalDispatched === 0) {
-                $lockedRequest->status = 'Rejected';
+                $lockedRequest->status = InventoryRequest::STATUS_REJECTED;
             } elseif ($totalDispatched >= $totalRequested) {
-                $lockedRequest->status = 'Processed';
+                $lockedRequest->status = InventoryRequest::STATUS_APPROVED;
             } else {
-                $lockedRequest->status = 'Partially Processed';
+                $lockedRequest->status = InventoryRequest::STATUS_PARTIALLY_PROCESSED;
             }
 
             $lockedRequest->approver_id = auth()->id() ?? $request->approver_id ?? 1;
@@ -173,7 +173,7 @@ class InventoryRequestService
      */
     public function reject(InventoryRequest $request, ?string $reason = null): void
     {
-        $request->status = 'Rejected';
+        $request->status = InventoryRequest::STATUS_REJECTED;
         $request->approver_id = auth()->id() ?? 1;
         $request->processed_at = Carbon::now();
         $request->rejection_reason = $reason;

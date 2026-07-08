@@ -212,6 +212,11 @@
                                                 <a href="{{ route('admin.users.edit', $user) }}" class="btn btn-default text-primary" title="Editar">
                                                     <i class="fas fa-edit"></i>
                                                 </a>
+                                                @if(!$user->hasRole('Superadmin'))
+                                                    <a href="{{ route('admin.users.permissions.edit', $user) }}" class="btn btn-default text-warning" title="Permisos Directos">
+                                                        <i class="fas fa-key"></i>
+                                                    </a>
+                                                @endif
                                             @endcan
                                             @can('usuarios_eliminar')
                                                 <button type="button" 

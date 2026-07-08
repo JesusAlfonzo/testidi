@@ -130,15 +130,6 @@
                     <h5 class="font-weight-bold text-dark mb-3"><i class="fas fa-cog text-primary mr-2"></i> Control de Despacho</h5>
                     
                     <div class="form-group mb-3">
-                        <label for="priority" class="text-xs font-weight-bold text-secondary text-uppercase mb-1 d-block">Prioridad <span class="text-danger">*</span></label>
-                        <select name="priority" id="priority" class="form-control" style="border-radius: 8px;" required>
-                            <option value="baja" {{ old('priority') == 'baja' ? 'selected' : '' }}>Baja</option>
-                            <option value="media" {{ old('priority', 'media') == 'media' ? 'selected' : '' }}>Media</option>
-                            <option value="alta" {{ old('priority') == 'alta' ? 'selected' : '' }}>Alta</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group mb-3">
                         <label for="justification" class="text-xs font-weight-bold text-secondary text-uppercase mb-1 d-block">Justificación / Razón <span class="text-danger">*</span></label>
                         <textarea name="justification" id="justification" class="form-control @error('justification') is-invalid @enderror" 
                                   rows="4" style="border-radius: 8px;" placeholder="Explique brevemente para qué se requieren estos insumos..." required>{{ old('justification') }}</textarea>

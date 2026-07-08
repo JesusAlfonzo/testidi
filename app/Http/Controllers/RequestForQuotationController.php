@@ -208,6 +208,7 @@ class RequestForQuotationController extends Controller
             'items.*.product_id' => 'required_if:items.*.item_type,product|nullable|exists:products,id',
             'items.*.kit_id' => 'required_if:items.*.item_type,kit|nullable|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
+            'items.*.is_exempt' => 'nullable|boolean',
             'priority' => 'nullable|string|in:baja,media,alta',
         ]);
 
@@ -234,6 +235,7 @@ class RequestForQuotationController extends Controller
                     'product_id' => $productId,
                     'kit_id' => null,
                     'quantity' => $item['quantity'],
+                    'is_exempt' => isset($item['is_exempt']) ? (bool)$item['is_exempt'] : false,
                     'notes' => $item['notes'] ?? null,
                 ]);
             }
@@ -294,6 +296,7 @@ class RequestForQuotationController extends Controller
             'items.*.product_id' => 'required_if:items.*.item_type,product|nullable|exists:products,id',
             'items.*.kit_id' => 'required_if:items.*.item_type,kit|nullable|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
+            'items.*.is_exempt' => 'nullable|boolean',
             'priority' => 'nullable|string|in:baja,media,alta',
         ]);
 
@@ -319,6 +322,7 @@ class RequestForQuotationController extends Controller
                     'product_id' => $productId,
                     'kit_id' => null,
                     'quantity' => $item['quantity'],
+                    'is_exempt' => isset($item['is_exempt']) ? (bool)$item['is_exempt'] : false,
                     'notes' => $item['notes'] ?? null,
                 ]);
             }
@@ -510,6 +514,7 @@ class RequestForQuotationController extends Controller
             'items.*.kit_id' => 'required_if:items.*.item_type,kit|nullable|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.unit_cost' => 'required|numeric|min:0',
+            'items.*.is_exempt' => 'nullable|boolean',
         ]);
 
         try {

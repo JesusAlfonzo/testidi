@@ -266,7 +266,7 @@
             <tr>
                 <td class="header-cell header-cell-left">
                     <div class="logo-section">
-                        <img src="{{ public_path('images/logo-iac.png') }}" alt="Logo IAC">
+                        <img src="{{ public_path('images/logo-iac.png') }}" style="width: 150px;" alt="Logo IAC">
                     </div>
                     <div class="supplier-header">
                         <div class="supplier-header-title">Datos del Proveedor</div>
@@ -279,6 +279,9 @@
                         @endif
                         @if($purchaseOrder->supplier->phone)
                             <div class="supplier-header-item"><span style="font-weight: bold;">Tel:</span> {{ $purchaseOrder->supplier->phone }}</div>
+                        @endif
+                        @if($purchaseOrder->supplier->address)
+                            <div class="supplier-header-item"><span style="font-weight: bold;">Dirección:</span> {{ $purchaseOrder->supplier->address }}</div>
                         @endif
                         @if($purchaseOrder->supplier->email)
                             <div class="supplier-header-item"><span style="font-weight: bold;">Email:</span> {{ $purchaseOrder->supplier->email }}</div>
@@ -300,45 +303,28 @@
         </table>
     </div>
 
-    <div class="info-section">
-        <div class="info-box">
-            <div class="info-box-title">Dirección del Proveedor</div>
-            @if($purchaseOrder->supplier->address)
-                <div class="info-item"><span class="info-label">Dirección:</span> {{ $purchaseOrder->supplier->address }}</div>
-            @else
-                <div class="info-item">No especificada</div>
-            @endif
-        </div>
-    </div>
-
-    <table>
+    <table style="width: 100%; table-layout: fixed;">
         <thead>
             <tr>
                 <th style="width: 5%; text-align: center;">#</th>
-                <th style="width: 10%;">Código</th>
-                <th style="width: 22%;">Descripción / Producto</th>
+                <th style="width: 10%; text-align: left;">Código</th>
+                <th style="width: 52%; text-align: left;">Descripción / Producto</th>
                 <th style="width: 8%; text-align: center;">Cant.</th>
                 <th style="width: 12%; text-align: right;">Costo Unit.</th>
-                @if($purchaseOrder->is_foreign_currency)
-                <th style="width: 12%; text-align: right;">Equiv. Bs</th>
-                @endif
-                <th style="width: 8%; text-align: center;">Und.</th>
-                <th style="width: 11%; text-align: right;">Total</th>
+                <th style="width: 5%; text-align: center;">Und.</th>
+                <th style="width: 8%; text-align: right;">Total</th>
             </tr>
         </thead>
         <tbody>
             @foreach($purchaseOrder->items as $index => $item)
                 <tr>
-                    <td class="text-center">{{ $index + 1 }}</td>
-                    <td>{{ $item->product_code ?? '-' }}</td>
-                    <td>{{ $item->product_name }}</td>
-                    <td class="text-center">{{ $item->quantity }}</td>
-                    <td class="text-right">{{ $purchaseOrder->currency_symbol }}{{ number_format($item->unit_cost, 2) }}</td>
-                    @if($purchaseOrder->is_foreign_currency)
-                    <td class="text-right">Bs {{ number_format($item->equivalent_bs, 2) }}</td>
-                    @endif
-                    <td class="text-center">{{ $item->item_type === 'kit' ? 'kit' : ($item->product->unit->abbreviation ?? 'und') }}</td>
-                    <td class="text-right">{{ $purchaseOrder->currency_symbol }}{{ number_format($item->total_cost, 2) }}</td>
+                    <td style="text-align: center; vertical-align: middle;">{{ $index + 1 }}</td>
+                    <td style="text-align: left; vertical-align: middle;">{{ $item->product_code ?? '-' }}</td>
+                    <td style="text-align: left; vertical-align: middle;">{{ $item->product_name }}</td>
+                    <td style="text-align: center; vertical-align: middle;">{{ $item->quantity }}</td>
+                    <td style="text-align: right; vertical-align: middle;">{{ number_format($item->unit_cost, 2) }}</td>
+                    <td style="text-align: center; vertical-align: middle;">{{ $item->item_type === 'kit' ? 'kit' : ($item->product->unit->abbreviation ?? 'und') }}</td>
+                    <td style="text-align: right; vertical-align: middle;">{{ number_format($item->total_cost, 2) }}</td>
                 </tr>
             @endforeach
         </tbody>
@@ -353,10 +339,14 @@
                     <div class="supplier-info-item"><span style="font-weight: bold;">Fecha de Entrega:</span> {{ $purchaseOrder->delivery_date?->format('d/m/Y') ?? 'A convenir' }}</div>
                     <div class="supplier-info-item"><span style="font-weight: bold;">Lugar de Entrega:</span> {{ $purchaseOrder->delivery_address ?? 'Por definir' }}</div>
                     <div class="supplier-info-item"><span style="font-weight: bold;">Moneda:</span> {{ $purchaseOrder->currency }}</div>
+                    {{--
                     <div class="supplier-info-item"><span style="font-weight: bold;">Tipo de Cambio:</span> {{ number_format($purchaseOrder->exchange_rate, 4) }}</div>
+                    --}}
+                    {{--
                     @if($purchaseOrder->iva_exempt)
                         <div class="supplier-info-item"><span style="font-weight: bold;">IVA:</span> Exento</div>
                     @endif
+                    --}}
                     @if($purchaseOrder->creator)
                         <div class="supplier-info-item"><span style="font-weight: bold;">Elaborado por:</span> {{ $purchaseOrder->creator->name }}</div>
                     @endif
@@ -370,6 +360,7 @@
                             <td class="totals-label">Subtotal Bs:</td>
                             <td class="totals-value">Bs {{ number_format($purchaseOrder->subtotal, 2) }}</td>
                         </tr>
+                        {{--
                         @if(!$purchaseOrder->iva_exempt)
                         <tr>
                             <td class="totals-label" style="color: #dc3545;">IVA 16% Bs:</td>
@@ -385,11 +376,13 @@
                             <td class="totals-label" style="background: #1a4a7a; color: white;">TOTAL Bs:</td>
                             <td class="totals-value" style="background: #1a4a7a; color: white;">Bs {{ number_format($purchaseOrder->total_bs, 2) }}</td>
                         </tr>
+                        --}}
                         @else
                         <tr>
                             <td class="totals-label">Subtotal ({{ $purchaseOrder->currency }}):</td>
                             <td class="totals-value">{{ $purchaseOrder->currency_symbol }}{{ number_format($purchaseOrder->subtotal, 2) }}</td>
                         </tr>
+                        {{--
                         <tr>
                             <td class="totals-label">Equivalente Bs:</td>
                             <td class="totals-value">Bs {{ number_format($purchaseOrder->subtotal_bs, 2) }}</td>
@@ -409,6 +402,7 @@
                             <td class="totals-label" style="background: #17a2b8; color: white;">TOTAL Bs:</td>
                             <td class="totals-value" style="background: #17a2b8; color: white;">Bs {{ number_format($purchaseOrder->total_bs, 2) }}</td>
                         </tr>
+                        --}}
                         <tr>
                             <td class="totals-label" style="background: #1a4a7a; color: white;">Total ({{ $purchaseOrder->currency }}):</td>
                             <td class="totals-value" style="background: #1a4a7a; color: white;">{{ $purchaseOrder->currency_symbol }}{{ number_format($purchaseOrder->total, 2) }}</td>
@@ -420,11 +414,13 @@
         </tr>
     </table>
 
+    {{--
     @if($purchaseOrder->iva_exempt)
     <div style="margin-bottom: 10px; padding: 5px; background: #d1ecf1; border: 1px solid #1a4a7a; font-size: 9px;">
         <strong>NOTA:</strong> Orden de compra exenta de IVA según normativa aplicable.
     </div>
     @endif
+    --}}
 
     @if($purchaseOrder->terms)
         <div class="terms-section">
@@ -433,10 +429,17 @@
         </div>
     @endif
 
-    @if($purchaseOrder->notes)
+    @php
+        $displayNotes = $purchaseOrder->notes;
+        if (preg_match('/^Generado desde RFQ-[^.]+?\.\s*(.*)$/i', $purchaseOrder->notes, $matches)) {
+            $displayNotes = trim($matches[1]);
+        }
+    @endphp
+
+    @if($displayNotes)
         <div class="terms-section">
             <div class="terms-title">Observaciones</div>
-            <div class="terms-content">{{ $purchaseOrder->notes }}</div>
+            <div class="terms-content">{{ $displayNotes }}</div>
         </div>
     @endif
 

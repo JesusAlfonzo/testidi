@@ -10,6 +10,8 @@ class OrderCalculationService
         $isBs = $currency === 'Bs';
         $subtotal = 0;
         $subtotalBs = 0;
+        $taxableSubtotal = 0;
+        $taxableSubtotalBs = 0;
 
         foreach ($items as $item) {
             $itemTotal = $item['quantity'] * $item['unit_cost'];
@@ -19,18 +21,30 @@ class OrderCalculationService
                 ? $item['unit_cost'] 
                 : $item['unit_cost'] * $exchangeRate;
             
-            $subtotalBs += $equivalentBs * $item['quantity'];
+            $itemTotalBs = $equivalentBs * $item['quantity'];
+            $subtotalBs += $itemTotalBs;
+
+            // Determinar si el ítem es exento de IVA de forma individual o general
+            $itemExempt = $ivaExempt 
+                || (isset($item['is_exempt']) && ($item['is_exempt'] == 1 || $item['is_exempt'] === true))
+                || (isset($item['tax_status']) && $item['tax_status'] === 'exento');
+
+            if (!$itemExempt) {
+                $taxableSubtotal += $itemTotal;
+                $taxableSubtotalBs += $itemTotalBs;
+            }
         }
 
-        $ivaRate = $ivaExempt ? 0 : $this->ivaRate;
-        $taxAmountBs = $subtotalBs * $ivaRate;
+        $taxAmount = $taxableSubtotal * $this->ivaRate;
+        $taxAmountBs = $taxableSubtotalBs * $this->ivaRate;
+        
+        $total = $subtotal + $taxAmount;
         $totalBs = $subtotalBs + $taxAmountBs;
-        $total = $subtotal;
 
         return [
             'subtotal' => $subtotal,
-            'tax_amount' => $subtotal * $ivaRate,
-            'total' => $subtotal + ($subtotal * $ivaRate),
+            'tax_amount' => $taxAmount,
+            'total' => $total,
             'subtotal_bs' => $subtotalBs,
             'tax_amount_bs' => $taxAmountBs,
             'total_bs' => $totalBs,

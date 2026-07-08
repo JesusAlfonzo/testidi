@@ -139,7 +139,7 @@
             {{-- FILTROS DE BÚSQUEDA --}}
             <div class="card filter-section p-3 mb-3">
                 <form id="filterForm" method="GET" action="{{ route('admin.requests.index') }}" class="row align-items-end">
-                    <div class="col-md-3 mb-2 mb-md-0">
+                    <div class="col-md-4 mb-2 mb-md-0">
                         <label class="text-xs font-weight-bold text-secondary text-uppercase mb-1 d-block">
                             <i class="fas fa-toggle-on mr-1"></i> Estado
                         </label>
@@ -151,18 +151,7 @@
                             <option value="Draft" {{ request('status') == 'Draft' ? 'selected' : '' }}>Borrador</option>
                         </select>
                     </div>
-                    <div class="col-md-3 mb-2 mb-md-0">
-                        <label class="text-xs font-weight-bold text-secondary text-uppercase mb-1 d-block">
-                            <i class="fas fa-exclamation-circle mr-1"></i> Prioridad
-                        </label>
-                        <select name="priority" class="form-control" style="border-radius: 8px;">
-                            <option value="">Todas</option>
-                            <option value="alta" {{ request('priority') == 'alta' ? 'selected' : '' }}>Alta</option>
-                            <option value="media" {{ request('priority') == 'media' ? 'selected' : '' }}>Media</option>
-                            <option value="baja" {{ request('priority') == 'baja' ? 'selected' : '' }}>Baja</option>
-                        </select>
-                    </div>
-                    <div class="col-md-4 mb-2 mb-md-0">
+                    <div class="col-md-6 mb-2 mb-md-0">
                         <label class="text-xs font-weight-bold text-secondary text-uppercase mb-1 d-block">
                             <i class="fas fa-building mr-1"></i> Departamento
                         </label>
@@ -190,8 +179,7 @@
                                 <th style="width: 10%">ID</th>
                                 <th style="width: 15%">Solicitante</th>
                                 <th style="width: 15%">Departamento</th>
-                                <th style="width: 20%">Justificación</th>
-                                <th style="width: 10%">Prioridad</th>
+                                <th style="width: 30%">Justificación</th>
                                 <th style="width: 10%">Estado</th>
                                 <th style="width: 12%">Fecha</th>
                                 <th style="width: 13%">Aprobador</th>
@@ -273,7 +261,7 @@
                 "ordering": true, 
                 "info": true, 
                 "autoWidth": false,
-                "order": [[ 6, "desc" ]],
+                "order": [[ 5, "desc" ]],
                 "pageLength": 15,
                 "lengthMenu": [[15, 25, 50, 100], [15, 25, 50, 100]],
 
@@ -282,7 +270,6 @@
                     "type": "GET",
                     "data": function(d) {
                         d.status = $('select[name="status"]').val();
-                        d.priority = $('select[name="priority"]').val();
                         d.destination_area = $('select[name="destination_area"]').val();
                     }
                 },
@@ -292,7 +279,6 @@
                     { "data": "requester", "name": "requester_id" },
                     { "data": "destination_area", "name": "destination_area" },
                     { "data": "justification", "name": "justification" },
-                    { "data": "priority", "name": "priority", "orderable": false },
                     { "data": "status", "name": "status" },
                     { "data": "date", "name": "requested_at" },
                     { "data": "approver", "name": "approver_id" },
@@ -323,9 +309,9 @@
 
                 "columnDefs": [
                     { "responsivePriority": 1, "targets": 0 }, // ID
-                    { "responsivePriority": 2, "targets": 5 }, // Estado
-                    { "responsivePriority": 3, "targets": 9 }, // Acciones
-                    { "responsivePriority": 100, "targets": [1, 2, 3, 4, 6, 7, 8] }
+                    { "responsivePriority": 2, "targets": 4 }, // Estado
+                    { "responsivePriority": 3, "targets": 8 }, // Acciones
+                    { "responsivePriority": 100, "targets": [1, 2, 3, 5, 6, 7] }
                 ]
             });
 

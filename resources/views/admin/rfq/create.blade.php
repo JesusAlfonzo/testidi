@@ -121,9 +121,10 @@
                                 <table class="table table-hover align-middle mb-0" id="itemsTable">
                                     <thead class="bg-light text-muted text-uppercase text-xs font-weight-bold">
                                         <tr>
-                                            <th style="width: 50%">Catálogo (Producto / Kit) <span class="text-danger">*</span></th>
+                                            <th style="width: 45%">Catálogo (Producto / Kit) <span class="text-danger">*</span></th>
+                                            <th style="width: 10%" class="text-center">¿Exento?</th>
                                             <th style="width: 15%">Cantidad <span class="text-danger">*</span></th>
-                                            <th style="width: 25%">Especificaciones / Notas</th>
+                                            <th style="width: 20%">Especificaciones / Notas</th>
                                             <th style="width: 10%" class="text-center">Acciones</th>
                                         </tr>
                                     </thead>
@@ -161,6 +162,11 @@
                                                         @endforeach
                                                     </optgroup>
                                                 </select>
+                                            </td>
+                                            <td class="text-center align-middle">
+                                                <input type="hidden" name="items[0][is_exempt]" value="0">
+                                                <input type="checkbox" name="items[0][is_exempt]" value="1" 
+                                                       class="row-iva-switch" style="width: 20px; height: 20px; cursor: pointer;">
                                             </td>
                                             <td>
                                                 <div class="input-group input-group-sm">
@@ -694,6 +700,11 @@
                         <select class="form-control form-control-sm select2-item-selector item-selector" required style="width: 100%;">
                             ${buildRfqOptionsHtml()}
                         </select>
+                    </td>
+                    <td class="text-center align-middle">
+                        <input type="hidden" name="items[${itemIndex}][is_exempt]" value="0">
+                        <input type="checkbox" name="items[${itemIndex}][is_exempt]" value="1" 
+                               class="row-iva-switch" style="width: 20px; height: 20px; cursor: pointer;">
                     </td>
                     <td>
                         <div class="input-group input-group-sm">

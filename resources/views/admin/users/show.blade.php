@@ -13,6 +13,9 @@
         <div class="d-flex">
             @can('usuarios_editar')
                 @if(!$user->hasRole('Superadmin'))
+                    <a href="{{ route('admin.users.permissions.edit', $user) }}" class="btn btn-info font-weight-bold px-3 mr-2" style="border-radius: 8px;">
+                        <i class="fas fa-key mr-1"></i> Permisos
+                    </a>
                     <a href="{{ route('admin.users.edit', $user) }}" class="btn btn-warning font-weight-bold px-3 mr-2" style="border-radius: 8px;">
                         <i class="fas fa-edit mr-1"></i> Editar
                     </a>

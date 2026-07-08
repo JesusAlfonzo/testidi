@@ -67,10 +67,6 @@ class RequestController extends Controller
         if ($request->filled('destination_area')) {
             $query->where('destination_area', $request->destination_area);
         }
-        if ($request->filled('priority')) {
-            $query->where('justification', 'like', '[' . strtoupper($request->priority) . ']%');
-        }
-
         // 6. Obtener resultados con paginación
         if ($request->get('view_all') === 'true') {
             $requests = $query->paginate($perPage)->appends($request->except('page'));
@@ -98,30 +94,25 @@ class RequestController extends Controller
         if ($request->filled('destination_area')) {
             $query->where('destination_area', $request->destination_area);
         }
-        if ($request->filled('priority')) {
-            $query->where('justification', 'like', '[' . strtoupper($request->priority) . ']%');
-        }
-
         $start = $request->input('start', 0);
         $length = $request->input('length', 15);
         $search = $request->input('search.value', '');
         
         // Siempre permitir ordenamiento
-        $orderColumn = (int) $request->input('order.0.column', 6);
+        $orderColumn = (int) $request->input('order.0.column', 5);
         $orderDir = $request->input('order.0.dir', 'desc');
         
         // Mapear índice de DataTables al campo de ordenamiento
-        // 0: id, 1: requester, 2: destination_area, 3: justification, 4: priority, 5: status, 6: date, 7: approver, 8: processed
+        // 0: id, 1: requester, 2: destination_area, 3: justification, 4: status, 5: date, 6: approver, 7: processed
         $columnMap = [
             0 => 'id',              // id
             1 => 'requester',      // requester_id - usar join
             2 => 'destination_area', // destination_area
             3 => 'justification',   // justification
-            4 => 'justification',   // priority
-            5 => 'status',          // status
-            6 => 'requested_at',   // date
-            7 => 'approver',       // approver_id - usar join
-            8 => 'processed_at',    // processed
+            4 => 'status',          // status
+            5 => 'requested_at',   // date
+            6 => 'approver',       // approver_id - usar join
+            7 => 'processed_at',    // processed
         ];
         $orderCol = $columnMap[$orderColumn] ?? 'requested_at';
 
@@ -161,36 +152,32 @@ class RequestController extends Controller
             $statusLabel = '';
             $statusClass = 'secondary';
             
-            if ($item->status === 'Pending') {
+            if ($item->status === RequestModel::STATUS_PENDING) {
                 $statusLabel = 'Pendiente';
                 $statusClass = 'warning';
-            } elseif ($item->status === 'Approved') {
+            } elseif ($item->status === RequestModel::STATUS_APPROVED) {
                 $statusLabel = 'Aprobada';
                 $statusClass = 'success';
-            } elseif ($item->status === 'Rejected') {
+            } elseif ($item->status === RequestModel::STATUS_PROCESSED) {
+                $statusLabel = 'Procesada';
+                $statusClass = 'success';
+            } elseif ($item->status === RequestModel::STATUS_REJECTED) {
                 $statusLabel = 'Rechazada';
                 $statusClass = 'danger';
-            } elseif ($item->status === 'Draft') {
+            } elseif ($item->status === RequestModel::STATUS_PARTIALLY_PROCESSED || $item->status === 'Partially Processed') {
+                $statusLabel = 'Procesado parcialmente';
+                $statusClass = 'info';
+            } elseif ($item->status === RequestModel::STATUS_DRAFT) {
                 $statusLabel = 'Borrador';
                 $statusClass = 'secondary';
             } else {
                 $statusLabel = $item->status;
             }
             
-            $priorityLabel = 'Baja';
-            $priorityClass = 'secondary';
             $displayJustification = $item->justification;
 
             if (preg_match('/^\[(ALTA|MEDIA|BAJA)\]\s*(.*)$/i', $item->justification, $matches)) {
-                $priorityVal = strtolower($matches[1]);
                 $displayJustification = $matches[2];
-                if ($priorityVal === 'alta') {
-                    $priorityLabel = 'Alta';
-                    $priorityClass = 'danger';
-                } elseif ($priorityVal === 'media') {
-                    $priorityLabel = 'Media';
-                    $priorityClass = 'info';
-                }
             }
             
             return [
@@ -199,7 +186,6 @@ class RequestController extends Controller
                 'requester' => $item->requester->name ?? 'N/A',
                 'destination_area' => $item->destination_area ?? 'N/A',
                 'justification' => Str::limit($displayJustification, 50),
-                'priority' => '<span class="badge badge-' . $priorityClass . '">' . $priorityLabel . '</span>',
                 'status' => '<span class="badge badge-' . $statusClass . '">' . $statusLabel . '</span>',
                 'approver' => $item->approver->name ?? '-',
                 'processed' => $item->processed_at ? $item->processed_at->format('d/m/Y') : '-',
@@ -232,18 +218,28 @@ class RequestController extends Controller
         
         $validatedData = $request->validated();
 
+        // Restricción de Existencia por Área para no-aprobadores
+        $destinationArea = $validatedData['destination_area'] ?? null;
+        if ($destinationArea && !auth()->user()->can('solicitudes_aprobar')) {
+            $activeRequestExists = RequestModel::where('destination_area', $destinationArea)
+                ->whereIn('status', [RequestModel::STATUS_PENDING, RequestModel::STATUS_APPROVED])
+                ->exists();
+
+            if ($activeRequestExists) {
+                return redirect()->back()
+                    ->withInput()
+                    ->with('error', 'Ya existe una solicitud activa para su área. Por favor, espere a que sea procesada.');
+            }
+        }
+
         DB::beginTransaction();
         try {
             // 1. Crear la cabecera de la solicitud
-            $priority = $request->input('priority', 'baja');
             $justification = $validatedData['justification'];
-            if ($priority) {
-                $justification = "[" . strtoupper($priority) . "] " . $justification;
-            }
 
             $requestModel = RequestModel::create([
                 'requester_id' => auth()->id(),
-                'status' => 'Pending',
+                'status' => RequestModel::STATUS_PENDING,
                 'justification' => $justification,
                 'destination_area' => $validatedData['destination_area'] ?? null,
                 'reference' => $validatedData['reference'] ?? null,
@@ -301,7 +297,7 @@ class RequestController extends Controller
         ]);
 
         $decomposableKits = [];
-        if ($request->status === 'Pending') {
+        if ($request->status === RequestModel::STATUS_PENDING) {
             foreach ($request->items as $item) {
                 if ($item->item_type === 'product' && $item->product) {
                     $prod = $item->product;
@@ -341,7 +337,7 @@ class RequestController extends Controller
     // Método especializado para APROBAR o RECHAZAR una solicitud
     public function process(HttpRequest $httpRequest, RequestModel $request)
     {
-        if (!$request || $request->status !== 'Pending') {
+        if (!$request || $request->status !== RequestModel::STATUS_PENDING) {
             return redirect()->back()->with('error', 'Esta solicitud ya fue procesada o no existe.');
         }
 
@@ -427,7 +423,7 @@ class RequestController extends Controller
     {
         $this->authorize('solicitudes_aprobar');
 
-        if ($request->status !== 'Pending') {
+        if ($request->status !== RequestModel::STATUS_PENDING) {
             return response()->json([
                 'success' => false,
                 'message' => 'Esta solicitud ya fue procesada o no existe.'
@@ -457,7 +453,7 @@ class RequestController extends Controller
     {
         $this->authorize('solicitudes_aprobar');
 
-        if ($request->status !== 'Pending') {
+        if ($request->status !== RequestModel::STATUS_PENDING) {
             return response()->json([
                 'success' => false,
                 'message' => 'Esta solicitud ya fue procesada o no existe.'

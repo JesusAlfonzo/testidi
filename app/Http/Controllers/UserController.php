@@ -17,7 +17,7 @@ class UserController extends Controller
         // Esta línea asegura que el usuario debe tener el permiso específico para cada acción
         $this->middleware('permission:usuarios_ver')->only('index', 'show');
         $this->middleware('permission:usuarios_crear')->only('create', 'store');
-        $this->middleware('permission:usuarios_editar')->only('edit', 'update');
+        $this->middleware('permission:usuarios_editar')->only('edit', 'update', 'editPermissions', 'updatePermissions');
         $this->middleware('permission:usuarios_eliminar')->only('destroy');
     }
 
@@ -212,5 +212,119 @@ class UserController extends Controller
         }
         return redirect()->route('admin.users.index')
                          ->with('success', '✅ Usuario eliminado con éxito.');
+    }
+
+    /**
+     * Muestra la matriz de permisos directos para un usuario.
+     */
+    public function editPermissions(User $user)
+    {
+        if ($user->hasRole('Superadmin')) {
+            return redirect()->route('admin.users.index')
+                             ->with('error', '🛑 No puedes configurar los permisos de un Superadmin.');
+        }
+
+        // Cargar todos los permisos del sistema
+        $allPermissions = \Spatie\Permission\Models\Permission::all();
+        
+        $actionTranslations = [
+            'ver' => 'Ver / Listar',
+            'crear' => 'Crear',
+            'editar' => 'Editar',
+            'eliminar' => 'Eliminar',
+            'aprobar' => 'Aprobar',
+            'rechazar' => 'Rechazar',
+            'anular' => 'Anular',
+            'enviar' => 'Enviar',
+            'acceso' => 'Acceder',
+            'stock' => 'Stock',
+            'movimientos' => 'Movimientos',
+            'kardex' => 'Kardex',
+        ];
+
+        $groupTranslations = [
+            'usuarios' => 'Usuarios',
+            'roles' => 'Roles de Seguridad',
+            'categorias' => 'Categorías',
+            'unidades' => 'Unidades',
+            'ubicaciones' => 'Ubicaciones',
+            'marcas' => 'Marcas',
+            'proveedores' => 'Proveedores',
+            'productos' => 'Productos',
+            'kits' => 'Kits de Productos',
+            'entradas' => 'Entradas de Stock',
+            'solicitudes' => 'Solicitudes de Salida',
+            'reportes' => 'Reportes',
+            'auditoria' => 'Auditoría',
+            'ordenes_compra' => 'Órdenes de Compra',
+            'rfq' => 'Cotizaciones (RFQ)',
+            'dashboard' => 'Panel (Dashboard)',
+        ];
+
+        $groupedPermissions = [];
+
+        foreach ($allPermissions as $permission) {
+            $parts = explode('_', $permission->name);
+            $action = array_pop($parts);
+            $group = implode('_', $parts);
+
+            if (empty($group)) {
+                $group = $action;
+                $action = 'general';
+            }
+
+            $groupedPermissions[$group][] = [
+                'id' => $permission->id,
+                'name' => $permission->name,
+                'action' => $action,
+                'label' => $actionTranslations[$action] ?? ucfirst($action)
+            ];
+        }
+
+        // Traducir y ordenar los grupos para la interfaz
+        $translatedGroups = [];
+        foreach ($groupedPermissions as $group => $items) {
+            $translatedName = $groupTranslations[$group] ?? ucfirst(str_replace('_', ' ', $group));
+            $translatedGroups[$translatedName] = [
+                'key' => $group,
+                'permissions' => $items
+            ];
+        }
+        
+        ksort($translatedGroups); // Ordenar alfabéticamente por nombre del grupo traducido
+
+        // Obtener los IDs de permisos asignados directamente al usuario
+        $userPermissionIds = $user->permissions->pluck('id')->toArray();
+
+        return view('admin.users.permissions', compact('user', 'translatedGroups', 'userPermissionIds'));
+    }
+
+    /**
+     * Sincroniza los permisos directos del usuario.
+     */
+    public function updatePermissions(Request $request, User $user)
+    {
+        if ($user->hasRole('Superadmin')) {
+            return redirect()->route('admin.users.index')
+                             ->with('error', '🛑 No puedes configurar los permisos de un Superadmin.');
+        }
+
+        // Validación de existencia de los permisos en la base de datos
+        $request->validate([
+            'permissions' => 'nullable|array',
+            'permissions.*' => 'required|exists:permissions,id',
+        ], [
+            'permissions.*.exists' => 'Uno de los permisos seleccionados no es válido.',
+        ]);
+
+        // Obtener nombres de los permisos por ID para sincronizar
+        $permissionIds = $request->input('permissions', []);
+        $permissions = \Spatie\Permission\Models\Permission::whereIn('id', $permissionIds)->pluck('name')->toArray();
+
+        // Sincronizar permisos directos (sólo los marcados quedarán)
+        $user->syncPermissions($permissions);
+
+        return redirect()->route('admin.users.show', $user)
+                         ->with('success', '✅ Permisos directos actualizados con éxito.');
     }
 }

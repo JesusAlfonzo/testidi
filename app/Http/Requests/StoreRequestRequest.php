@@ -28,7 +28,6 @@ class StoreRequestRequest extends FormRequest
                 'string',
                 'in:Administración,Citometria,Compras,Coordinacion de Laboratorio,Dirección,Informatica,Inmunodiagnostico,Inmunogenetica,Investigación,Lavado,Mantenimiento,Mensajeria,Recepción,Retrovirus,Seguridad,Toma de Muestra'
             ],
-            'priority' => ['nullable', 'string', 'in:alta,media,baja'],
 
             // 2. Validación del Array de Ítems
             'items' => ['required', 'array', 'min:1'],

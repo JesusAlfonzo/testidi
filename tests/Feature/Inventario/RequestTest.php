@@ -25,7 +25,7 @@ describe('Requests - Solicitudes de Salida / Despachos', function () {
         
         $requestModel = InventoryRequest::create([
             'requester_id' => $this->user->id,
-            'status' => 'Pending',
+            'status' => InventoryRequest::STATUS_PENDING,
             'justification' => '[ALTA] Justificación de prueba urgente',
             'destination_area' => 'Laboratorio',
             'reference' => 'Proyecto Vacunas',
@@ -52,7 +52,6 @@ describe('Requests - Solicitudes de Salida / Despachos', function () {
                     'requester',
                     'destination_area',
                     'justification',
-                    'priority',
                     'status',
                     'approver',
                     'processed',
@@ -63,61 +62,14 @@ describe('Requests - Solicitudes de Salida / Despachos', function () {
 
         $data = $response->json('data.0');
         expect($data['justification'])->toContain('Justificación de prueba urgente');
-        expect($data['priority'])->toContain('badge-danger');
-        expect($data['priority'])->toContain('Alta');
     });
 
-    test('DataTable puede filtrar solicitudes por prioridad', function () {
-        $product = Product::factory()->create(['stock' => 20]);
-
-        $reqAlta = InventoryRequest::create([
-            'requester_id' => $this->user->id,
-            'status' => 'Pending',
-            'justification' => '[ALTA] Solicitud muy urgente',
-            'destination_area' => 'Laboratorio',
-            'reference' => 'Proyecto A',
-            'requested_at' => now(),
-        ]);
-
-        $reqBaja = InventoryRequest::create([
-            'requester_id' => $this->user->id,
-            'status' => 'Pending',
-            'justification' => '[BAJA] Solicitud sin prisa',
-            'destination_area' => 'Oficina',
-            'reference' => 'Proyecto B',
-            'requested_at' => now(),
-        ]);
-
-        // 1. Filtrar por prioridad alta
-        $responseAlta = $this->get(route('admin.requests.index', [
-            'draw' => 1,
-            'priority' => 'alta'
-        ]));
-        $responseAlta->assertStatus(200);
-        $dataAlta = $responseAlta->json('data');
-        expect($dataAlta)->toHaveCount(1);
-        expect($dataAlta[0]['justification'])->toContain('Solicitud muy urgente');
-        expect($dataAlta[0]['priority'])->toContain('Alta');
-
-        // 2. Filtrar por prioridad baja
-        $responseBaja = $this->get(route('admin.requests.index', [
-            'draw' => 1,
-            'priority' => 'baja'
-        ]));
-        $responseBaja->assertStatus(200);
-        $dataBaja = $responseBaja->json('data');
-        expect($dataBaja)->toHaveCount(1);
-        expect($dataBaja[0]['justification'])->toContain('Solicitud sin prisa');
-        expect($dataBaja[0]['priority'])->toContain('Baja');
-    });
-
-    test('guardar una solicitud prepende la prioridad al campo de justificación', function () {
+    test('guardar una solicitud guarda el campo de justificación sin cambios', function () {
         $product = Product::factory()->create(['stock' => 50]);
 
         $payload = [
-            'destination_area' => 'Inmunología',
+            'destination_area' => 'Informatica',
             'reference' => 'Uso Interno',
-            'priority' => 'media',
             'justification' => 'Necesitamos insumos para el análisis mensual',
             'items' => [
                 [
@@ -132,8 +84,8 @@ describe('Requests - Solicitudes de Salida / Despachos', function () {
         $response->assertRedirect(route('admin.requests.index'));
 
         $savedRequest = InventoryRequest::latest('id')->first();
-        expect($savedRequest->justification)->toBe('[MEDIA] Necesitamos insumos para el análisis mensual');
-        expect($savedRequest->destination_area)->toBe('Inmunología');
+        expect($savedRequest->justification)->toBe('Necesitamos insumos para el análisis mensual');
+        expect($savedRequest->destination_area)->toBe('Informatica');
         expect($savedRequest->reference)->toBe('Uso Interno');
     });
 });

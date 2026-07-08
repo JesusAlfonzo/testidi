@@ -17,6 +17,14 @@ class InventoryRequest extends Model
 
     protected $table = 'requests';
 
+    // Constantes de Estado
+    public const STATUS_PENDING = 'Pending';
+    public const STATUS_APPROVED = 'Approved';
+    public const STATUS_REJECTED = 'Rejected';
+    public const STATUS_PROCESSED = 'Processed';
+    public const STATUS_PARTIALLY_PROCESSED = 'Procesado parcialmente';
+    public const STATUS_DRAFT = 'Draft';
+
     // 🔑 CORRECCIÓN: Agregamos 'reference' para permitir su guardado
     protected $fillable = [
         'requester_id', 
@@ -42,9 +50,12 @@ class InventoryRequest extends Model
         return Attribute::make(
             get: function ($value, $attributes) {
                 return match ($attributes['status'] ?? '') {
-                    'Pending' => 'Pendiente',
-                    'Approved' => 'Aprobada',
-                    'Rejected' => 'Rechazada',
+                    self::STATUS_PENDING => 'Pendiente',
+                    self::STATUS_APPROVED => 'Aprobada',
+                    self::STATUS_REJECTED => 'Rechazada',
+                    self::STATUS_PROCESSED => 'Procesada',
+                    self::STATUS_PARTIALLY_PROCESSED, 'Partially Processed' => 'Procesado parcialmente',
+                    self::STATUS_DRAFT => 'Borrador',
                     default => $attributes['status'] ?? 'Desconocido',
                 };
             }
@@ -56,9 +67,12 @@ class InventoryRequest extends Model
         return Attribute::make(
             get: function ($value, $attributes) {
                 return match ($attributes['status'] ?? '') {
-                    'Pending' => 'warning',
-                    'Approved' => 'success',
-                    'Rejected' => 'danger',
+                    self::STATUS_PENDING => 'warning',
+                    self::STATUS_APPROVED => 'success',
+                    self::STATUS_PROCESSED => 'success',
+                    self::STATUS_REJECTED => 'danger',
+                    self::STATUS_PARTIALLY_PROCESSED, 'Partially Processed' => 'info',
+                    self::STATUS_DRAFT => 'secondary',
                     default => 'secondary',
                 };
             }

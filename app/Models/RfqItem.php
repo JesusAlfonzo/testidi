@@ -16,7 +16,12 @@ class RfqItem extends Model
         'product_id',
         'kit_id',
         'quantity',
+        'is_exempt',
         'notes',
+    ];
+
+    protected $casts = [
+        'is_exempt' => 'boolean',
     ];
 
     public function rfq(): BelongsTo

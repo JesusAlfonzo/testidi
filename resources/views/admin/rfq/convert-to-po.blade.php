@@ -247,7 +247,7 @@
                                         <th style="width: 15%">Cantidad</th>
                                         <th style="width: 20%">Costo Unit.</th>
                                         <th style="width: 15%" class="text-right">Total</th>
-                                        <th style="width: 10%" class="text-center"></th>
+                                        <th style="width: 10%" class="text-center">Exento</th>
                                     </tr>
                                 </thead>
                                 <tbody id="itemsBody">
@@ -286,9 +286,12 @@
                                                 <span class="item-total">0.00</span>
                                             </td>
                                             <td class="text-center align-middle">
-                                                <button type="button" class="btn btn-sm btn-outline-danger remove-item" style="display:none;">
-                                                    <i class="fas fa-trash-alt"></i>
-                                                </button>
+                                                <input type="hidden" name="items[{{ $index }}][is_exempt]" value="0">
+                                                <div style="display: flex; justify-content: center; align-items: center;">
+                                                    <input type="checkbox" name="items[{{ $index }}][is_exempt]" value="1" class="row-iva-switch" 
+                                                           {{ old("items.$index.is_exempt", $item->is_exempt) ? 'checked' : '' }} 
+                                                           style="display: block !important; width: 20px; height: 20px; cursor: pointer; margin: 0 auto;">
+                                                </div>
                                             </td>
                                         </tr>
                                     @endforeach

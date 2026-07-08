@@ -229,11 +229,12 @@
                             <table class="table mb-0" id="itemsTable">
                                 <thead>
                                     <tr>
-                                        <th style="width: 15%">Tipo</th>
-                                        <th style="width: 40%">Producto / Kit</th>
-                                        <th style="width: 15%">Cantidad</th>
-                                        <th style="width: 15%">Costo Unit.</th>
-                                        <th style="width: 10%" class="text-right">Total</th>
+                                        <th style="width: 12%">Tipo</th>
+                                        <th style="width: 35%">Producto / Kit</th>
+                                        <th style="width: 12%">Cantidad</th>
+                                        <th style="width: 12%">Costo Unit.</th>
+                                        <th style="width: 9%" class="text-right">Total</th>
+                                        <th style="width: 10%" class="text-center">¿Exento IVA?</th>
                                         <th style="width: 5%"></th>
                                     </tr>
                                 </thead>
@@ -267,6 +268,12 @@
                                         </td>
                                         <td class="text-right align-middle font-weight-bold text-dark">
                                             <span class="item-total">0.00</span>
+                                        </td>
+                                        <td class="text-center align-middle">
+                                            <input type="hidden" name="items[0][is_exempt]" value="0">
+                                            <input type="checkbox" name="items[0][is_exempt]" value="1"
+                                                   class="row-iva-switch"
+                                                   style="width: 20px; height: 20px; cursor: pointer;">
                                         </td>
                                         <td class="text-center align-middle">
                                             <button type="button" class="btn btn-sm btn-outline-danger remove-item" style="display:none">
@@ -745,6 +752,12 @@
                     <td><input type="number" name="items[${itemIndex}][quantity]" class="form-control form-control-custom item-qty" min="1" value="1" required></td>
                     <td><input type="number" step="0.01" name="items[${itemIndex}][unit_cost]" class="form-control form-control-custom item-cost" min="0" value="0.00" required></td>
                     <td class="text-right align-middle font-weight-bold text-dark"><span class="item-total">0.00</span></td>
+                    <td class="text-center align-middle">
+                        <input type="hidden" name="items[${itemIndex}][is_exempt]" value="0">
+                        <input type="checkbox" name="items[${itemIndex}][is_exempt]" value="1"
+                               class="row-iva-switch"
+                               style="width: 20px; height: 20px; cursor: pointer;">
+                    </td>
                     <td class="text-center align-middle">
                         <button type="button" class="btn btn-sm btn-outline-danger remove-item"><i class="fas fa-trash-alt"></i></button>
                     </td>

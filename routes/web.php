@@ -91,21 +91,23 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::resource('stock-in', StockInController::class);
 
     // MOVIMIENTOS - SOLICITUDES DE SALIDA
-    // 1. Ruta especializada para APROBACIÓN/RECHAZO (AJAX y tradicional)
-    Route::post('requests/{request}/approve', [RequestController::class, 'approve'])->name('requests.approve');
-    Route::post('requests/{request}/reject', [RequestController::class, 'reject'])->name('requests.reject');
-    Route::post('requests/{request}/process', [RequestController::class, 'process'])->name('requests.process');
+    Route::middleware(['solicitud_schedule'])->group(function () {
+        // 1. Ruta especializada para APROBACIÓN/RECHAZO (AJAX y tradicional)
+        Route::post('requests/{request}/approve', [RequestController::class, 'approve'])->name('requests.approve');
+        Route::post('requests/{request}/reject', [RequestController::class, 'reject'])->name('requests.reject');
+        Route::post('requests/{request}/process', [RequestController::class, 'process'])->name('requests.process');
 
-    // 2. Ruta para PDF individual
-    Route::get('requests/{request}/pdf', [RequestController::class, 'pdf'])->name('requests.pdf');
-    Route::get('dispatches/{dispatch}/pdf', [RequestController::class, 'dispatchPdf'])->name('dispatches.pdf');
+        // 2. Ruta para PDF individual
+        Route::get('requests/{request}/pdf', [RequestController::class, 'pdf'])->name('requests.pdf');
+        Route::get('dispatches/{dispatch}/pdf', [RequestController::class, 'dispatchPdf'])->name('dispatches.pdf');
 
-    // 3. Recurso principal
-    Route::resource('requests', RequestController::class)
-        ->except(['edit', 'update'])
-        ->parameters([
-            'requests' => 'request'
-        ]);
+        // 3. Recurso principal
+        Route::resource('requests', RequestController::class)
+            ->except(['edit', 'update'])
+            ->parameters([
+                'requests' => 'request'
+            ]);
+    });
 
     // 🛡️ AUDITORÍA DEL SISTEMA (Solo Lectura)
     Route::get('audit-logs', [ActivityLogController::class, 'index'])
