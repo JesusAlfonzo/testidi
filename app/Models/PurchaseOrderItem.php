@@ -14,14 +14,17 @@ class PurchaseOrderItem extends Model
         'purchase_order_id',
         'item_type',
         'product_id',
+        'uom_id',
         'kit_id',
         'product_name',
         'product_code',
         'quantity',
+        'quantity_uom',
         'quantity_received',
         'quantity_rejected',
         'quantity_replaced',
         'unit_cost',
+        'unit_cost_uom',
         'total_cost',
         'equivalent_bs',
     ];
@@ -45,6 +48,11 @@ class PurchaseOrderItem extends Model
     public function kit(): BelongsTo
     {
         return $this->belongsTo(Kit::class);
+    }
+
+    public function uom(): BelongsTo
+    {
+        return $this->belongsTo(Unit::class, 'uom_id');
     }
 
     public function stockInItems()

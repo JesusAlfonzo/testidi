@@ -10,10 +10,13 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
 use App\Models\User; // Asegurar importación de User
+use App\Traits\GeneratesSequenceCode;
 
 class InventoryRequest extends Model
 {
-    use HasFactory, LogsActivity;
+    use HasFactory, LogsActivity, GeneratesSequenceCode;
+
+    protected $sequenceYearly = true;
 
     protected $table = 'requests';
 
@@ -27,6 +30,7 @@ class InventoryRequest extends Model
 
     // 🔑 CORRECCIÓN: Agregamos 'reference' para permitir su guardado
     protected $fillable = [
+        'code',
         'requester_id', 
         'approver_id', 
         'status', 
@@ -35,13 +39,18 @@ class InventoryRequest extends Model
         'requested_at', 
         'processed_at', 
         'destination_area',
-        'reference' // <-- ESTE CAMPO FALTABA
+        'reference'
     ];
 
     protected $casts = [
         'requested_at' => 'datetime',
         'processed_at' => 'datetime',
     ];
+
+    public function getSequencePrefix(): string
+    {
+        return 'SDI';
+    }
 
     // ---------------------- ACCESORES ----------------------
 

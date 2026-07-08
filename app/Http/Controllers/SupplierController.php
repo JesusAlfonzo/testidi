@@ -197,4 +197,35 @@ class SupplierController extends Controller
             "supplier" => $supplier
         ]);
     }
+
+    public function searchAjax(Request $request)
+    {
+        $search = $request->get('q', '');
+
+        $query = Supplier::where('is_active', true);
+
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('tax_id', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        $suppliers = $query->orderBy('name')->paginate(15);
+
+        return response()->json([
+            'results' => $suppliers->map(function($supplier) {
+                return [
+                    'id' => $supplier->id,
+                    'text' => $supplier->name . ' | ' . ($supplier->tax_id ?? 'N/A') . ' | ' . ($supplier->email ?? 'Sin email'),
+                    'name' => $supplier->name,
+                    'email' => $supplier->email,
+                ];
+            }),
+            'pagination' => [
+                'more' => $suppliers->hasMorePages()
+            ]
+        ]);
+    }
 }

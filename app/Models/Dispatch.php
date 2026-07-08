@@ -7,9 +7,20 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+use App\Traits\GeneratesSequenceCode;
+
 class Dispatch extends Model
 {
-    use HasFactory;
+    use HasFactory, GeneratesSequenceCode;
+
+    protected $sequenceField = 'dispatch_number';
+    protected $sequenceYearly = true;
+    protected $sequencePadding = 6;
+
+    public function getSequencePrefix(): string
+    {
+        return 'DES';
+    }
 
     protected $fillable = [
         'inventory_request_id',

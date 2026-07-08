@@ -14,7 +14,10 @@ class StockInItem extends Model
         'stock_in_id',
         'purchase_order_item_id',
         'product_id',
+        'uom_id',
         'quantity',
+        'quantity_received_uom',
+        'quantity_received_base',
         'unit_cost',
         'batch_number',
         'expiration_date',
@@ -44,6 +47,11 @@ class StockInItem extends Model
     public function purchaseOrderItem(): BelongsTo
     {
         return $this->belongsTo(PurchaseOrderItem::class, 'purchase_order_item_id');
+    }
+
+    public function uom(): BelongsTo
+    {
+        return $this->belongsTo(Unit::class, 'uom_id');
     }
 
     public function replacedItem(): BelongsTo

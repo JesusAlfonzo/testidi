@@ -7,10 +7,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
+use App\Traits\GeneratesSequenceCode;
 
 class Product extends Model
 {
-    use HasFactory, LogsActivity;
+    use HasFactory, LogsActivity, GeneratesSequenceCode;
 
     protected $fillable = [
         'category_id',
@@ -122,6 +123,30 @@ class Product extends Model
         }
 
         return $minKits ?? 0;
+    }
+
+    /**
+     * Define el prefijo del SKU basado en la categoría o naturaleza del producto.
+     */
+    public function getSequencePrefix(): string
+    {
+        if ($this->is_kit) {
+            return 'KIT';
+        }
+
+        if ($this->is_generic || !$this->category_id) {
+            return 'GEN';
+        }
+
+        $category = $this->category;
+        if ($category) {
+            if (!empty($category->prefix)) {
+                return $category->prefix;
+            }
+            return substr($category->name, 0, 4);
+        }
+
+        return 'PROD';
     }
 
     protected static function booted()
@@ -264,6 +289,26 @@ class Product extends Model
     public function isFractionParent(): bool
     {
         return $this->childFraction()->exists();
+    }
+
+    public function uomConversions()
+    {
+        return $this->hasMany(ProductUomConversion::class);
+    }
+
+    /**
+     * Retorna el factor de conversión para una unidad específica.
+     * Si es la misma unidad base, retorna 1.0. Si no tiene factor configurado, retorna 1.0 como fallback.
+     */
+    public function getConversionFactorFor(int $uomId): float
+    {
+        if ($this->unit_id == $uomId) {
+            return 1.0;
+        }
+
+        $conversion = $this->uomConversions()->where('uom_id', $uomId)->first();
+
+        return $conversion ? (float) $conversion->conversion_factor : 1.0;
     }
 
     // Configuración del Log de Actividad de Spatie

@@ -47,16 +47,18 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::resource('units', UnitController::class);
     Route::resource('locations', LocationController::class);
     Route::resource('brands', BrandController::class);
+    Route::get('suppliers/search-ajax', [SupplierController::class, 'searchAjax'])->name('suppliers.search-ajax');
     Route::resource('suppliers', SupplierController::class);
     Route::post('suppliers/quick-store', [SupplierController::class, 'quickStore'])->name('suppliers.quick-store');
 
     // MÓDULO INVENTARIO
+    Route::get('products/search', [ProductController::class, 'search'])->name('products.search');
+    Route::get('products/search-ajax', [ProductController::class, 'searchAjax'])->name('products.search-ajax');
     Route::resource('products', ProductController::class);
     Route::post('products/quick-store', [ProductController::class, 'quickStore'])->name('products.quick-store');
     Route::post('products/quick-store-kit', [ProductController::class, 'quickStoreKit'])->name('products.quick-store-kit');
     Route::post('products/{product}/decompose', [ProductController::class, 'decompose'])->name('products.decompose');
     Route::post('products/{product}/unpack', [ProductController::class, 'unpack'])->name('products.unpack');
-    Route::get('products/search', [ProductController::class, 'search'])->name('products.search');
 
     // MÓDULO KITS
     Route::resource('kits', KitController::class);

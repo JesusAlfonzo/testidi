@@ -131,14 +131,14 @@
                                                 </td>
                                                 <td class="text-center">
                                                     <span class="badge badge-primary">
-                                                        {{ $item->quantity }}
+                                                        {{ $item->quantity_uom ?? $item->quantity }}
                                                     </span>
                                                 </td>
                                                 <td class="text-center text-sm text-muted">
                                                     @if($item->item_type === 'kit')
                                                         kit
                                                     @else
-                                                        {{ $item->product->unit->abbreviation ?? 'und' }}
+                                                        {{ $item->uom->abbreviation ?? ($item->product->unit->abbreviation ?? 'und') }}
                                                     @endif
                                                 </td>
                                                 <td class="text-sm text-muted">
@@ -255,10 +255,10 @@
                                         </td>
                                         <td class="text-center">
                                             <span class="badge badge-primary">
-                                                {{ $item->quantity }}
+                                                {{ $item->quantity_uom ?? $item->quantity }}
                                             </span>
                                             <small class="text-muted ml-1">
-                                                {{ $item->product->unit->abbreviation ?? 'und' }}
+                                                {{ $item->uom->abbreviation ?? ($item->product->unit->abbreviation ?? 'und') }}
                                             </small>
                                         </td>
                                     @endif

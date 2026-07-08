@@ -216,7 +216,10 @@ class StockInController extends Controller
     {
         $this->authorize('entradas_crear');
         
-        $products = Product::where('is_active', true)->orderBy('name')->get(['id', 'name', 'requires_serial', 'is_perishable', 'category_id']);
+        $products = Product::with(['unit', 'uomConversions.uom'])
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
         $suppliers = Supplier::orderBy('name')->pluck('name', 'id');
         $locations = Location::orderBy('name')->pluck('name', 'id');
         $categories = \App\Models\Category::orderBy('name')->get(['id', 'name']);
@@ -303,11 +306,36 @@ class StockInController extends Controller
                 $requiresSerial = $productModel ? $productModel->requires_serial : false;
                 $serialNumberInput = $requiresSerial ? ($itemData['serial_number'] ?? null) : null;
 
+                $uomId = $itemData['uom_id'] ?? null;
+                $qtyReceivedUom = $itemData['quantity_received_uom'] ?? null;
+
+                if ($poItemId && !$uomId) {
+                    $poItem = PurchaseOrderItem::find($poItemId);
+                    if ($poItem && $poItem->uom_id) {
+                        $uomId = $poItem->uom_id;
+                    }
+                }
+
+                if ($productModel) {
+                    if (!$uomId) {
+                        $uomId = $productModel->unit_id;
+                    }
+                    if ($qtyReceivedUom !== null) {
+                        $factor = $productModel->getConversionFactorFor($uomId);
+                        $quantity = (int) round($qtyReceivedUom * $factor);
+                    } else {
+                        $qtyReceivedUom = $quantity;
+                    }
+                }
+
                 $stockInItem = StockInItem::create([
                     'stock_in_id' => $stockIn->id,
                     'purchase_order_item_id' => $poItemId,
                     'product_id' => $itemData['product_id'],
+                    'uom_id' => $uomId,
                     'quantity' => $quantity,
+                    'quantity_received_uom' => $qtyReceivedUom,
+                    'quantity_received_base' => $quantity,
                     'unit_cost' => $itemData['unit_cost'],
                     'batch_number' => $itemData['batch_number'] ?? null,
                     'expiration_date' => $itemData['expiration_date'] ?? null,
@@ -808,7 +836,10 @@ class StockInController extends Controller
                 ->with('error', 'No hay productos rechazados para reemplazar en esta entrada.');
         }
 
-        $products = Product::where('is_active', true)->orderBy('name')->get(['id', 'name', 'requires_serial']);
+        $products = Product::with(['unit', 'uomConversions.uom'])
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
         $suppliers = Supplier::orderBy('name')->pluck('name', 'id');
         $locations = Location::orderBy('name')->pluck('name', 'id');
 
@@ -839,6 +870,10 @@ class StockInController extends Controller
             'items.*.warehouse_location' => ['nullable', 'string', 'max:100'],
             'items.*.notes' => ['nullable', 'string', 'max:255'],
             'items.*.replaced_item_id' => ['required', 'exists:stock_in_items,id'],
+            
+            // Reglas de UoM
+            'items.*.uom_id' => ['nullable', 'exists:units,id'],
+            'items.*.quantity_received_uom' => ['nullable', 'integer', 'min:1'],
         ]);
 
         // Validar fecha de vencimiento obligatoria para productos perecederos
@@ -890,7 +925,29 @@ class StockInController extends Controller
                 $rejectedItem = StockInItem::find($itemData['replaced_item_id']);
                 $poItemId = $rejectedItem ? $rejectedItem->purchase_order_item_id : null;
 
+                $uomId = $itemData['uom_id'] ?? null;
+                $qtyReceivedUom = $itemData['quantity_received_uom'] ?? null;
+
+                if ($poItemId && !$uomId) {
+                    $poItem = PurchaseOrderItem::find($poItemId);
+                    if ($poItem && $poItem->uom_id) {
+                        $uomId = $poItem->uom_id;
+                    }
+                }
+
                 $productModel = Product::find($itemData['product_id']);
+                if ($productModel) {
+                    if (!$uomId) {
+                        $uomId = $productModel->unit_id;
+                    }
+                    if ($qtyReceivedUom !== null) {
+                        $factor = $productModel->getConversionFactorFor($uomId);
+                        $quantity = (int) round($qtyReceivedUom * $factor);
+                    } else {
+                        $qtyReceivedUom = $quantity;
+                    }
+                }
+
                 $requiresSerial = $productModel ? $productModel->requires_serial : false;
                 $serialNumberInput = $requiresSerial ? ($itemData['serial_number'] ?? null) : null;
 
@@ -898,7 +955,10 @@ class StockInController extends Controller
                     'stock_in_id' => $stockIn->id,
                     'purchase_order_item_id' => $poItemId,
                     'product_id' => $itemData['product_id'],
+                    'uom_id' => $uomId,
                     'quantity' => $quantity,
+                    'quantity_received_uom' => $qtyReceivedUom,
+                    'quantity_received_base' => $quantity,
                     'unit_cost' => $itemData['unit_cost'],
                     'batch_number' => $itemData['batch_number'] ?? null,
                     'expiration_date' => $itemData['expiration_date'] ?? null,

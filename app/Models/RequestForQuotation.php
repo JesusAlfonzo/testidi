@@ -9,9 +9,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
+use App\Traits\GeneratesSequenceCode;
+
 class RequestForQuotation extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, GeneratesSequenceCode;
+
+    protected $sequenceYearly = true;
 
     protected $table = 'request_for_quotations';
 
@@ -52,11 +56,17 @@ class RequestForQuotation extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    public function getSequencePrefix(): string
+    {
+        return 'SDC';
+    }
+
     public static function generateCode(): string
     {
-        $lastRfq = self::withTrashed()->latest('id')->first();
-        $number = $lastRfq ? $lastRfq->id + 1 : 1;
-        return 'RFQ-' . date('Y') . '-' . str_pad($number, 4, '0', STR_PAD_LEFT);
+        $sequenceService = app(\App\Services\SequenceService::class);
+        $key = 'sdc:' . date('Y');
+        $number = $sequenceService->getNextValue($key);
+        return 'SDC-' . date('Y') . '-' . str_pad($number, 4, '0', STR_PAD_LEFT);
     }
 
     public function isEditable(): bool

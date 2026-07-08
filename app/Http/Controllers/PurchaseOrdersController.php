@@ -245,10 +245,10 @@ class PurchaseOrdersController extends Controller
     public function create(Request $request)
     {
         $suppliers = Supplier::orderBy('name')->get();
-        $products = Product::with(['category', 'unit'])->get();
+        $products = Product::with(['category', 'unit', 'uomConversions.uom'])->get();
         $kits = \App\Models\Kit::where('is_active', true)->orderBy('name')->get();
         $categories = \App\Models\Category::orderBy('name')->get(['id', 'name']);
-        $code = PurchaseOrder::generateCode();
+        $code = '[Autogenerado al guardar]';
 
         return view('admin.purchaseOrders.create', compact('suppliers', 'products', 'kits', 'code', 'categories'));
     }
@@ -256,6 +256,44 @@ class PurchaseOrdersController extends Controller
 
     public function store(Request $request)
     {
+        $items = $request->input('items', []);
+        if (is_array($items)) {
+            $productIds = [];
+            foreach ($items as $item) {
+                if (isset($item['product_id'])) {
+                    $productIds[] = $item['product_id'];
+                }
+            }
+            $products = Product::whereIn('id', $productIds)->get()->keyBy('id');
+
+            foreach ($items as $index => $item) {
+                $productId = $item['product_id'] ?? null;
+                $uomId = $item['uom_id'] ?? null;
+                $qtyUom = $item['quantity_uom'] ?? null;
+                $costUom = $item['unit_cost_uom'] ?? null;
+
+                if ($productId) {
+                    $product = $products->get($productId);
+                    if ($product) {
+                        $factor = $product->getConversionFactorFor($uomId ?? $product->unit_id);
+                        
+                        if ($qtyUom !== null) {
+                            $items[$index]['quantity'] = (int) round($qtyUom * $factor);
+                        } else {
+                            $items[$index]['quantity_uom'] = $item['quantity'] ?? null;
+                        }
+                        
+                        if ($costUom !== null) {
+                            $items[$index]['unit_cost'] = $factor > 0 ? round($costUom / $factor, 4) : $costUom;
+                        } else {
+                            $items[$index]['unit_cost_uom'] = $item['unit_cost'] ?? null;
+                        }
+                    }
+                }
+            }
+            $request->merge(['items' => $items]);
+        }
+
         $request->validate([
             'supplier_id' => 'required|exists:suppliers,id',
             'date_issued' => 'required|date',
@@ -269,6 +307,11 @@ class PurchaseOrdersController extends Controller
             'items.*.kit_id' => 'required_if:items.*.item_type,kit|nullable|exists:kits,id',
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.unit_cost' => 'required|numeric|min:0',
+            
+            // Reglas de UoM
+            'items.*.uom_id' => 'nullable|exists:units,id',
+            'items.*.quantity_uom' => 'nullable|numeric|min:0.0001',
+            'items.*.unit_cost_uom' => 'nullable|numeric|min:0',
         ]);
 
         try {
@@ -277,8 +320,7 @@ class PurchaseOrdersController extends Controller
             $calc = new OrderCalculationService();
             $totals = $calc->calculate($request->items, $request->currency, $request->exchange_rate, $request->boolean('iva_exempt'));
 
-            $order = PurchaseOrder::create([
-                'code' => $request->code ?? PurchaseOrder::generateCode(),
+            $orderData = [
                 'supplier_id' => $request->supplier_id,
                 'date_issued' => $request->date_issued,
                 'delivery_date' => $request->delivery_date,
@@ -296,7 +338,13 @@ class PurchaseOrdersController extends Controller
                 'notes' => $request->notes,
                 'status' => 'draft',
                 'created_by' => auth()->id(),
-            ]);
+            ];
+
+            if ($request->filled('code') && $request->code !== '[Autogenerado al guardar]') {
+                $orderData['code'] = $request->code;
+            }
+
+            $order = PurchaseOrder::create($orderData);
 
             $productIds = [];
             $kitIds = [];
@@ -330,16 +378,35 @@ class PurchaseOrdersController extends Controller
                     $product_code = 'KIT-' . $kit->id;
                 }
 
+                $uomId = $item['uom_id'] ?? null;
+                $quantityUom = $item['quantity_uom'] ?? null;
+                $unitCostUom = $item['unit_cost_uom'] ?? null;
+
+                if ($item['item_type'] === 'product' && isset($product)) {
+                    if (!$uomId) {
+                        $uomId = $product->unit_id;
+                    }
+                    if ($quantityUom === null) {
+                        $quantityUom = $item['quantity'];
+                    }
+                    if ($unitCostUom === null) {
+                        $unitCostUom = $item['unit_cost'];
+                    }
+                }
+
                 PurchaseOrderItem::create([
                     'purchase_order_id' => $order->id,
                     'item_type' => $item['item_type'],
                     'product_id' => $product_id,
+                    'uom_id' => $uomId,
                     'kit_id' => $kit_id,
                     'product_name' => $product_name,
                     'product_code' => $product_code,
                     'quantity' => $item['quantity'],
+                    'quantity_uom' => $quantityUom,
                     'quantity_received' => 0,
                     'unit_cost' => $item['unit_cost'],
+                    'unit_cost_uom' => $unitCostUom,
                     'total_cost' => $item['quantity'] * $item['unit_cost'],
                     'equivalent_bs' => $equivalentBs * $item['quantity'],
                 ]);

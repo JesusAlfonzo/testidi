@@ -9,6 +9,42 @@ class StoreStockInRequest extends FormRequest
 {
     public function authorize(): bool { return true; }
 
+    protected function prepareForValidation(): void
+    {
+        $items = $this->input('items', []);
+        if (is_array($items)) {
+            foreach ($items as $index => $item) {
+                $productId = $item['product_id'] ?? null;
+                $uomId = $item['uom_id'] ?? null;
+                $qtyUom = $item['quantity_received_uom'] ?? null;
+                $poItemId = $item['purchase_order_item_id'] ?? null;
+
+                if ($productId) {
+                    $product = \App\Models\Product::find($productId);
+                    if ($product) {
+                        // Fallback a la UoM de la ODC si no se especificó en la entrada
+                        if (empty($uomId) && !empty($poItemId)) {
+                            $poItem = PurchaseOrderItem::find($poItemId);
+                            if ($poItem && $poItem->uom_id) {
+                                $uomId = $poItem->uom_id;
+                                $items[$index]['uom_id'] = $uomId;
+                            }
+                        }
+
+                        $factor = $product->getConversionFactorFor($uomId ?? $product->unit_id);
+                        
+                        if ($qtyUom !== null) {
+                            $items[$index]['quantity'] = (int) round($qtyUom * $factor);
+                        } else {
+                            $items[$index]['quantity_received_uom'] = $item['quantity'] ?? null;
+                        }
+                    }
+                }
+            }
+            $this->merge(['items' => $items]);
+        }
+    }
+
     public function rules(): array
     {
         return [
@@ -34,6 +70,10 @@ class StoreStockInRequest extends FormRequest
             'items.*.notes' => ['nullable', 'string', 'max:255'],
             'items.*.status' => ['nullable', 'in:received,rejected'],
             'items.*.rejection_reason' => ['nullable', 'string', 'max:255'],
+            
+            // Reglas de UoM
+            'items.*.uom_id' => ['nullable', 'exists:units,id'],
+            'items.*.quantity_received_uom' => ['nullable', 'integer', 'min:1'],
         ];
     }
 

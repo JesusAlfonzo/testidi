@@ -18,7 +18,6 @@ describe('StoreUpdateProductRequest - Validaciones', function () {
         expect($validator->errors()->has('category_id'))->toBeTrue();
         expect($validator->errors()->has('unit_id'))->toBeTrue();
         expect($validator->errors()->has('location_id'))->toBeTrue();
-        expect($validator->errors()->has('code'))->toBeTrue();
         expect($validator->errors()->has('name'))->toBeTrue();
     });
 

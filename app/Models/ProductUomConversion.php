@@ -6,39 +6,23 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class RfqItem extends Model
+class ProductUomConversion extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'rfq_id',
-        'item_type',
         'product_id',
         'uom_id',
-        'kit_id',
-        'quantity',
-        'quantity_uom',
-        'is_exempt',
-        'notes',
+        'conversion_factor',
     ];
 
     protected $casts = [
-        'is_exempt' => 'boolean',
+        'conversion_factor' => 'decimal:4',
     ];
-
-    public function rfq(): BelongsTo
-    {
-        return $this->belongsTo(RequestForQuotation::class, 'rfq_id');
-    }
 
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
-    }
-
-    public function kit(): BelongsTo
-    {
-        return $this->belongsTo(Kit::class);
     }
 
     public function uom(): BelongsTo

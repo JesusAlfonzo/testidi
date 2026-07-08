@@ -209,6 +209,17 @@ class ProductController extends Controller
                 ]);
             }
 
+            if ($request->has('conversions')) {
+                foreach ($request->input('conversions') as $conv) {
+                    if (!empty($conv['uom_id']) && !empty($conv['conversion_factor'])) {
+                        $product->uomConversions()->create([
+                            'uom_id' => $conv['uom_id'],
+                            'conversion_factor' => $conv['conversion_factor'],
+                        ]);
+                    }
+                }
+            }
+
             DB::commit();
         } catch (\Exception $e) {
             DB::rollBack();
@@ -275,6 +286,20 @@ class ProductController extends Controller
                 $product->childFraction()->delete();
             }
 
+            if ($request->has('conversions')) {
+                $product->uomConversions()->delete();
+                foreach ($request->input('conversions') as $conv) {
+                    if (!empty($conv['uom_id']) && !empty($conv['conversion_factor'])) {
+                        $product->uomConversions()->create([
+                            'uom_id' => $conv['uom_id'],
+                            'conversion_factor' => $conv['conversion_factor'],
+                        ]);
+                    }
+                }
+            } else {
+                $product->uomConversions()->delete();
+            }
+
             DB::commit();
         } catch (\Exception $e) {
             DB::rollBack();
@@ -319,7 +344,7 @@ class ProductController extends Controller
         $isGeneric = $request->boolean('is_generic');
 
         $rules = [
-            'code' => 'required|string|max:255|unique:products,code',
+            'code' => 'nullable|string|max:255|unique:products,code',
             'name' => 'required|string|max:255',
             'is_generic' => 'nullable|boolean',
             'unit_id' => 'required|exists:units,id',
@@ -374,7 +399,7 @@ class ProductController extends Controller
         $isGeneric = $request->boolean('is_generic');
 
         $rules = [
-            "code" => "required|string|max:255|unique:products,code",
+            "code" => "nullable|string|max:255|unique:products,code",
             "name" => "required|string|max:255",
             "is_generic" => "nullable|boolean",
             "unit_id" => "required|exists:units,id",
@@ -643,7 +668,7 @@ class ProductController extends Controller
     {
         $search = $request->get('search', '');
         
-        $products = Product::with(['category', 'unit', 'location', 'brand'])
+        $products = Product::with(['category', 'unit', 'location', 'brand', 'uomConversions.uom'])
             ->where('is_active', true)
             ->where(function($query) use ($search) {
                 $query->where('name', 'like', "%{$search}%")
@@ -653,5 +678,81 @@ class ProductController extends Controller
             ->get();
 
         return response()->json($products);
+    }
+
+    public function searchAjax(Request $request)
+    {
+        try {
+            $search = $request->get('q', '');
+            $categoryId = $request->get('category_id');
+
+            // Eager loading de 'unit' y 'uomConversions.uom'
+            $query = Product::with(['unit', 'uomConversions.uom'])
+                ->where('is_active', true);
+
+            if ($categoryId) {
+                $query->where('category_id', $categoryId);
+            }
+
+            if ($search) {
+                $query->where(function($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                      ->orWhere('code', 'like', "%{$search}%");
+                });
+            }
+
+            $products = $query->orderBy('name')->paginate(15);
+
+            return response()->json([
+                'results' => $products->map(function($product) {
+                    $unitId = $product->unit_id;
+                    $unitName = $product->unit?->name ?? 'Unidad';
+                    $unitAbbr = $product->unit?->abbreviation ?? 'und';
+
+                    $conversions = collect([
+                        [
+                            'id' => $unitId,
+                            'name' => $unitName,
+                            'factor' => 1.0
+                        ]
+                    ]);
+
+                    if ($product->uomConversions) {
+                        foreach ($product->uomConversions as $conv) {
+                            if ($conv->uom_id && $conv->uom_id != $unitId) {
+                                $conversions->push([
+                                    'id' => $conv->uom_id,
+                                    'name' => $conv->uom?->name ?? 'Conversión',
+                                    'factor' => (float) ($conv->conversion_factor ?? 1.0)
+                                ]);
+                            }
+                        }
+                    }
+
+                    return [
+                        'id' => $product->id,
+                        'text' => $product->name . ' (' . ($product->code ?? 'S/C') . ')',
+                        'name' => $product->name,
+                        'unit' => $unitAbbr,
+                        'unitId' => $unitId,
+                        'unitName' => $unitName,
+                        'categoryId' => $product->category_id,
+                        'conversions' => $conversions->toArray()
+                    ];
+                }),
+                'pagination' => [
+                    'more' => $products->hasMorePages()
+                ]
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Error en ProductController@searchAjax: ' . $e->getMessage(), [
+                'exception' => $e
+            ]);
+
+            return response()->json([
+                'error' => 'Internal Server Error',
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 }

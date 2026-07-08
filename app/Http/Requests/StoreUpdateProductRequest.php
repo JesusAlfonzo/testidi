@@ -24,7 +24,7 @@ class StoreUpdateProductRequest extends FormRequest
         $isGeneric = $this->boolean('is_generic');
 
         // Regla de unicidad condicional para el código (SKU)
-        $codeRules = ['required', 'string', 'max:50'];
+        $codeRules = ['nullable', 'string', 'max:50'];
         if ($productId) {
             $codeRules[] = 'unique:products,code,' . $productId;
         } else {
@@ -82,6 +82,11 @@ class StoreUpdateProductRequest extends FormRequest
             'components' => ['required_if:type,composite_kit', 'array'],
             'components.*.child_id' => ['required_if:type,composite_kit', 'exists:products,id'],
             'components.*.quantity' => ['required_if:type,composite_kit', 'integer', 'min:1'],
+
+            // Conversiones de UoM
+            'conversions' => ['nullable', 'array'],
+            'conversions.*.uom_id' => ['required_with:conversions', 'exists:units,id'],
+            'conversions.*.conversion_factor' => ['required_with:conversions', 'numeric', 'min:0.0001'],
         ];
     }
 

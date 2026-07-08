@@ -11,7 +11,8 @@ class UnitSeeder extends Seeder
 {
     public function run(): void
     {
-        $userId = User::first()->id;
+        $user = User::first();
+        $userId = $user ? $user->id : 1;
         
         $units = [
             ['name' => 'Unidad', 'abbreviation' => 'und', 'user_id' => $userId],
@@ -25,12 +26,16 @@ class UnitSeeder extends Seeder
             ['name' => 'Centímetro', 'abbreviation' => 'cm', 'user_id' => $userId],
             ['name' => 'Milímetro', 'abbreviation' => 'mm', 'user_id' => $userId],
             ['name' => 'Caja', 'abbreviation' => 'caja', 'user_id' => $userId],
+            ['name' => 'Bulto', 'abbreviation' => 'bto', 'user_id' => $userId],
             ['name' => 'Paquete', 'abbreviation' => 'paq', 'user_id' => $userId],
             ['name' => 'Rollos', 'abbreviation' => 'rol', 'user_id' => $userId],
         ];
 
         foreach ($units as $unit) {
-            Unit::create($unit);
+            Unit::firstOrCreate(
+                ['abbreviation' => $unit['abbreviation']],
+                ['name' => $unit['name'], 'user_id' => $unit['user_id']]
+            );
         }
     }
 }

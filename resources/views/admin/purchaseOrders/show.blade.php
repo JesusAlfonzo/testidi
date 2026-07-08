@@ -334,7 +334,10 @@
                                                 <br><small class="text-muted text-xs">{{ $item->product_code }}</small>
                                             @endif
                                         </td>
-                                        <td class="text-center font-weight-bold text-secondary">{{ $item->quantity }}</td>
+                                        <td class="text-center font-weight-bold text-secondary">
+                                            {{ $item->quantity_uom ?? $item->quantity }}
+                                            <small class="text-muted">{{ $item->uom->abbreviation ?? ($item->product->unit->abbreviation ?? 'und') }}</small>
+                                        </td>
                                         <td class="text-center">
                                             @if($isFully)
                                                 <span class="badge badge-success" style="padding: 3px 8px;"><i class="fas fa-check mr-1"></i> {{ $item->quantity_received }}</span>
@@ -343,8 +346,14 @@
                                                     {{ $item->quantity_received }} / {{ $item->quantity }}
                                                 </span>
                                             @endif
+                                            <small class="text-muted ml-1">{{ $item->product->unit->abbreviation ?? 'und' }}</small>
                                         </td>
-                                        <td class="text-right">{{ $purchaseOrder->currency_symbol }} {{ number_format($item->unit_cost, 2) }}</td>
+                                        <td class="text-right">
+                                            {{ $purchaseOrder->currency_symbol }} {{ number_format($item->unit_cost_uom ?? $item->unit_cost, 2) }}
+                                            @if($item->uom)
+                                                <small class="text-muted">/ {{ $item->uom->abbreviation }}</small>
+                                            @endif
+                                        </td>
                                         <td class="text-right font-weight-bold text-dark">{{ $purchaseOrder->currency_symbol }} {{ number_format($item->total_cost, 2) }}</td>
                                     </tr>
                                 @endforeach

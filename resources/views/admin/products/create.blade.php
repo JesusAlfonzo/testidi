@@ -317,6 +317,39 @@
                             </div>
                         </div>
 
+                        {{-- CARD: CONFIGURACIÓN DE CONVERSIONES DE MEDIDA (UoM) --}}
+                        <div class="card card-outline card-info shadow-sm mt-3">
+                            <div class="card-header bg-white py-3 border-0">
+                                <h5 class="card-title text-info font-weight-bold mb-0">
+                                    <i class="fas fa-exchange-alt mr-1"></i> Configuración de Empaques/Conversiones (UoM)
+                                </h5>
+                            </div>
+                            <div class="card-body pt-0">
+                                <p class="text-muted small mb-3">
+                                    Defina equivalencias de empaques o escalas de compra alternativas (ej. Caja = 10 Unidades, Bulto = 360 Unidades).
+                                </p>
+                                
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-striped table-valign-middle" id="uom-conversions-table">
+                                        <thead>
+                                            <tr>
+                                                <th style="width: 50%;">Unidad Alternativa</th>
+                                                <th style="width: 40%;">Factor de Conversión (Equivalencia a Unidad Base)</th>
+                                                <th style="width: 10%;" class="text-center">Acción</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="uom-conversions-body">
+                                            {{-- Filas dinámicas --}}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                
+                                <button type="button" class="btn btn-sm btn-outline-info mt-2" id="add-uom-conversion-btn">
+                                    <i class="fas fa-plus mr-1"></i> Agregar Conversión
+                                </button>
+                            </div>
+                        </div>
+
                     </div>
 
                     {{-- COLUMNA LATERAL (DERECHA) --}}
@@ -485,6 +518,54 @@
 @section('js')
     <script>
         $(document).ready(function() {
+            // --- LOGICA DE CONVERSIONES UOM ---
+            @php
+                $unitOptions = '';
+                foreach($units as $unit) {
+                    $unitOptions .= '<option value="' . $unit->id . '">' . e($unit->name) . ' (' . e($unit->abbreviation) . ')</option>';
+                }
+            @endphp
+
+            let uomIndex = 0;
+            const unitOptions = `{!! $unitOptions !!}`;
+
+            function addUomConversionRow(uomId = '', factor = '') {
+                const row = `
+                    <tr class="uom-conversion-row" data-index="${uomIndex}">
+                        <td>
+                            <select name="conversions[${uomIndex}][uom_id]" class="form-control form-control-sm select-uom" required>
+                                <option value="">Seleccione unidad...</option>
+                                ${unitOptions}
+                            </select>
+                        </td>
+                        <td>
+                            <input type="number" step="0.0001" name="conversions[${uomIndex}][conversion_factor]" class="form-control form-control-sm conversion-factor" value="${factor}" min="0.0001" placeholder="Ej: 10" required>
+                        </td>
+                        <td class="text-center">
+                            <button type="button" class="btn btn-sm btn-outline-danger remove-uom-conversion-btn" title="Eliminar">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                $('#uom-conversions-body').append(row);
+                
+                const selectElement = $(`#uom-conversions-body tr[data-index="${uomIndex}"] .select-uom`);
+                if (uomId) {
+                    selectElement.val(uomId);
+                }
+
+                uomIndex++;
+            }
+
+            $('#add-uom-conversion-btn').on('click', function() {
+                addUomConversionRow();
+            });
+
+            $(document).on('click', '.remove-uom-conversion-btn', function() {
+                $(this).closest('tr').remove();
+            });
+
             // Inicializar Select2 en los campos normales y en el de búsqueda de componentes
             $('.select2').select2({
                 theme: 'bootstrap4'

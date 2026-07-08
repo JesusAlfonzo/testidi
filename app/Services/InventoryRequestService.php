@@ -48,13 +48,9 @@ class InventoryRequestService
             }
 
             // 2. Crear el Despacho
-            $dispatchCount = Dispatch::count() + 1;
-            $dispatchNumber = 'DESP-' . str_pad($dispatchCount, 6, '0', STR_PAD_LEFT);
-
             $dispatch = Dispatch::create([
                 'inventory_request_id' => $request->id,
                 'dispatcher_id' => auth()->id() ?? $request->approver_id ?? 1,
-                'dispatch_number' => $dispatchNumber,
                 'notes' => $notes,
             ]);
 
@@ -74,7 +70,7 @@ class InventoryRequestService
 
                 if ($qtyDispatched > 0) {
                     // Consumir el stock y obtener información de lotes consumidos
-                    $consumedInfo = $product->consumeStock($qtyDispatched, "Despacho {$dispatchNumber}");
+                    $consumedInfo = $product->consumeStock($qtyDispatched, "Despacho {$dispatch->dispatch_number}");
                     
                     // Si el producto es perecedero y tiene lotes consumidos
                     if ($product->shouldUseFifo() && !empty($consumedInfo)) {
@@ -103,7 +99,7 @@ class InventoryRequestService
                     }
 
                     // Generar nota para el evento de Kardex
-                    $notesEvent = "Despacho {$dispatchNumber}";
+                    $notesEvent = "Despacho {$dispatch->dispatch_number}";
                     if (!empty($consumedInfo) && isset($consumedInfo[0]['batch_number'])) {
                         $notesEvent .= ' | Lotes consumidos: ' . implode(', ', array_column($consumedInfo, 'batch_number'));
                     }

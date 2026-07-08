@@ -180,7 +180,7 @@ class RequestForQuotationController extends Controller
 
     public function create()
     {
-        $products = Product::with(['category', 'unit'])
+        $products = Product::with(['category', 'unit', 'uomConversions.uom'])
             ->where('is_active', true)
             ->orderBy('name')
             ->get();
@@ -189,7 +189,7 @@ class RequestForQuotationController extends Controller
             ->get();
         $categories = \App\Models\Category::orderBy('name')->get(['id', 'name']);
 
-        $code = RequestForQuotation::generateCode();
+        $code = '[Autogenerado al guardar]';
 
         return view('admin.rfq.create', compact('products', 'kits', 'code', 'categories'));
     }
@@ -197,6 +197,37 @@ class RequestForQuotationController extends Controller
 
     public function store(Request $request)
     {
+        $items = $request->input('items', []);
+        if (is_array($items)) {
+            $productIds = [];
+            foreach ($items as $item) {
+                if (isset($item['product_id'])) {
+                    $productIds[] = $item['product_id'];
+                }
+            }
+            $products = Product::whereIn('id', $productIds)->get()->keyBy('id');
+
+            foreach ($items as $index => $item) {
+                $productId = $item['product_id'] ?? null;
+                $uomId = $item['uom_id'] ?? null;
+                $qtyUom = $item['quantity_uom'] ?? null;
+                $itemType = $item['item_type'] ?? 'product';
+
+                if ($itemType !== 'kit' && $productId) {
+                    $product = $products->get($productId);
+                    if ($product) {
+                        $factor = $product->getConversionFactorFor($uomId ?? $product->unit_id);
+                        if ($qtyUom !== null) {
+                            $items[$index]['quantity'] = (int) round($qtyUom * $factor);
+                        } else {
+                            $items[$index]['quantity_uom'] = $item['quantity'] ?? null;
+                        }
+                    }
+                }
+            }
+            $request->merge(['items' => $items]);
+        }
+
         $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -210,13 +241,16 @@ class RequestForQuotationController extends Controller
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.is_exempt' => 'nullable|boolean',
             'priority' => 'nullable|string|in:baja,media,alta',
+            
+            // Reglas de UoM
+            'items.*.uom_id' => 'nullable|exists:units,id',
+            'items.*.quantity_uom' => 'nullable|numeric|min:0.0001',
         ]);
 
         try {
             DB::beginTransaction();
 
-            $rfq = RequestForQuotation::create([
-                'code' => $request->code ?? RequestForQuotation::generateCode(),
+            $rfqData = [
                 'title' => $request->title,
                 'description' => $request->description,
                 'date_required' => $request->date_required,
@@ -225,16 +259,47 @@ class RequestForQuotationController extends Controller
                 'status' => 'draft',
                 'created_by' => auth()->id(),
                 'priority' => $request->priority ?? 'baja',
-            ]);
+            ];
+
+            if ($request->filled('code') && $request->code !== '[Autogenerado al guardar]') {
+                $rfqData['code'] = $request->code;
+            }
+
+            $rfq = RequestForQuotation::create($rfqData);
 
             foreach ($request->items as $item) {
-                $productId = $item['item_type'] === 'kit' ? $item['kit_id'] : $item['product_id'];
+                $itemType = $item['item_type'] ?? 'product';
+                $productId = $itemType === 'kit' ? ($item['kit_id'] ?? null) : ($item['product_id'] ?? null);
+                
+                $uomId = $item['uom_id'] ?? null;
+                $quantityUom = $item['quantity_uom'] ?? null;
+                $quantityBase = $item['quantity'] ?? 0;
+
+                if ($itemType !== 'kit' && $productId) {
+                    $product = Product::find($productId);
+                    if ($product) {
+                        if ($uomId) {
+                            $factor = $product->getConversionFactorFor($uomId);
+                            if ($quantityUom !== null) {
+                                $quantityBase = (int) round($quantityUom * $factor);
+                            } else {
+                                $quantityUom = $quantityBase;
+                            }
+                        } else {
+                            $uomId = $product->unit_id;
+                            $quantityUom = $quantityBase;
+                        }
+                    }
+                }
+
                 RfqItem::create([
                     'rfq_id' => $rfq->id,
                     'item_type' => 'product',
                     'product_id' => $productId,
+                    'uom_id' => $uomId,
                     'kit_id' => null,
-                    'quantity' => $item['quantity'],
+                    'quantity' => $quantityBase,
+                    'quantity_uom' => $quantityUom,
                     'is_exempt' => isset($item['is_exempt']) ? (bool)$item['is_exempt'] : false,
                     'notes' => $item['notes'] ?? null,
                 ]);
@@ -524,7 +589,7 @@ class RequestForQuotationController extends Controller
             $totals = $calc->calculate($request->items, $request->currency, $request->exchange_rate, $request->boolean('iva_exempt'));
 
             $order = \App\Models\PurchaseOrder::create([
-                'code' => $request->code ?? \App\Models\PurchaseOrder::generateCode(),
+                'code' => $request->code,
                 'rfq_id' => $rfq->id,
                 'supplier_id' => $request->supplier_id,
                 'date_issued' => $request->date_issued,

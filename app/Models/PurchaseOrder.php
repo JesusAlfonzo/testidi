@@ -8,9 +8,13 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+use App\Traits\GeneratesSequenceCode;
+
 class PurchaseOrder extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, GeneratesSequenceCode;
+
+    protected $sequenceYearly = true;
 
     protected $fillable = [
         'code',
@@ -133,11 +137,17 @@ class PurchaseOrder extends Model
         return true;
     }
 
+    public function getSequencePrefix(): string
+    {
+        return 'ODC';
+    }
+
     public static function generateCode(): string
     {
-        $lastOrder = self::withTrashed()->latest('id')->first();
-        $number = $lastOrder ? $lastOrder->id + 1 : 1;
-        return 'OC-' . date('Y') . '-' . str_pad($number, 4, '0', STR_PAD_LEFT);
+        $sequenceService = app(\App\Services\SequenceService::class);
+        $key = 'odc:' . date('Y');
+        $number = $sequenceService->getNextValue($key);
+        return 'ODC-' . date('Y') . '-' . str_pad($number, 4, '0', STR_PAD_LEFT);
     }
 
     public function getCurrencySymbolAttribute(): string
