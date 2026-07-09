@@ -306,12 +306,14 @@
                                                 <div class="input-group input-group-sm">
                                                     <input type="number" name="items[0][quantity_uom]" class="form-control sgci-qty-input row-quantity-uom" min="1" value="1" required>
                                                     <input type="hidden" name="items[0][quantity]" class="row-quantity-base" value="1">
+                                                    <input type="hidden" class="row-base-unit-abbr" value="und">
                                                     <div class="input-group-append">
                                                         <select name="items[0][uom_id]" class="form-control sgci-uom-select row-uom-selector" disabled>
                                                             <option value="" data-factor="1.0">und</option>
                                                         </select>
                                                     </div>
                                                 </div>
+                                                <small class="text-muted d-block mt-1 row-uom-label" style="font-size: 0.75rem; font-weight: 600; text-align: left;"></small>
                                             </td>
                                             <td>
                                                 <input type="text" name="items[0][notes]" class="form-control form-control-sm" placeholder="Especificaciones...">
@@ -717,10 +719,13 @@
                         html += `<option value="${c.id}" data-factor="${c.factor}">${c.name}</option>`;
                     }
                 });
+                $row.find('.row-base-unit-abbr').val(product.unit || 'und');
                 $uom.html(html).prop('disabled', false);
             } else {
+                $row.find('.row-base-unit-abbr').val('und');
                 $uom.html('<option value="" data-factor="1.0">und</option>').val('').prop('disabled', true);
             }
+            recalcBase($row);
 
             recalcBase($row);
         }
@@ -732,7 +737,11 @@
         function recalcBase($row) {
             const qtyUom = parseFloat($row.find('.row-quantity-uom').val()) || 0;
             const factor = parseFloat($row.find('.row-uom-selector option:selected').data('factor')) || 1.0;
-            $row.find('.row-quantity-base').val(Math.round(qtyUom * factor));
+            const baseUnit = $row.find('.row-base-unit-abbr').val() || 'und';
+            const totalBase = Math.round(qtyUom * factor);
+            
+            $row.find('.row-quantity-base').val(totalBase);
+            $row.find('.row-uom-label').text(`Equivale a ${totalBase} ${baseUnit}`);
         }
 
         // ═══════════════════════════════════════════════════════════════════════

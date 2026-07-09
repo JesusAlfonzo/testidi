@@ -257,10 +257,10 @@
                     <div class="row mb-4">
                         <div class="col-md-6 mb-3 mb-md-0">
                             <div class="invoice-details-label">De:</div>
-                            <div class="font-weight-bold text-dark" style="font-size: 1rem;">TESTIDI S.A.</div>
+                            <div class="font-weight-bold text-dark" style="font-size: 1rem;">Inmunología Asociación Civil</div>
                             <div class="text-muted text-xs">
                                 Departamento de Compras y Suministros<br>
-                                RIF: J-12345678-9<br>
+                                RIF: J-30710739-1<br>
                                 Caracas, Venezuela
                             </div>
                         </div>
@@ -300,16 +300,17 @@
 
                     <!-- Tabla de Items -->
                     <div class="invoice-details-label mb-2"><i class="fas fa-boxes text-primary mr-1"></i> Productos Solicitados</div>
-                    <div class="table-responsive mb-4">
+                    <div class="table-responsive mb-4" style="max-height: 400px; overflow-y: auto; overflow-x: hidden;">
                         <table class="table invoice-table">
-                            <thead>
+                            <thead class="position-sticky" style="top: 0; z-index: 10; background-color: #f8fafc;">
                                 <tr>
                                     <th style="width: 5%">#</th>
-                                    <th style="width: 45%">Producto / Kit</th>
-                                    <th style="width: 15%" class="text-center">Cant.</th>
-                                    <th style="width: 15%" class="text-center">Recibido</th>
-                                    <th style="width: 20%" class="text-right">Costo Unit.</th>
-                                    <th style="width: 20%" class="text-right">Total</th>
+                                    <th style="width: 35%">Producto / Kit</th>
+                                    <th style="width: 10%" class="text-center">Cant.</th>
+                                    <th style="width: 10%" class="text-center">Recibido</th>
+                                    <th style="width: 10%" class="text-center">IVA</th>
+                                    <th style="width: 15%" class="text-right">Costo Unit.</th>
+                                    <th style="width: 15%" class="text-right">Total</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -347,6 +348,13 @@
                                                 </span>
                                             @endif
                                             <small class="text-muted ml-1">{{ $item->product->unit->abbreviation ?? 'und' }}</small>
+                                        </td>
+                                        <td class="text-center">
+                                            @if($item->is_exempt)
+                                                <span class="badge badge-secondary" style="font-size: 0.75rem;">Exento</span>
+                                            @else
+                                                <small class="text-muted font-weight-bold">16%</small>
+                                            @endif
                                         </td>
                                         <td class="text-right">
                                             {{ $purchaseOrder->currency_symbol }} {{ number_format($item->unit_cost_uom ?? $item->unit_cost, 2) }}

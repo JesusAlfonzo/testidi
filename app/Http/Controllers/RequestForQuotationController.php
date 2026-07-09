@@ -636,6 +636,7 @@ class RequestForQuotationController extends Controller
                     'unit_cost' => $item['unit_cost'],
                     'total_cost' => $item['quantity'] * $item['unit_cost'],
                     'equivalent_bs' => $equivalentBs * $item['quantity'],
+                    'is_exempt' => filter_var($item['is_exempt'] ?? 0, FILTER_VALIDATE_BOOLEAN),
                 ]);
             }
 
@@ -645,8 +646,9 @@ class RequestForQuotationController extends Controller
                 ->with('success', 'Orden de Compra creada exitosamente desde la RFQ.');
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Error al crear OC desde RFQ: ' . $e->getMessage());
-            return back()->withInput()->with('error', 'Error al crear la orden. Por favor, intente de nuevo.');
+            dd($e->getMessage(), $e->getLine());
+            // \Log::error('Error al generar PO desde RFQ: ' . $e->getMessage());
+            // return back()->with('error', 'Error al crear la orden. Por favor, intente de nuevo.');
         }
     }
 }

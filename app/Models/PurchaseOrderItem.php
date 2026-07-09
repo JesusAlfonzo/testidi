@@ -27,12 +27,14 @@ class PurchaseOrderItem extends Model
         'unit_cost_uom',
         'total_cost',
         'equivalent_bs',
+        'is_exempt',
     ];
 
     protected $casts = [
         'unit_cost' => 'decimal:2',
         'total_cost' => 'decimal:2',
         'equivalent_bs' => 'decimal:2',
+        'is_exempt' => 'boolean',
     ];
 
     public function order(): BelongsTo

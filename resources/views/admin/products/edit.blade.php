@@ -515,8 +515,8 @@
             // --- LOGICA DE CONVERSIONES UOM ---
             @php
                 $unitOptions = '';
-                foreach($units as $unit) {
-                    $unitOptions .= '<option value="' . $unit->id . '">' . e($unit->name) . ' (' . e($unit->abbreviation) . ')</option>';
+                foreach($units as $id => $name) {
+                    $unitOptions .= '<option value="' . $id . '">' . e($name) . '</option>';
                 }
             @endphp
 
@@ -533,7 +533,7 @@
                             </select>
                         </td>
                         <td>
-                            <input type="number" step="0.0001" name="conversions[${uomIndex}][conversion_factor]" class="form-control form-control-sm conversion-factor" value="${factor}" min="0.0001" placeholder="Ej: 10" required>
+                            <input type="number" step="1" name="conversions[${uomIndex}][conversion_factor]" class="form-control form-control-sm conversion-factor" value="${factor}" min="1" placeholder="Ej: 10" required>
                         </td>
                         <td class="text-center">
                             <button type="button" class="btn btn-sm btn-outline-danger remove-uom-conversion-btn" title="Eliminar">

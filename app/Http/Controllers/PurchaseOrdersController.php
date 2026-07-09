@@ -409,6 +409,7 @@ class PurchaseOrdersController extends Controller
                     'unit_cost_uom' => $unitCostUom,
                     'total_cost' => $item['quantity'] * $item['unit_cost'],
                     'equivalent_bs' => $equivalentBs * $item['quantity'],
+                    'is_exempt' => filter_var($item['is_exempt'] ?? 0, FILTER_VALIDATE_BOOLEAN),
                 ]);
             }
 
@@ -536,6 +537,7 @@ class PurchaseOrdersController extends Controller
                     'unit_cost' => $item['unit_cost'],
                     'total_cost' => $item['quantity'] * $item['unit_cost'],
                     'equivalent_bs' => $equivalentBs * $item['quantity'],
+                    'is_exempt' => filter_var($item['is_exempt'] ?? 0, FILTER_VALIDATE_BOOLEAN),
                 ]);
             }
 

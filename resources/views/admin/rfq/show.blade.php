@@ -56,128 +56,99 @@
             @if(!$rfq->purchaseOrder && in_array($rfq->status, ['sent', 'closed']))
                 <div class="card shadow-sm border-0 mb-4" style="border-radius: 12px; overflow: hidden;">
                     <div class="card-header border-bottom py-3"
-                         style="background: linear-gradient(135deg, #1a73e8 0%, #0d47a1 100%);">
+                         style="background: linear-gradient(135deg, #28a745 0%, #218838 100%);">
                         <h3 class="card-title font-weight-bold mb-0 text-white">
                             <i class="fas fa-shopping-cart mr-2"></i>
                             Generar Orden de Compra
                         </h3>
                     </div>
                     <div class="card-body">
+                        <button type="button" 
+                                class="btn btn-success btn-block shadow font-weight-bold py-3" 
+                                data-toggle="modal" 
+                                data-target="#convertToPoModal"
+                                style="border-radius: 8px;">
+                            <i class="fas fa-file-invoice-dollar mr-2"></i>
+                            Procesar conversión a PO
+                        </button>
+                    </div>
+                </div>
 
-                        <form method="POST"
-                              action="{{ route('admin.rfq.convert-to-po', $rfq) }}"
-                              id="convertPoForm">
-                            @csrf
-
-                            {{-- PASO 1: Proveedor --}}
-                            <div class="form-group">
-                                <label for="supplier_id_show"
-                                       class="font-weight-bold text-sm text-dark">
-                                    <span class="badge badge-primary mr-1">1</span>
-                                    Proveedor definitivo
-                                    <span class="text-danger">*</span>
-                                </label>
-                                <select name="supplier_id"
-                                        id="supplier_id_show"
-                                        class="form-control select2-supplier"
-                                        style="width: 100%;"
-                                        required>
-                                    <option value="">— Seleccione el proveedor ganador —</option>
-                                    @foreach($suppliers as $supplier)
-                                        <option value="{{ $supplier->id }}">
-                                            {{ $supplier->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
+                <!-- Modal de Conversión a PO -->
+                <div class="modal fade" id="convertToPoModal" tabindex="-1" role="dialog" aria-labelledby="convertToPoModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-lg" role="document">
+                        <div class="modal-content" style="border-radius: 12px; border: none; overflow: hidden;">
+                            <div class="modal-header bg-success text-white">
+                                <h5 class="modal-title font-weight-bold" id="convertToPoModalLabel">
+                                    <i class="fas fa-shopping-cart mr-2"></i> Procesar Orden de Compra
+                                </h5>
+                                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
                             </div>
+                            <form method="POST" action="{{ route('admin.rfq.convert-to-po', $rfq) }}" id="convertPoForm">
+                                @csrf
+                                <div class="modal-body p-4">
+                                    {{-- PASO 1: Proveedor --}}
+                                    <div class="form-group mb-4">
+                                        <label for="supplier_id_show" class="font-weight-bold text-sm text-dark">
+                                            Proveedor definitivo <span class="text-danger">*</span>
+                                        </label>
+                                        <select name="supplier_id" id="supplier_id_show" class="form-control select2-supplier" style="width: 100%;" required>
+                                            <option value="">— Seleccione el proveedor ganador —</option>
+                                            @foreach($suppliers as $supplier)
+                                                <option value="{{ $supplier->id }}">
+                                                    {{ $supplier->name }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
 
-                            {{-- PASO 2: Tabla de ítems con exención --}}
-                            <label class="font-weight-bold text-sm text-dark mt-2">
-                                <span class="badge badge-primary mr-1">2</span>
-                                Ítems — marque los exentos de IVA (16%)
-                            </label>
-                            <div class="table-responsive mt-2">
-                                <table class="table table-bordered table-sm align-middle mb-0"
-                                       id="showItemsTable">
-                                    <thead style="background: #f4f6f9; font-size: 11px; font-weight: 700;">
-                                        <tr class="text-uppercase text-muted">
-                                            <th style="width: 4%">#</th>
-                                            <th style="width: 44%">Producto / Kit</th>
-                                            <th style="width: 10%" class="text-center">Cant.</th>
-                                            <th style="width: 10%" class="text-center">Unidad</th>
-                                            <th style="width: 16%">Notas</th>
-                                            <th style="width: 16%" class="text-center">
-                                                ¿Exento IVA?
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach($rfq->items as $index => $item)
-                                            <tr>
-                                                <td class="text-center text-muted text-sm">
-                                                    {{ $index + 1 }}
-                                                </td>
-                                                <td>
-                                                    @if($item->item_type === 'kit')
-                                                        <strong>{{ $item->kit->name ?? 'Kit' }}</strong>
-                                                        <span class="badge badge-info ml-1">Kit</span>
-                                                    @else
-                                                        <strong>{{ $item->product->name ?? '—' }}</strong>
-                                                        <br>
-                                                        <small class="text-muted">
-                                                            {{ $item->product->code ?? 'S/C' }}
-                                                        </small>
-                                                    @endif
-                                                </td>
-                                                <td class="text-center">
-                                                    <span class="badge badge-primary">
-                                                        {{ $item->quantity_uom ?? $item->quantity }}
-                                                    </span>
-                                                </td>
-                                                <td class="text-center text-sm text-muted">
-                                                    @if($item->item_type === 'kit')
-                                                        kit
-                                                    @else
-                                                        {{ $item->uom->abbreviation ?? ($item->product->unit->abbreviation ?? 'und') }}
-                                                    @endif
-                                                </td>
-                                                <td class="text-sm text-muted">
-                                                    {{ $item->notes ?? '—' }}
-                                                </td>
-                                                <td class="text-center align-middle">
-                                                    <input type="hidden"
-                                                           name="pre_exempt[{{ $index }}]"
-                                                           value="0">
-                                                    <input type="checkbox"
-                                                           name="pre_exempt[{{ $index }}]"
-                                                           value="1"
-                                                           class="show-exempt-check"
-                                                           {{ $item->is_exempt ? 'checked' : '' }}
-                                                           style="width: 18px; height: 18px; cursor: pointer;"
-                                                           title="Marcar como exento de IVA">
-                                                </td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
+                                    {{-- PASO 2: Tabla de ítems con exención --}}
+                                    <label class="font-weight-bold text-sm text-dark mt-2">
+                                        Ítems — marque los exentos de IVA (16%)
+                                    </label>
+                                    <div class="table-responsive mt-2" style="max-height: 400px; overflow-y: auto; overflow-x: hidden;">
+                                        <table class="table table-hover table-bordered mb-0" id="showItemsTable">
+                                            <thead class="bg-light" style="position: sticky; top: 0; z-index: 1;">
+                                                <tr>
+                                                    <th>Producto</th>
+                                                    <th style="width: 15%;">Cantidad</th>
+                                                    <th style="width: 15%; text-align: center;">Exento IVA</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach($rfq->items as $index => $item)
+                                                    <tr>
+                                                        <td class="align-middle">
+                                                            {{ $item->product->name ?? ($item->kit->name ?? 'N/A') }}
+                                                        </td>
+                                                        <td>
+                                                            <input type="number" name="items[{{$index}}][quantity]" class="form-control" value="{{$item->quantity}}" required>
+                                                        </td>
+                                                        <td class="text-center align-middle">
+                                                            <input type="hidden" name="items[{{$index}}][is_exempt]" value="0">
+                                                            <input type="checkbox" name="items[{{$index}}][is_exempt]" value="1" {{ $item->is_exempt ? 'checked' : '' }}>
+                                                        </td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </div>
 
-                            <div class="alert alert-warning border-0 mt-3 mb-3 py-2 px-3 text-sm"
-                                 style="border-radius: 8px;">
-                                <i class="fas fa-info-circle mr-1"></i>
-                                Los ítems <strong>marcados como Exentos</strong> no acumularán
-                                el 16% de IVA en la Orden de Compra generada.
-                            </div>
-
-                            <button type="submit"
-                                    id="btnConvertToPo"
-                                    class="btn btn-success btn-block shadow font-weight-bold"
-                                    style="border-radius: 8px; padding: 12px;">
-                                <i class="fas fa-shopping-cart mr-2"></i>
-                                Procesar Orden de Compra
-                            </button>
-                        </form>
-
+                                    <div class="alert alert-warning border-0 mt-3 mb-0 py-2 px-3 text-sm" style="border-radius: 8px;">
+                                        <i class="fas fa-info-circle mr-1"></i>
+                                        Los ítems <strong>marcados como Exentos</strong> no acumularán el 16% de IVA en la Orden de Compra generada.
+                                    </div>
+                                </div>
+                                <div class="modal-footer bg-light p-3">
+                                    <button type="button" class="btn btn-secondary font-weight-bold" data-dismiss="modal">Cancelar</button>
+                                    <button type="submit" id="btnConvertToPo" class="btn btn-success font-weight-bold shadow-sm">
+                                        <i class="fas fa-shopping-cart mr-2"></i> Procesar Orden de Compra
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 </div>
             @endif
@@ -471,21 +442,22 @@
 <script>
 $(document).ready(function () {
 
-    // Select2 en el selector de proveedor
+    // Select2 en el selector de proveedor dentro del modal
     $('#supplier_id_show').select2({
         theme: 'bootstrap4',
         width: '100%',
+        dropdownParent: $('#convertToPoModal'),
         placeholder: '— Seleccione el proveedor ganador —'
     });
 
-    // Confirmación antes de enviar el formulario de conversión
-    $('#convertPoForm').on('submit', function (e) {
+    // Enviar el formulario tras confirmación
+    $('#convertPoForm').on('submit', function(e) {
         e.preventDefault();
         const self = this;
 
         if (!$('#supplier_id_show').val()) {
             Swal.fire({
-                icon: 'warning',
+                type: 'warning',
                 title: 'Proveedor requerido',
                 text: 'Debe seleccionar un proveedor antes de generar la Orden de Compra.'
             });
@@ -493,7 +465,7 @@ $(document).ready(function () {
         }
 
         Swal.fire({
-            icon: 'question',
+            type: 'question',
             title: 'Generar Orden de Compra',
             html: '¿Desea convertir esta RFQ en una <strong>Orden de Compra</strong>?<br><small class="text-muted">Se abrirá el formulario para ingresar los precios finales.</small>',
             showCancelButton: true,
@@ -502,8 +474,10 @@ $(document).ready(function () {
             confirmButtonColor: '#28a745',
             cancelButtonColor: '#6c757d'
         }).then(function (result) {
-            if (result.isConfirmed) {
-                self.submit();
+            if (result.isConfirmed || result.value) {
+                $('#btnConvertToPo').prop('disabled', true)
+                    .html('<i class="fas fa-spinner fa-spin mr-1"></i> Procesando...');
+                HTMLFormElement.prototype.submit.call(self);
             }
         });
     });

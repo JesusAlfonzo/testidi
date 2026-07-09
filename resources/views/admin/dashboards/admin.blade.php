@@ -366,40 +366,46 @@
                         @forelse($recentActivity as $activity)
                             <div class="activity-item">
                                 <div class="d-flex align-items-center">
-                                    @php
-                                        $iconColor = 'bg-secondary text-white';
-                                        $icon = 'fa-cog';
-                                        $modelType = $activity->subject_type ? class_basename($activity->subject_type) : $activity->log_name;
-                                        switch ($modelType) {
-                                            case 'Product':
-                                                $iconColor = 'bg-info text-white';
-                                                $icon = 'fa-box';
-                                                break;
-                                            case 'Supplier':
-                                                $iconColor = 'bg-success text-white';
-                                                $icon = 'fa-truck';
-                                                break;
-                                            case 'PurchaseOrder':
-                                                $iconColor = 'bg-primary text-white';
-                                                $icon = 'fa-shopping-cart';
-                                                break;
-                                            case 'InventoryRequest':
-                                                $iconColor = 'bg-danger text-white';
-                                                $icon = 'fa-paper-plane';
-                                                break;
-                                            case 'StockIn':
-                                                $iconColor = 'bg-warning text-dark';
-                                                $icon = 'fa-file-import';
-                                                break;
-                                        }
-                                    @endphp
-                                    <div class="activity-icon {{ $iconColor }}">
-                                        <i class="fas {{ $icon }} small"></i>
+                                    <div class="activity-icon bg-secondary text-white" style="width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
+                                        <i class="fas fa-user-circle"></i>
                                     </div>
                                     <div style="flex: 1;">
-                                        <div style="font-size: 13px; font-weight: 600;" class="text-dark">{{ $activity->formatted_description }}</div>
+                                        <div style="font-size: 13px; font-weight: 600;" class="text-dark">
+                                            @php
+                                                // Traducción del evento
+                                                $action = $activity->description;
+                                                $translatedAction = $action;
+                                                if ($action === 'created') $translatedAction = 'creó';
+                                                elseif ($action === 'updated') $translatedAction = 'actualizó';
+                                                elseif ($action === 'deleted') $translatedAction = 'eliminó';
+
+                                                // Traducción del módulo
+                                                $modelClass = $activity->subject_type ? class_basename($activity->subject_type) : '';
+                                                $translatedModel = 'un registro';
+                                                switch ($modelClass) {
+                                                    case 'PurchaseOrder': $translatedModel = 'una Orden de Compra'; break;
+                                                    case 'RequestForQuotation': $translatedModel = 'una SDC'; break;
+                                                    case 'Product': $translatedModel = 'un Producto'; break;
+                                                    case 'Supplier': $translatedModel = 'un Proveedor'; break;
+                                                    case 'InventoryRequest': $translatedModel = 'una Solicitud'; break;
+                                                    case 'StockIn': $translatedModel = 'una Entrada de Inventario'; break;
+                                                    case 'User': $translatedModel = 'un Usuario'; break;
+                                                    case 'Kit': $translatedModel = 'un Kit'; break;
+                                                    case 'Category': $translatedModel = 'una Categoría'; break;
+                                                    case 'Brand': $translatedModel = 'una Marca'; break;
+                                                    case 'Location': $translatedModel = 'una Ubicación'; break;
+                                                }
+
+                                                // Identificador
+                                                $identifier = $activity->subject?->code ?? $activity->subject?->name ?? 'el registro #' . $activity->subject_id;
+                                                
+                                                // Usuario
+                                                $userName = $activity->causer?->name ?? 'El Sistema';
+                                            @endphp
+                                            <span class="text-primary">{{ $userName }}</span> {{ $translatedAction }} {{ $translatedModel }} ({{ $identifier }})
+                                        </div>
                                         <div class="text-muted small" style="font-size: 11px;">
-                                            {{ $activity->created_at->diffForHumans() }}
+                                            <i class="far fa-clock mr-1"></i> {{ $activity->created_at->diffForHumans() }}
                                         </div>
                                     </div>
                                 </div>
