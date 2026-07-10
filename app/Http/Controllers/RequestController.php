@@ -203,6 +203,15 @@ class RequestController extends Controller
 
     public function create()
     {
+        $user = auth()->user();
+        
+        // Regla 1: Validar días permitidos (Martes y Miércoles) vs Bypass Granular
+        $today = \Carbon\Carbon::now()->dayOfWeek;
+        if (!in_array($today, [\Carbon\Carbon::TUESDAY, \Carbon\Carbon::WEDNESDAY]) && !$user->can('solicitudes_fuera_horario')) {
+            return redirect()->route('admin.requests.index')
+                ->with('error', 'El sistema solo permite crear solicitudes los días Martes y Miércoles.');
+        }
+
         // Cargar todos los productos y kits activos
         $products = Product::where('is_active', true)->orderBy('name')->get(['id', 'name', 'code', 'stock', 'type', 'is_kit', 'category_id']);
         $categories = \App\Models\Category::orderBy('name')->get(['id', 'name']);
@@ -210,27 +219,33 @@ class RequestController extends Controller
         return view('admin.requests.create', compact('products', 'categories'));
     }
 
-
-    // Lógica: Guardar la solicitud y sus items
     public function store(StoreRequestRequest $request)
     {
         $this->authorize('solicitudes_crear');
         
+        $user = auth()->user();
+        
+        // Regla 1: Validar días permitidos (protección de endpoint)
+        $today = \Carbon\Carbon::now()->dayOfWeek;
+        if (!in_array($today, [\Carbon\Carbon::TUESDAY, \Carbon\Carbon::WEDNESDAY]) && !$user->can('solicitudes_fuera_horario')) {
+            return redirect()->back()->withInput()->with('error', 'El sistema solo permite crear solicitudes los días Martes y Miércoles.');
+        }
+
         $validatedData = $request->validated();
 
-        // Restricción de Existencia por Área para no-aprobadores
-        $destinationArea = $validatedData['destination_area'] ?? null;
-        if ($destinationArea && !auth()->user()->can('solicitudes_aprobar')) {
-            $activeRequestExists = RequestModel::where('destination_area', $destinationArea)
-                ->whereIn('status', [RequestModel::STATUS_PENDING, RequestModel::STATUS_APPROVED])
+        // Regla 2: Token Semanal por Usuario (1 solicitud a la semana)
+        if (!$user->can('solicitudes_sin_limite_semanal')) {
+            $hasWeeklyRequest = RequestModel::where('requester_id', $user->id)
+                ->where('requested_at', '>=', now()->startOfWeek())
                 ->exists();
 
-            if ($activeRequestExists) {
+            if ($hasWeeklyRequest) {
                 return redirect()->back()
                     ->withInput()
-                    ->with('error', 'Ya existe una solicitud activa para su área. Por favor, espere a que sea procesada.');
+                    ->with('error', 'Has agotado tu solicitud de esta semana. El límite se reinicia el próximo lunes.');
             }
         }
+
 
         DB::beginTransaction();
         try {

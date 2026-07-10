@@ -16,8 +16,8 @@ class CheckSolicitudSchedule
     {
         $user = auth()->user();
 
-        // Si el usuario tiene permisos de aprobación o es Superadmin, tiene acceso total todos los días
-        if ($user && ($user->hasRole('Superadmin') || $user->can('solicitudes_aprobar'))) {
+        // Si el usuario tiene permisos de aprobación, es Superadmin, o tiene el permiso de excepción, tiene acceso total todos los días
+        if ($user && ($user->hasRole('Superadmin') || $user->can('solicitudes_aprobar') || $user->can('solicitudes_fuera_horario'))) {
             return $next($request);
         }
 

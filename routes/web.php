@@ -39,6 +39,8 @@ Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name
 Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () {
 
     // GESTIÓN DE USUARIOS
+    Route::get('users/{user}/permissions', [UserController::class, 'editPermissions'])->name('users.permissions.edit');
+    Route::put('users/{user}/permissions', [UserController::class, 'updatePermissions'])->name('users.permissions.update');
     Route::resource('users', UserController::class);
     Route::resource('roles', RoleController::class);
 
