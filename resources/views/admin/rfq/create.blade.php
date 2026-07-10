@@ -772,12 +772,14 @@
                         <div class="input-group input-group-sm">
                             <input type="number" name="items[${itemIndex}][quantity_uom]" class="form-control sgci-qty-input row-quantity-uom" min="1" value="1" required>
                             <input type="hidden" name="items[${itemIndex}][quantity]" class="row-quantity-base" value="1">
+                            <input type="hidden" class="row-base-unit-abbr" value="und">
                             <div class="input-group-append">
                                 <select name="items[${itemIndex}][uom_id]" class="form-control sgci-uom-select row-uom-selector" disabled>
                                     <option value="" data-factor="1.0">und</option>
                                 </select>
                             </div>
                         </div>
+                        <small class="text-muted d-block mt-1 row-uom-label" style="font-size: 0.75rem; font-weight: 600; text-align: left;"></small>
                     </td>
                     <td>
                         <input type="text" name="items[${itemIndex}][notes]" class="form-control form-control-sm" placeholder="Especificaciones...">

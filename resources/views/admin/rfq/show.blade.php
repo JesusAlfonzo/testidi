@@ -94,13 +94,8 @@
                                         <label for="supplier_id_show" class="font-weight-bold text-sm text-dark">
                                             Proveedor definitivo <span class="text-danger">*</span>
                                         </label>
-                                        <select name="supplier_id" id="supplier_id_show" class="form-control select2-supplier" style="width: 100%;" required>
+                                        <select name="supplier_id" id="supplier_id_show" class="form-control supplier-select-ajax" style="width: 100%;" required>
                                             <option value="">— Seleccione el proveedor ganador —</option>
-                                            @foreach($suppliers as $supplier)
-                                                <option value="{{ $supplier->id }}">
-                                                    {{ $supplier->name }}
-                                                </option>
-                                            @endforeach
                                         </select>
                                     </div>
 
@@ -435,6 +430,10 @@
     .show-exempt-check:hover {
         transform: scale(1.2);
     }
+    .select2-results__options {
+        max-height: 250px !important;
+        overflow-y: auto !important;
+    }
 </style>
 @endsection
 
@@ -447,7 +446,22 @@ $(document).ready(function () {
         theme: 'bootstrap4',
         width: '100%',
         dropdownParent: $('#convertToPoModal'),
-        placeholder: '— Seleccione el proveedor ganador —'
+        placeholder: '— Seleccione el proveedor ganador —',
+        ajax: {
+            url: '{{ route("admin.suppliers.search-ajax") }}',
+            dataType: 'json',
+            delay: 250,
+            data: function (params) {
+                return { q: params.term, page: params.page || 1 };
+            },
+            processResults: function (data) {
+                return {
+                    results: data.results,
+                    pagination: { more: data.pagination ? data.pagination.more : false }
+                };
+            },
+            cache: true
+        }
     });
 
     // Enviar el formulario tras confirmación

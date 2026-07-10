@@ -737,7 +737,9 @@ class ProductController extends Controller
                         'unitId' => $unitId,
                         'unitName' => $unitName,
                         'categoryId' => $product->category_id,
-                        'conversions' => $conversions->toArray()
+                        'conversions' => $conversions->toArray(),
+                        'requires_serial' => $product->requires_serial,
+                        'is_perishable' => $product->is_perishable,
                     ];
                 }),
                 'pagination' => [

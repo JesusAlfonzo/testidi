@@ -375,19 +375,29 @@
                                                         <small class="text-muted">{{ $item->product->code ?? 'S/C' }}</small>
                                                     @endif
                                                 </td>
-                                                <td class="align-middle text-center">
+                                                <td>
                                                     @php
                                                         $reqQty = request("items.$index.quantity", $item->quantity);
+                                                        $baseUnit = $item->item_type === 'kit' ? 'und' : ($item->product->unit->abbreviation ?? 'und');
                                                     @endphp
-                                                    <input type="hidden" name="items[{{ $index }}][quantity]" value="{{ $reqQty }}" class="item-qty">
-                                                    <span class="badge badge-primary" style="font-size:0.85rem;">{{ $reqQty }}</span>
-                                                    <span class="sgci-text-xs ml-1 font-weight-bold text-muted">
-                                                        @if($item->item_type === 'kit')
-                                                            kit
-                                                        @else
-                                                            {{ $item->product->unit->abbreviation ?? 'und' }}
-                                                        @endif
-                                                    </span>
+                                                    <div class="input-group input-group-sm">
+                                                        <input type="number" name="items[{{ $index }}][quantity_uom]" class="form-control sgci-qty-input row-quantity-uom" min="1" value="{{ $reqQty }}" required>
+                                                        <input type="hidden" name="items[{{ $index }}][quantity]" class="row-quantity-base item-qty" value="{{ $reqQty }}">
+                                                        <input type="hidden" class="row-base-unit-abbr" value="{{ $baseUnit }}">
+                                                        <div class="input-group-append">
+                                                            <select name="items[{{ $index }}][uom_id]" class="form-control sgci-uom-select row-uom-selector" {{ $item->item_type === 'kit' ? 'disabled' : '' }}>
+                                                                <option value="{{ $item->product->unit_id ?? '' }}" data-factor="1.0" selected>{{ $item->item_type === 'kit' ? 'und' : ($item->product->unit->abbreviation ?? 'und') }}</option>
+                                                                @if($item->item_type === 'product' && $item->product && $item->product->conversions)
+                                                                    @foreach($item->product->conversions as $conv)
+                                                                        @if($conv->id != $item->product->unit_id)
+                                                                            <option value="{{ $conv->id }}" data-factor="{{ $conv->factor }}">{{ $conv->name }}</option>
+                                                                        @endif
+                                                                    @endforeach
+                                                                @endif
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <small class="text-muted d-block mt-1 row-uom-label" style="font-size: 0.75rem; font-weight: 600; text-align: left;"></small>
                                                 </td>
                                                 <td>
                                                     @php
@@ -395,7 +405,8 @@
                                                         $itemOffer = isset($offer) ? $offer->items->firstWhere('product_id', $productId) : null;
                                                         $defaultCost = $itemOffer ? $itemOffer->unit_price : request('costs.' . $item->id, old("items.$index.unit_cost", 0));
                                                     @endphp
-                                                    <input type="number" step="0.01" name="items[{{ $index }}][unit_cost]" class="form-control form-control-sm sgci-cost-input item-cost" min="0" value="{{ old("items.$index.unit_cost", $defaultCost) }}" required>
+                                                    <input type="number" step="0.01" name="items[{{ $index }}][unit_cost_uom]" class="form-control form-control-sm sgci-cost-input row-cost-uom item-cost" min="0" value="{{ old("items.$index.unit_cost_uom", $defaultCost) }}" required>
+                                                    <input type="hidden" name="items[{{ $index }}][unit_cost]" class="row-cost-base" value="{{ old("items.$index.unit_cost", $defaultCost) }}">
                                                 </td>
                                                 <td class="text-right align-middle font-weight-bold text-dark">
                                                     <span class="item-total">0.00</span>
@@ -622,9 +633,9 @@
         let taxableSubtotal = 0;
 
         $('#itemsBody tr.item-row').each(function() {
-            const qty = parseFloat($(this).find('.item-qty').val()) || 0;
-            const cost = parseFloat($(this).find('.item-cost').val()) || 0;
-            const total = qty * cost;
+            const qtyUom = parseFloat($(this).find('.row-quantity-uom').val()) || 0;
+            const costUom = parseFloat($(this).find('.row-cost-uom').val()) || 0;
+            const total = qtyUom * costUom;
 
             $(this).find('.item-total').text(total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
             subtotal += total;
@@ -671,7 +682,29 @@
         }
     }
 
-    $(document).on('input change', '.item-cost, .row-iva-switch, #iva_exempt, #currency, #exchangeRate', function() {
+    function recalcRowBase($row) {
+        const qtyUom = parseFloat($row.find('.row-quantity-uom').val()) || 0;
+        const costUom = parseFloat($row.find('.row-cost-uom').val()) || 0;
+        const factor = parseFloat($row.find('.row-uom-selector option:selected').data('factor')) || 1.0;
+        const baseUnit = $row.find('.row-base-unit-abbr').val() || 'und';
+
+        const qtyBase = Math.round(qtyUom * factor);
+        const costBase = factor > 0 ? (costUom / factor) : costUom;
+
+        $row.find('.row-quantity-base').val(qtyBase);
+        $row.find('.row-cost-base').val(costBase.toFixed(4));
+        $row.find('.row-uom-label').text(`Equivale a ${qtyBase} ${baseUnit}`);
+    }
+
+    $(document).on('change', '.row-uom-selector', function() {
+        const $row = $(this).closest('tr');
+        recalcRowBase($row);
+        calculateTotals();
+    });
+
+    $(document).on('input change', '.row-quantity-uom, .item-cost, .row-iva-switch, #iva_exempt, #currency, #exchangeRate', function() {
+        const $row = $(this).closest('tr');
+        if ($row.length) recalcRowBase($row);
         calculateTotals();
     });
 
@@ -799,6 +832,13 @@
     $(function() {
         initSelect2();
         calculateTotals();
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // DISPARADOR INICIAL (CONVERSIÓN UOM)
+        // ═══════════════════════════════════════════════════════════════════════
+        $('#itemsBody tr.item-row').each(function() {
+            recalcRowBase($(this));
+        });
     });
 </script>
 @endsection

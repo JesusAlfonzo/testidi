@@ -521,8 +521,8 @@
             // --- LOGICA DE CONVERSIONES UOM ---
             @php
                 $unitOptions = '';
-                foreach($units as $unit) {
-                    $unitOptions .= '<option value="' . $unit->id . '">' . e($unit->name) . ' (' . e($unit->abbreviation) . ')</option>';
+                foreach($units as $id => $name) {
+                    $unitOptions .= '<option value="' . $id . '">' . e($name) . '</option>';
                 }
             @endphp
 

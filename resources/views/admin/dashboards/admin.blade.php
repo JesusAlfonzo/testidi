@@ -187,7 +187,7 @@
                     </div>
                 </div>
                 <div class="card-footer bg-light border-0 py-2 text-center">
-                    <a href="{{ route('admin.reports.stock') }}" class="text-orange font-weight-bold small" style="color: #f97316;">
+                    <a href="{{ route('admin.reports.expiring') }}" class="text-orange font-weight-bold small" style="color: #f97316;">
                         Control FEFO <i class="fas fa-arrow-right ml-1"></i>
                     </a>
                 </div>

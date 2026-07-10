@@ -420,6 +420,12 @@ return [
                     'can'  => 'reportes_stock',
                 ],
                 [
+                    'text' => 'Lotes por Vencer (FEFO)',
+                    'route'  => 'admin.reports.expiring',
+                    'icon' => 'fas fa-fw fa-calendar-times',
+                    'can'  => 'reportes_stock',
+                ],
+                [
                     'text' => 'Solicitudes/Movimientos',
                     'url'  => 'admin/reports/requests',
                     'icon' => 'fas fa-history',

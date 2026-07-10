@@ -4,6 +4,16 @@
 
 @section('plugins.Select2', true)
 
+@section('css')
+    <style>
+        /* ── Scroll Limpio para Select2 Dropdown (Receta RFQ) ────────────────── */
+        .select2-results__options {
+            max-height: 250px !important;
+            overflow-y: auto !important;
+        }
+    </style>
+@stop
+
 @section('content_header')
     <div class="d-flex justify-content-between align-items-center">
         <div>
@@ -109,11 +119,10 @@
                                                 @endphp
                                                 <tr data-index="{{ $index }}" data-requires-serial="{{ $requiresSerial ? 'true' : 'false' }}" data-is-perishable="{{ $isPerishable ? 'true' : 'false' }}">
                                                     <td>
-                                                        <select name="items[{{ $index }}][product_id]" class="form-control form-control-sm select2-product @error("items.$index.product_id") is-invalid @enderror" required onchange="onProductChange(this)">
-                                                            <option value="">Seleccione...</option>
-                                                            @foreach($products as $prod)
-                                                                <option value="{{ $prod->id }}" data-requires-serial="{{ $prod->requires_serial ? 'true' : 'false' }}" data-is-perishable="{{ $prod->is_perishable ? 'true' : 'false' }}" {{ ($item['product_id'] ?? '') == $prod->id ? 'selected' : '' }}>{{ $prod->name }}</option>
-                                                            @endforeach
+                                                        <select name="items[{{ $index }}][product_id]" class="form-control form-control-sm item-selector product-select-ajax @error("items.$index.product_id") is-invalid @enderror" required>
+                                                            @if(!empty($item['product_id']))
+                                                                <option value="{{ $item['product_id'] }}" selected>Producto Seleccionado</option>
+                                                            @endif
                                                         </select>
                                                         @error("items.$index.product_id")<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
                                                     </td>
@@ -360,11 +369,10 @@
                                         <input type="text" class="form-control bg-light" value="{{ $order->supplier->name }}" readonly>
                                     </div>
                                 @else
-                                    <select name="supplier_id" id="supplier_id" class="form-control select2 @error('supplier_id') is-invalid @enderror">
-                                        <option value="">Seleccione un proveedor...</option>
-                                        @foreach($suppliers as $id => $name)
-                                            <option value="{{ $id }}" {{ old('supplier_id') == $id ? 'selected' : '' }}>{{ $name }}</option>
-                                        @endforeach
+                                    <select name="supplier_id" id="supplier_id" class="form-control item-selector supplier-select-ajax @error('supplier_id') is-invalid @enderror">
+                                        @if(old('supplier_id'))
+                                            <option value="{{ old('supplier_id') }}" selected>Proveedor Seleccionado</option>
+                                        @endif
                                     </select>
                                     @error('supplier_id')<span class="invalid-feedback">{{ $message }}</span>@enderror
                                 @endif
@@ -526,17 +534,6 @@
         row.setAttribute('data-index', itemIndex);
         row.setAttribute('data-requires-serial', 'false');
 
-        // Opciones de producto respetan el filtro activo (o todos si hay OC)
-        @if($order)
-        let productOptions = '<option value="">Seleccione...</option>';
-        @foreach($products as $prod)
-            productOptions += '<option value="{{ $prod->id }}" data-requires-serial="{{ $prod->requires_serial ? 'true' : 'false' }}" data-is-perishable="{{ $prod->is_perishable ? 'true' : 'false' }}" data-category-id="{{ $prod->category_id }}">{{ $prod->name }}</option>';
-        @endforeach
-        @else
-        const productOptions = buildStockInOptions();
-        @endif
-
-
         let locationOptions = '<option value="">Seleccione...</option>';
         @foreach($locations as $id => $name)
             locationOptions += '<option value="{{ $name }}">{{ $name }}</option>';
@@ -544,8 +541,7 @@
         
         let cols = `
             <td>
-                <select name="items[${itemIndex}][product_id]" class="form-control form-control-sm select2-product" required onchange="onProductChange(this)">
-                    ${productOptions}
+                <select name="items[${itemIndex}][product_id]" class="form-control form-control-sm item-selector product-select-ajax" required>
                 </select>
             </td>
             <td>
@@ -581,11 +577,8 @@
         row.innerHTML = cols;
         tbody.appendChild(row);
         
-        // Inicializar select2 en el nuevo row (respetando el estado del filtro)
-        $(row).find('.select2-product').select2({
-            theme: 'bootstrap4',
-            placeholder: selectedCategoryId ? 'Seleccione un producto' : 'Seleccione una categoría primero'
-        });
+        // Inicializar select2 en el nuevo row usando AJAX
+        initProductSelect2($(row).find('.product-select-ajax'));
         
         // La fecha de vencimiento inicia habilitada y opcional
         $(row).find('input[type="date"]').prop('disabled', false).prop('required', false);
@@ -617,27 +610,7 @@
         }
     }
 
-    function onProductChange(select) {
-        const row = $(select).closest('tr');
-        const selectedOption = $(select).find('option:selected');
-        
-        // 1. Control de seriales
-        const requiresSerial = selectedOption.data('requires-serial') === 'true' || selectedOption.data('requires-serial') === true;
-        row.attr('data-requires-serial', requiresSerial ? 'true' : 'false');
-        updateSerialPanel();
-
-        // 2. Control de vencimiento (Perecedero)
-        const isPerishable = selectedOption.data('is-perishable') === 'true' || selectedOption.data('is-perishable') === true;
-        const expDateInput = row.find('input[type="date"]');
-        if (expDateInput.length > 0) {
-            expDateInput.prop('disabled', false); // Siempre habilitado para permitir edición
-            if (isPerishable) {
-                expDateInput.prop('required', true).removeClass('bg-light');
-            } else {
-                expDateInput.prop('required', false).removeClass('bg-light');
-            }
-        }
-    }
+    // onProductChange removido; manejado vía select2:select en AJAX
 
     function onQtyChange(input) {
         updateSerialPanel();
@@ -670,7 +643,7 @@
                 
                 // Obtener nombre del producto
                 let productName = '';
-                const select = tr.find('.select2-product');
+                const select = tr.find('.product-select-ajax');
                 if (select.length > 0) {
                     productName = select.find('option:selected').text() || 'Producto Seleccionado';
                 } else {
@@ -751,14 +724,7 @@
     function initializeExpirationFields() {
         $('#itemsBody tr').each(function() {
             const tr = $(this);
-            const select = tr.find('.select2-product');
-            let isPerishable = false;
-            if (select.length > 0) {
-                const selectedOption = select.find('option:selected');
-                isPerishable = selectedOption.data('is-perishable') === 'true' || selectedOption.data('is-perishable') === true;
-            } else {
-                isPerishable = tr.attr('data-is-perishable') === 'true';
-            }
+            let isPerishable = tr.attr('data-is-perishable') === 'true';
             const expDateInput = tr.find('input[type="date"]');
             if (expDateInput.length > 0) {
                 expDateInput.prop('disabled', false); // Siempre habilitado para permitir edición
@@ -771,15 +737,122 @@
         });
     }
 
+    // 1. Destructor seguro (Receta RFQ)
+    function safeDestroySelect2($el) {
+        if ($el.hasClass('select2-hidden-accessible')) {
+            $el.select2('destroy');
+        }
+    }
+
+    // 2. Inicializador AJAX para Proveedores
+    function initSupplierSelect2($select) {
+        safeDestroySelect2($select);
+        $select.empty();
+        
+        if (!$select.find('option').length) {
+            $select.html('<option value=""></option>');
+        }
+
+        $select.select2({
+            theme: 'bootstrap4',
+            width: '100%',
+            allowClear: true,
+            placeholder: 'Seleccione un proveedor...',
+            ajax: {
+                url: '{{ route("admin.suppliers.search-ajax") }}',
+                dataType: 'json',
+                delay: 250,
+                data: function (params) {
+                    return { q: params.term, page: params.page || 1 };
+                },
+                processResults: function (data) {
+                    return {
+                        results: data.results,
+                        pagination: { more: data.pagination ? data.pagination.more : false }
+                    };
+                },
+                cache: true
+            }
+        });
+    }
+
+    // 3. Inicializador AJAX para Productos (Clon de RFQ)
+    function initProductSelect2($select) {
+        safeDestroySelect2($select);
+        $select.empty();
+        
+        if (!$select.find('option').length) {
+            $select.html('<option value=""></option>');
+        }
+
+        $select.select2({
+            theme: 'bootstrap4',
+            width: '100%',
+            allowClear: true,
+            placeholder: 'Seleccione un producto...',
+            ajax: {
+                url: '{{ route("admin.products.search-ajax") }}',
+                dataType: 'json',
+                delay: 250,
+                data: function (params) {
+                    return { 
+                        q: params.term, 
+                        page: params.page || 1,
+                        category_id: typeof selectedCategoryId !== 'undefined' ? selectedCategoryId : null 
+                    };
+                },
+                processResults: function (data) {
+                    return {
+                        results: data.results,
+                        pagination: { more: data.pagination.more }
+                    };
+                },
+                cache: true
+            }
+        }).on('select2:select', function(e) {
+            // Reemplazo del antiguo "onProductChange()" leyendo datos en tiempo real de AJAX
+            const data = e.params.data;
+            const row = $(this).closest('tr');
+            
+            // Control de Seriales
+            const requiresSerial = data.requires_serial === true || data.requires_serial === 'true';
+            row.attr('data-requires-serial', requiresSerial ? 'true' : 'false');
+            if (typeof updateSerialPanel === 'function') updateSerialPanel();
+
+            // Control de Vencimiento
+            const isPerishable = data.is_perishable === true || data.is_perishable === 'true';
+            row.attr('data-is-perishable', isPerishable ? 'true' : 'false');
+            const expDateInput = row.find('input[type="date"]');
+            if (expDateInput.length > 0) {
+                expDateInput.prop('disabled', false);
+                if (isPerishable) {
+                    expDateInput.prop('required', true).removeClass('bg-light');
+                } else {
+                    expDateInput.prop('required', false).removeClass('bg-light');
+                }
+            }
+        }).on('select2:clear', function() {
+            const row = $(this).closest('tr');
+            row.attr('data-requires-serial', 'false');
+            row.attr('data-is-perishable', 'false');
+            if (typeof updateSerialPanel === 'function') updateSerialPanel();
+            row.find('input[type="date"]').prop('required', false).removeClass('bg-light');
+        });
+    }
+
     $(document).ready(function() {
-        // Inicializar Select2 en los productos y proveedores existentes
-        $('.select2').select2({
+        // Inicializar genéricos (si queda alguno)
+        $('.select2').not('.supplier-select-ajax, .product-select-ajax').select2({
             theme: 'bootstrap4'
         });
 
-        $('.select2-product').select2({
-            theme: 'bootstrap4',
-            placeholder: 'Seleccione un producto'
+        // 4. Disparadores AJAX
+        if($('.supplier-select-ajax').length) {
+            initSupplierSelect2($('.supplier-select-ajax'));
+        }
+        
+        $('.product-select-ajax').each(function() {
+            initProductSelect2($(this));
         });
 
         // Filtro de categorías (solo en modo sin OC)

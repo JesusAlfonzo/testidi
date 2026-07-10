@@ -143,6 +143,11 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
             ->name('stock.pdf')
             ->middleware('can:reportes_stock');
 
+        // Reporte FEFO (Lotes por vencer)
+        Route::get('expiring-lots', [ReportController::class, 'expiringLots'])
+            ->name('expiring')
+            ->middleware('can:reportes_stock');
+
         // Reporte de Solicitudes
         Route::get('requests', [ReportController::class, 'requestsReport'])
             ->name('requests')

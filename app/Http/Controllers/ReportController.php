@@ -3,6 +3,7 @@ namespace App\Http\Controllers;
 
 use App\Models\InventoryRequest as SolicitudModel;
 use App\Models\Product;
+use App\Models\ProductBatch;
 use App\Models\StockIn;
 use App\Models\StockInItem;
 use App\Models\RequestItem;
@@ -84,6 +85,19 @@ class ReportController extends Controller
         $products = $query->get();
 
         return view('admin.reports.stock', compact('products', 'categories', 'locations', 'brands'));
+    }
+
+    public function expiringLots()
+    {
+        // Traer lotes con stock > 0 y vencimiento <= 90 días, ordenado por los que caducan primero
+        $batches = ProductBatch::with('product')
+            ->where('quantity', '>', 0)
+            ->whereNotNull('expiration_date')
+            ->whereDate('expiration_date', '<=', now()->addDays(90))
+            ->orderBy('expiration_date', 'asc')
+            ->get();
+
+        return view('admin.reports.expiring_lots', compact('batches'));
     }
 
     public function exportStockExcel(Request $request)

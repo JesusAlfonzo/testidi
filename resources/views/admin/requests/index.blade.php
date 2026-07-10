@@ -176,15 +176,15 @@
                     <table id="requestsTable" class="table table-hover" style="width:100%">
                         <thead>
                             <tr>
-                                <th style="width: 10%">ID</th>
+                                <th style="width: 5%">ID</th>
                                 <th style="width: 15%">Solicitante</th>
-                                <th style="width: 15%">Departamento</th>
-                                <th style="width: 30%">Justificación</th>
-                                <th style="width: 10%">Estado</th>
-                                <th style="width: 12%">Fecha</th>
-                                <th style="width: 13%">Aprobador</th>
-                                <th style="width: 10%">Fecha Proc.</th>
-                                <th style="width: 10%" class="text-right">Acciones</th>
+                                <th style="width: 13%">Departamento</th>
+                                <th style="width: 20%">Justificación</th>
+                                <th style="width: 9%">Estado</th>
+                                <th style="width: 9%">Fecha</th>
+                                <th style="width: 9%">Aprobador</th>
+                                <th style="width: 8%">Fecha Proc.</th>
+                                <th style="width: 12%" class="text-center">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -308,10 +308,11 @@
                 },
 
                 "columnDefs": [
-                    { "responsivePriority": 1, "targets": 0 }, // ID
+                    { "width": "5%", "responsivePriority": 1, "targets": 0 }, // ID
+                    { "width": "20%", "targets": 3 }, // Justificación
+                    { "width": "12%", "responsivePriority": 3, "targets": 8, "className": "text-nowrap text-center" }, // Acciones
                     { "responsivePriority": 2, "targets": 4 }, // Estado
-                    { "responsivePriority": 3, "targets": 8 }, // Acciones
-                    { "responsivePriority": 100, "targets": [1, 2, 3, 5, 6, 7] }
+                    { "responsivePriority": 100, "targets": [1, 2, 5, 6, 7] }
                 ]
             });
 
